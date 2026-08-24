@@ -1,32 +1,18 @@
-import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldCheck, User, LogOut, Upload, Search, X } from 'lucide-react';
+import { ShieldCheck, User, LogOut, Upload } from 'lucide-react';
 import { useAdmin } from '@/hooks/useAdmin';
 import { useAuth } from '@/features/auth/AuthProvider';
-import { cn } from '@/lib/utils';
 
 interface HeaderProps {
   title: string;
-  showSearch?: boolean;
   onUploadClick?: () => void;
   onSearch?: (query: string) => void;
 }
 
-export function Header({ title, showSearch = false, onUploadClick, onSearch }: HeaderProps) {
+export function Header({ title, onUploadClick }: HeaderProps) {
   const { isAdmin } = useAdmin();
   const { signOut } = useAuth();
   const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchFocused, setSearchFocused] = useState(false);
-  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-
-  const handleSearchChange = (value: string) => {
-    setSearchQuery(value);
-    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    searchTimerRef.current = setTimeout(() => {
-      onSearch?.(value);
-    }, 300);
-  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -36,42 +22,13 @@ export function Header({ title, showSearch = false, onUploadClick, onSearch }: H
   return (
     <header className="flex h-[var(--header-height)] items-center gap-3 bg-[var(--neu-bg)] px-4 md:px-6 neu-flat z-20">
       {/* Branding & Title */}
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex items-center gap-2">
         <span className="text-lg font-black tracking-tight text-[var(--color-text-primary)] md:text-xl">DM</span>
         <span className="text-sm font-semibold text-[var(--color-text-tertiary)]">/</span>
         <h1 className="text-sm md:text-base font-bold tracking-tight text-[var(--color-text-primary)]">{title}</h1>
       </div>
 
-      {/* Search Bar - Shown only inside Task workspace / when requested */}
-      {showSearch && (
-        <div className="relative mx-auto hidden w-full max-w-md md:block">
-          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-tertiary)]" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            onFocus={() => setSearchFocused(true)}
-            onBlur={() => setSearchFocused(false)}
-            placeholder="Search within task workspace..."
-            className={cn(
-              'w-full rounded-xl neu-input py-1.5 pl-10 pr-8 text-xs text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)] transition-all',
-              searchFocused && 'ring-2 ring-[var(--color-primary)]'
-            )}
-            aria-label="Search within workspace"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => { setSearchQuery(''); onSearch?.(''); }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]"
-              aria-label="Clear search"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
-        </div>
-      )}
-
-      <div className="ml-auto flex items-center gap-2 shrink-0">
+      <div className="ml-auto flex items-center gap-2">
         {/* Admin Dashboard Access */}
         {isAdmin && (
           <button
