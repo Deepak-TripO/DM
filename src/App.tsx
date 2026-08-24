@@ -74,7 +74,8 @@ export default function App() {
                     </ProtectedRoute>
                   }
                 >
-                  <Route index element={<HomePage />} />
+                  <Route index element={<Navigate to="/files" replace />} />
+                  <Route path="home" element={<HomePage />} />
                   <Route path="files" element={<FilesPage />} />
                   <Route path="folders/:folderId" element={<FilesPage />} />
                   <Route path="recent" element={<RecentPage />} />

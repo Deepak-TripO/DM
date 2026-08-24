@@ -23,7 +23,7 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { to: '/', icon: Home, label: 'Home', color: '#4D94E8', bg: '#EAF4FF' },
+  { to: '/home', icon: Home, label: 'Home', color: '#4D94E8', bg: '#EAF4FF' },
   { to: '/files', icon: FolderOpen, label: 'My Files', color: '#18AFAF', bg: '#E8FAFA' },
   { to: '/recent', icon: Clock, label: 'Recent', color: '#E59A32', bg: '#FFF4E5' },
   { to: '/starred', icon: Star, label: 'Starred', color: '#8A63D2', bg: '#F3EDFF' },

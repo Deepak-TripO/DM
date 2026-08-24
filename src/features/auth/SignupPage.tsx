@@ -34,7 +34,7 @@ export default function SignupPage() {
       setError(result.error.message);
       setLoading(false);
     } else if (result.autoLoggedIn) {
-      navigate('/', { replace: true });
+      navigate('/files', { replace: true });
     } else {
       setSuccess(true);
       setLoading(false);

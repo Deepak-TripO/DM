@@ -25,7 +25,7 @@ export default function LoginPage() {
       if (email.trim().toLowerCase() === 'admin@dm.com') {
         navigate('/admin', { replace: true });
       } else {
-        navigate('/', { replace: true });
+        navigate('/files', { replace: true });
       }
     }
   };
