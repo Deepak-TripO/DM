@@ -20,6 +20,8 @@ export default function TasksPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
 
+  const [searchQuery, setSearchQuery] = useState('');
+
   // Query active tasks for selection
   const { data: tasks = [], isLoading: loadingTasks } = useQuery({
     queryKey: ['activeTasks'],
@@ -54,10 +56,16 @@ export default function TasksPage() {
     }
   };
 
+  const filteredTaskFiles = taskFiles.filter((f) =>
+    f.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div className="flex flex-col min-h-screen">
       <Header
         title={taskId ? (selectedTask ? `TASK: ${selectedTask.name}` : 'Task Details') : 'Select Task'}
+        showSearch={!!taskId}
+        onSearch={setSearchQuery}
       />
 
       <div className="flex-1 space-y-6 p-4 md:p-6 max-w-7xl mx-auto w-full">
@@ -119,15 +127,15 @@ export default function TasksPage() {
                 <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                   {Array.from({ length: 8 }).map((_, i) => <FileCardSkeleton key={i} />)}
                 </div>
-              ) : taskFiles.length === 0 ? (
+              ) : filteredTaskFiles.length === 0 ? (
                 <EmptyState
                   icon={CheckSquare}
-                  title={`No files in ${selectedTask.name}`}
-                  description="There are currently no files assigned to this task."
+                  title={searchQuery ? 'No matching files found' : `No files in ${selectedTask.name}`}
+                  description={searchQuery ? 'Try adjusting your search query.' : 'There are currently no files assigned to this task.'}
                 />
               ) : viewMode === 'grid' ? (
                 <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                  {taskFiles.map((file) => (
+                  {filteredTaskFiles.map((file) => (
                     <div
                       key={file.id}
                       className="group relative rounded-2xl neu-card p-4 transition-all hover:scale-[1.01]"
@@ -155,7 +163,7 @@ export default function TasksPage() {
                     <span className="hidden w-24 md:block">Size</span>
                     <span className="hidden w-32 md:block">Modified</span>
                   </div>
-                  {taskFiles.map((file) => (
+                  {filteredTaskFiles.map((file) => (
                     <div
                       key={file.id}
                       className="group flex items-center gap-3 rounded-xl px-4 py-3 transition-all hover:neu-pressed"

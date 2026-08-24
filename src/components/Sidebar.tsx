@@ -130,52 +130,6 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           </>
         )}
       </nav>
-
-      {/* Bottom */}
-      <div className="space-y-2 px-3 py-3 neu-pressed-deep my-2 mx-2 rounded-2xl">
-        {bottomItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            style={({ isActive }) =>
-              isActive
-                ? { backgroundColor: item.bg, color: item.color }
-                : undefined
-            }
-            className={({ isActive }) =>
-              cn(
-                'flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-150',
-                isActive
-                  ? 'neu-pressed font-bold'
-                  : 'neu-btn text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]',
-                collapsed && 'justify-center px-0'
-              )
-            }
-          >
-            {({ isActive }) => (
-              <>
-                <item.icon
-                  className="h-[18px] w-[18px] shrink-0"
-                  style={{ color: item.color }}
-                />
-                {!collapsed && <span>{item.label}</span>}
-              </>
-            )}
-          </NavLink>
-        ))}
-
-        <button
-          onClick={handleSignOut}
-          className={cn(
-            'flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-[var(--color-text-secondary)] neu-btn transition-colors hover:text-[var(--color-danger)]',
-            collapsed && 'justify-center px-0'
-          )}
-          aria-label="Sign out"
-        >
-          <LogOut className="h-[18px] w-[18px] shrink-0 text-[#D95C68]" />
-          {!collapsed && <span>Sign out</span>}
-        </button>
-      </div>
     </aside>
   );
 }
