@@ -34,7 +34,7 @@ export default function SignupPage() {
       setError(result.error.message);
       setLoading(false);
     } else if (result.autoLoggedIn) {
-      navigate('/files', { replace: true });
+      navigate('/tasks', { replace: true });
     } else {
       setSuccess(true);
       setLoading(false);

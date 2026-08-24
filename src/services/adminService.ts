@@ -537,3 +537,9 @@ export async function deleteAdminFolder(folderId: string): Promise<void> {
 
   if (error) throw error;
 }
+
+// Task Aliases & Service Methods
+export type AdminTaskItem = AdminFolderItem;
+export const getAdminTasks = getAdminFolders;
+export const createAdminTask = createAdminFolder;
+export const deleteAdminTask = deleteAdminFolder;

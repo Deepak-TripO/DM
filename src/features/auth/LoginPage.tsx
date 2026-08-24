@@ -22,7 +22,7 @@ export default function LoginPage() {
       setError(error.message);
       setLoading(false);
     } else {
-      navigate('/files', { replace: true });
+      navigate('/tasks', { replace: true });
     }
   };
 

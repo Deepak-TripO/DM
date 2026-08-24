@@ -14,6 +14,7 @@ const SignupPage = lazy(() => import('@/features/auth/SignupPage'));
 const ForgotPasswordPage = lazy(() => import('@/features/auth/ForgotPasswordPage'));
 const ResetPasswordPage = lazy(() => import('@/features/auth/ResetPasswordPage'));
 const HomePage = lazy(() => import('@/pages/HomePage'));
+const TasksPage = lazy(() => import('@/pages/TasksPage'));
 const FilesPage = lazy(() => import('@/pages/FilesPage'));
 const RecentPage = lazy(() => import('@/pages/RecentPage'));
 const StarredPage = lazy(() => import('@/pages/StarredPage'));
@@ -30,7 +31,7 @@ const AdminFiles = lazy(() => import('@/pages/admin/AdminFiles'));
 const AdminShares = lazy(() => import('@/pages/admin/AdminShares'));
 const AdminActivity = lazy(() => import('@/pages/admin/AdminActivity'));
 const AdminCategories = lazy(() => import('@/pages/admin/AdminCategories'));
-const AdminFolders = lazy(() => import('@/pages/admin/AdminFolders'));
+const AdminTasks = lazy(() => import('@/pages/admin/AdminTasks'));
 const AdminSettings = lazy(() => import('@/pages/admin/AdminSettings'));
 
 const queryClient = new QueryClient({
@@ -74,11 +75,13 @@ export default function App() {
                     </ProtectedRoute>
                   }
                 >
-                  <Route index element={<Navigate to="/files" replace />} />
+                  <Route index element={<Navigate to="/tasks" replace />} />
+                  <Route path="tasks" element={<TasksPage />} />
+                  <Route path="tasks/:taskId" element={<TasksPage />} />
                   <Route path="home" element={<HomePage />} />
                   <Route path="files" element={<FilesPage />} />
-                  <Route path="folders" element={<Navigate to="/files" replace />} />
-                  <Route path="folders/:folderId" element={<FilesPage />} />
+                  <Route path="folders" element={<Navigate to="/tasks" replace />} />
+                  <Route path="folders/:folderId" element={<Navigate to="/tasks" replace />} />
                   <Route path="recent" element={<RecentPage />} />
                   <Route path="starred" element={<StarredPage />} />
                   <Route path="shared" element={<SharedPage />} />
@@ -104,7 +107,8 @@ export default function App() {
                   <Route path="shares" element={<Navigate to="/admin/shared-links" replace />} />
                   <Route path="activity" element={<AdminActivity />} />
                   <Route path="categories" element={<AdminCategories />} />
-                  <Route path="folders" element={<AdminFolders />} />
+                  <Route path="tasks" element={<AdminTasks />} />
+                  <Route path="folders" element={<Navigate to="/admin/tasks" replace />} />
                   <Route path="settings" element={<AdminSettings />} />
                 </Route>
 
