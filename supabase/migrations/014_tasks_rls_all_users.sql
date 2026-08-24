@@ -4,7 +4,7 @@
 -- 1. Enable RLS on public.folders
 ALTER TABLE public.folders ENABLE ROW LEVEL SECURITY;
 
--- 2. Drop existing SELECT policies
+-- 2. Drop existing SELECT policies on folders
 DROP POLICY IF EXISTS "Admins can view all folders." ON public.folders;
 DROP POLICY IF EXISTS "Allow authenticated users to view active folders" ON public.folders;
 DROP POLICY IF EXISTS "Authenticated users can select active tasks." ON public.folders;
@@ -24,3 +24,20 @@ CREATE POLICY "Admins can manage all tasks."
     TO authenticated
     USING (public.is_admin(auth.uid()) OR auth.uid() = owner_id)
     WITH CHECK (public.is_admin(auth.uid()) OR auth.uid() = owner_id);
+
+-- 5. Enable RLS and add SELECT policy for public.files inside tasks
+ALTER TABLE public.files ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Authenticated users can select task files." ON public.files;
+
+CREATE POLICY "Authenticated users can select task files."
+    ON public.files FOR SELECT
+    TO authenticated
+    USING (
+        deleted_at IS NULL AND (
+            auth.uid() = owner_id
+            OR public.is_admin(auth.uid())
+            OR (folder_id IS NOT NULL)
+        )
+    );
+

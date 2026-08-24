@@ -75,7 +75,7 @@ export default function App() {
                     </ProtectedRoute>
                   }
                 >
-                  <Route index element={<Navigate to="/tasks" replace />} />
+                  <Route index element={<Navigate to="/home" replace />} />
                   <Route path="tasks" element={<TasksPage />} />
                   <Route path="tasks/:taskId" element={<TasksPage />} />
                   <Route path="home" element={<HomePage />} />

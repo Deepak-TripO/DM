@@ -8,10 +8,12 @@ import { FileIcon } from '@/components/FileIcon';
 import { formatBytes, formatRelativeTime } from '@/utils';
 import { Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAppLayout } from '@/layouts/AppLayout';
 
 export default function RecentPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { sidebarOpen, toggleSidebar } = useAppLayout();
 
   const { data: files = [], isLoading } = useQuery({
     queryKey: ['recentFiles', user?.id],
@@ -21,7 +23,7 @@ export default function RecentPage() {
 
   return (
     <div className="flex flex-col">
-      <Header title="Recent" />
+      <Header title="Recent" onLogoClick={toggleSidebar} sidebarOpen={sidebarOpen} />
       <div className="p-4 md:p-6">
         {isLoading ? (
           <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">

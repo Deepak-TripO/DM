@@ -1,18 +1,22 @@
-import { useNavigate } from 'react-router-dom';
-import { ShieldCheck, User, LogOut, Upload } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { ShieldCheck, User, LogOut, Upload, CheckSquare } from 'lucide-react';
 import { useAdmin } from '@/hooks/useAdmin';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { cn } from '@/lib/utils';
 
 interface HeaderProps {
-  title: string;
+  title?: string;
   onUploadClick?: () => void;
   onSearch?: (query: string) => void;
+  onLogoClick?: () => void;
+  sidebarOpen?: boolean;
 }
 
-export function Header({ title, onUploadClick }: HeaderProps) {
+export function Header({ onUploadClick, onLogoClick, sidebarOpen }: HeaderProps) {
   const { isAdmin } = useAdmin();
   const { signOut } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleSignOut = async () => {
     await signOut();
@@ -20,15 +24,37 @@ export function Header({ title, onUploadClick }: HeaderProps) {
   };
 
   return (
-    <header className="flex h-[var(--header-height)] items-center gap-3 bg-[var(--neu-bg)] px-4 md:px-6 neu-flat z-20">
-      {/* Branding & Title */}
+    <header className="flex h-[var(--header-height)] items-center justify-between gap-3 bg-[var(--neu-bg)] px-4 md:px-6 neu-flat z-20 sticky top-0">
+      {/* Top-Left Branding Logo — DM only (visible when sidebar is closed or on logo click) */}
       <div className="flex items-center gap-2">
-        <span className="text-lg font-black tracking-tight text-[var(--color-text-primary)] md:text-xl">DM</span>
-        <span className="text-sm font-semibold text-[var(--color-text-tertiary)]">/</span>
-        <h1 className="text-sm md:text-base font-bold tracking-tight text-[var(--color-text-primary)]">{title}</h1>
+        {(!sidebarOpen || onLogoClick) && (
+          <button
+            onClick={onLogoClick}
+            className="text-lg font-black tracking-tight text-[var(--color-text-primary)] md:text-xl cursor-pointer hover:opacity-80 transition-opacity focus:outline-none"
+            aria-label="Toggle navigation"
+            title="Toggle navigation sidebar"
+          >
+            DM
+          </button>
+        )}
       </div>
 
       <div className="ml-auto flex items-center gap-2">
+        {/* Task Access */}
+        <button
+          onClick={() => navigate('/tasks')}
+          className={cn(
+            'flex items-center gap-1.5 rounded-xl neu-btn px-3 py-1.5 text-xs font-bold transition-all hover:scale-[1.02]',
+            location.pathname.startsWith('/tasks')
+              ? 'neu-pressed text-[var(--color-primary)] font-extrabold'
+              : 'text-[var(--color-text-primary)]'
+          )}
+          aria-label="Task"
+        >
+          <CheckSquare className="h-4 w-4 text-[#4D94E8]" />
+          <span className="hidden sm:inline">Task</span>
+        </button>
+
         {/* Admin Dashboard Access */}
         {isAdmin && (
           <button

@@ -18,7 +18,10 @@ export async function getActiveTasks(): Promise<TaskItem[]> {
     .order('name', { ascending: true });
 
   if (error) throw error;
-  return (data || []) as TaskItem[];
+  const filtered = (data || []).filter(
+    (item: any) => item.name.trim().toLowerCase() !== 'photos'
+  );
+  return filtered as TaskItem[];
 }
 
 export async function getTaskById(taskId: string): Promise<TaskItem | null> {

@@ -10,12 +10,14 @@ import { formatDate } from '@/utils';
 import { Share2, Link2, Copy, ShieldCheck, Calendar, Download, XCircle, Folder } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ShareItem } from '@/types';
+import { useAppLayout } from '@/layouts/AppLayout';
 
 const TABS = ['All', 'Files', 'Folders', 'Active', 'Expired', 'Revoked'] as const;
 
 export default function SharedPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { sidebarOpen, toggleSidebar } = useAppLayout();
   const [tab, setTab] = useState<typeof TABS[number]>('All');
   const [revokeItem, setRevokeItem] = useState<ShareItem | null>(null);
 
@@ -65,7 +67,7 @@ export default function SharedPage() {
 
   return (
     <div className="flex flex-col">
-      <Header title="Shared" />
+      <Header title="Shared" onLogoClick={toggleSidebar} sidebarOpen={sidebarOpen} />
       <div className="p-4 md:p-6 space-y-4">
         {/* Tabs */}
         <div className="flex gap-2 overflow-x-auto pb-1">

@@ -7,10 +7,12 @@ import { ProfileSkeleton } from '@/components/LoadingSkeleton';
 import { formatBytes, formatDate } from '@/utils';
 import { Camera, Loader2, HardDrive, User, Calendar, Mail, Key } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAppLayout } from '@/layouts/AppLayout';
 
 export default function ProfilePage() {
   const { user, updatePassword, updateEmail } = useAuth();
   const queryClient = useQueryClient();
+  const { sidebarOpen, toggleSidebar } = useAppLayout();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [editing, setEditing] = useState(false);
@@ -117,12 +119,12 @@ export default function ProfilePage() {
   const usedPercent = quota ? Math.min((quota.used_bytes / quota.quota_bytes) * 100, 100) : 0;
 
   if (loadingProfile) {
-    return <div className="flex flex-col"><Header title="Profile" /><ProfileSkeleton /></div>;
+    return <div className="flex flex-col"><Header title="Profile" onLogoClick={toggleSidebar} sidebarOpen={sidebarOpen} /><ProfileSkeleton /></div>;
   }
 
   return (
     <div className="flex flex-col">
-      <Header title="Profile" />
+      <Header title="Profile" onLogoClick={toggleSidebar} sidebarOpen={sidebarOpen} />
       <div className="mx-auto w-full max-w-lg p-4 md:p-6 space-y-6">
         {/* Avatar */}
         <div className="mb-2 flex items-center gap-5 neu-card p-6 rounded-3xl">

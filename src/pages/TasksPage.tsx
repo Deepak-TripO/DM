@@ -9,14 +9,17 @@ import { EmptyState } from '@/components/EmptyState';
 import { FileCardSkeleton } from '@/components/LoadingSkeleton';
 import { FileIcon } from '@/components/FileIcon';
 import { FilePreviewModal } from '@/features/files/preview/FilePreviewModal';
+import { FinanceView } from '@/pages/finance/FinanceView';
 import { formatBytes, formatRelativeTime } from '@/utils';
-import { CheckSquare, ArrowLeft, Grid3X3, List, Eye, Download, MoreVertical, HardDrive } from 'lucide-react';
+import { CheckSquare, Grid3X3, List, Eye, Download, MoreVertical, HardDrive } from 'lucide-react';
 import { getSignedUrl } from '@/services/fileService';
 import { toast } from 'sonner';
+import { useAppLayout } from '@/layouts/AppLayout';
 
 export default function TasksPage() {
   const { taskId } = useParams<{ taskId?: string }>();
   const navigate = useNavigate();
+  const { sidebarOpen, toggleSidebar } = useAppLayout();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
 
@@ -34,10 +37,12 @@ export default function TasksPage() {
     enabled: !!taskId,
   });
 
+  const isFinanceTask = !!selectedTask && selectedTask.name.trim().toLowerCase() === 'finance';
+
   const { data: taskFiles = [], isLoading: loadingFiles } = useQuery({
     queryKey: ['taskFiles', taskId],
     queryFn: () => getTaskFiles(taskId!),
-    enabled: !!taskId && !!selectedTask,
+    enabled: !!taskId && !!selectedTask && !isFinanceTask,
   });
 
   const handleDownload = async (file: FileItem) => {
@@ -56,9 +61,7 @@ export default function TasksPage() {
 
   return (
     <div className="flex flex-col min-h-screen">
-      <Header
-        title={taskId ? (selectedTask ? `TASK: ${selectedTask.name}` : 'Task Details') : 'Select Task'}
-      />
+      <Header onLogoClick={toggleSidebar} sidebarOpen={sidebarOpen} />
 
       <div className="flex-1 space-y-6 p-4 md:p-6 max-w-7xl mx-auto w-full">
         {/* Task Detail View */}
@@ -76,26 +79,13 @@ export default function TasksPage() {
               <p className="mt-2 text-xs font-semibold text-[var(--color-text-secondary)] max-w-sm">
                 This task does not exist or is no longer active.
               </p>
-              <button
-                onClick={() => navigate('/tasks')}
-                className="mt-6 flex items-center gap-2 rounded-xl neu-btn-primary px-5 py-2.5 text-xs font-bold text-white shadow-md"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                <span>Back to Tasks</span>
-              </button>
             </div>
+          ) : isFinanceTask ? (
+            <FinanceView task={selectedTask} />
           ) : (
             <div className="space-y-6">
-              {/* Back Bar & Toolbar */}
-              <div className="flex items-center justify-between gap-4">
-                <button
-                  onClick={() => navigate('/tasks')}
-                  className="flex items-center gap-2 rounded-xl neu-btn px-4 py-2 text-xs font-bold text-[var(--color-text-primary)] transition-all hover:scale-[1.02]"
-                >
-                  <ArrowLeft className="h-4 w-4 text-[var(--color-primary)]" />
-                  <span>Back to Tasks</span>
-                </button>
-
+              {/* Toolbar */}
+              <div className="flex items-center justify-end gap-4">
                 <div className="flex rounded-xl neu-pressed p-1 gap-1">
                   <button
                     onClick={() => setViewMode('grid')}

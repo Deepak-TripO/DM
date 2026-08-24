@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { FileItem, FolderItem, SortField, SortDirection } from '@/types';
+import { useAppLayout } from '@/layouts/AppLayout';
 
 const SORT_OPTIONS = [
   { label: 'Newest', field: 'created_at' as SortField, direction: 'desc' as SortDirection },
@@ -49,6 +50,7 @@ export default function FilesPage() {
   const { isAdmin } = useAdmin();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { sidebarOpen, toggleSidebar } = useAppLayout();
   const [searchParams, setSearchParams] = useSearchParams();
   const routeParams = useParams<{ folderId?: string }>();
 
@@ -265,6 +267,8 @@ export default function FilesPage() {
         title={folderId ? (currentFolder?.name || 'Folder') : 'My Files'}
         onUploadClick={() => setUploadOpen(true)}
         onSearch={handleSearch}
+        onLogoClick={toggleSidebar}
+        sidebarOpen={sidebarOpen}
       />
 
       <div className="p-4 md:p-6 space-y-4">

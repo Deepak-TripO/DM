@@ -10,11 +10,13 @@ import { formatBytes, formatRelativeTime } from '@/utils';
 import { Star, Folder, StarOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useAppLayout } from '@/layouts/AppLayout';
 
 export default function StarredPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { sidebarOpen, toggleSidebar } = useAppLayout();
 
   const { data: files = [], isLoading: loadingFiles } = useQuery({
     queryKey: ['starredFiles', user?.id],
@@ -45,7 +47,7 @@ export default function StarredPage() {
 
   return (
     <div className="flex flex-col">
-      <Header title="Starred" />
+      <Header title="Starred" onLogoClick={toggleSidebar} sidebarOpen={sidebarOpen} />
       <div className="p-4 md:p-6">
         {isLoading ? (
           <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
