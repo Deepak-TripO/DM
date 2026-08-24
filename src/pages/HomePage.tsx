@@ -46,40 +46,40 @@ export default function HomePage() {
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           <button
             onClick={() => navigate('/files')}
-            className="flex items-center gap-3.5 rounded-2xl neu-btn p-4 text-left transition-all"
+            className="flex items-center gap-3.5 rounded-2xl neu-btn p-4 text-left transition-all hover:bg-[#EAF4FF]"
           >
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl neu-circle text-blue-500">
-              <FolderOpen className="h-5 w-5 text-blue-500" />
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl neu-circle text-[#4D94E8]">
+              <FolderOpen className="h-5 w-5 text-[#4D94E8]" />
             </div>
             <span className="text-sm font-bold text-[var(--color-text-primary)]">My Files</span>
           </button>
 
           <button
             onClick={() => setUploadOpen(true)}
-            className="flex items-center gap-3.5 rounded-2xl neu-btn p-4 text-left transition-all"
+            className="flex items-center gap-3.5 rounded-2xl neu-btn p-4 text-left transition-all hover:bg-[#E8FAFA]"
           >
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl neu-circle text-emerald-500">
-              <FileUp className="h-5 w-5 text-emerald-500" />
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl neu-circle text-[#18AFAF]">
+              <FileUp className="h-5 w-5 text-[#18AFAF]" />
             </div>
             <span className="text-sm font-bold text-[var(--color-text-primary)]">Upload</span>
           </button>
 
           <button
             onClick={() => navigate('/recent')}
-            className="flex items-center gap-3.5 rounded-2xl neu-btn p-4 text-left transition-all"
+            className="flex items-center gap-3.5 rounded-2xl neu-btn p-4 text-left transition-all hover:bg-[#FFF4E5]"
           >
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl neu-circle text-amber-500">
-              <Clock className="h-5 w-5 text-amber-500" />
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl neu-circle text-[#E59A32]">
+              <Clock className="h-5 w-5 text-[#E59A32]" />
             </div>
             <span className="text-sm font-bold text-[var(--color-text-primary)]">Recent</span>
           </button>
 
           <button
             onClick={() => navigate('/starred')}
-            className="flex items-center gap-3.5 rounded-2xl neu-btn p-4 text-left transition-all"
+            className="flex items-center gap-3.5 rounded-2xl neu-btn p-4 text-left transition-all hover:bg-[#F3EDFF]"
           >
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl neu-circle text-purple-500">
-              <Star className="h-5 w-5 text-purple-500" />
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl neu-circle text-[#8A63D2]">
+              <Star className="h-5 w-5 text-[#8A63D2]" />
             </div>
             <span className="text-sm font-bold text-[var(--color-text-primary)]">Starred</span>
           </button>

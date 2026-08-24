@@ -20,13 +20,13 @@ import {
 } from 'lucide-react';
 
 const adminNavItems = [
-  { to: '/admin', icon: LayoutDashboard, label: 'Overview', end: true },
-  { to: '/admin/users', icon: Users, label: 'Users' },
-  { to: '/admin/storage', icon: HardDrive, label: 'Storage' },
-  { to: '/admin/files', icon: FileText, label: 'Files' },
-  { to: '/admin/shared-links', icon: Link2, label: 'Shared Links' },
-  { to: '/admin/activity', icon: Activity, label: 'Activity' },
-  { to: '/admin/settings', icon: Settings, label: 'Settings' },
+  { to: '/admin', icon: LayoutDashboard, label: 'Overview', end: true, color: '#4D94E8', bg: '#EAF4FF' },
+  { to: '/admin/users', icon: Users, label: 'Users', color: '#22A06B', bg: '#EAF8F1' },
+  { to: '/admin/storage', icon: HardDrive, label: 'Storage', color: '#18AFAF', bg: '#E8FAFA' },
+  { to: '/admin/files', icon: FileText, label: 'Files', color: '#8A63D2', bg: '#F3EDFF' },
+  { to: '/admin/shared-links', icon: Link2, label: 'Shared Links', color: '#159A8A', bg: '#E8F8F5' },
+  { to: '/admin/activity', icon: Activity, label: 'Activity', color: '#E59A32', bg: '#FFF4E5' },
+  { to: '/admin/settings', icon: Settings, label: 'Settings', color: '#65758B', bg: '#F1F5F9' },
 ];
 
 export default function AdminLayout() {
@@ -63,12 +63,12 @@ export default function AdminLayout() {
         {/* Admin Header Branding */}
         <div className="flex h-[var(--header-height)] items-center justify-between px-4 border-b border-[var(--color-border-light)]">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl neu-circle text-[var(--color-primary)]">
-              <Shield className="h-4 w-4 text-[var(--color-primary)]" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl neu-circle text-[#5B9FF3]">
+              <Shield className="h-4 w-4 text-[#5B9FF3]" />
             </div>
             <div>
               <div className="text-sm font-black tracking-tight text-[var(--color-text-primary)]">DM</div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-primary)]">Administration</div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-[#5B9FF3]">Administration</div>
             </div>
           </div>
         </div>
@@ -80,17 +80,26 @@ export default function AdminLayout() {
               key={item.to}
               to={item.to}
               end={item.end}
+              style={({ isActive }) =>
+                isActive
+                  ? { backgroundColor: item.bg, color: item.color }
+                  : undefined
+              }
               className={({ isActive }) =>
                 cn(
                   'flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all duration-150',
                   isActive
-                    ? 'neu-active text-[var(--color-primary)] font-bold'
+                    ? 'neu-pressed font-bold'
                     : 'neu-btn text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
                 )
               }
             >
-              <item.icon className="h-4 w-4 shrink-0" />
-              {item.label}
+              {({ isActive }) => (
+                <>
+                  <item.icon className="h-4 w-4 shrink-0" style={{ color: item.color }} />
+                  <span>{item.label}</span>
+                </>
+              )}
             </NavLink>
           ))}
         </nav>

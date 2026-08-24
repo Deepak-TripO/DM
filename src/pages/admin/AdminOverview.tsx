@@ -41,7 +41,7 @@ export default function AdminOverview() {
       value: stats?.totalUsers ?? 0,
       subtext: 'Registered accounts',
       icon: Users,
-      color: 'text-blue-600 bg-blue-50 dark:bg-blue-950/30 dark:text-blue-400',
+      color: '#4D94E8',
       link: '/admin/users',
     },
     {
@@ -49,7 +49,7 @@ export default function AdminOverview() {
       value: stats?.activeUsers ?? 0,
       subtext: 'Non-disabled users',
       icon: UserCheck,
-      color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-400',
+      color: '#22A06B',
       link: '/admin/users',
     },
     {
@@ -57,7 +57,7 @@ export default function AdminOverview() {
       value: stats?.totalFiles ?? 0,
       subtext: 'Stored documents & media',
       icon: FileText,
-      color: 'text-purple-600 bg-purple-50 dark:bg-purple-950/30 dark:text-purple-400',
+      color: '#8A63D2',
       link: '/admin/files',
     },
     {
@@ -65,7 +65,7 @@ export default function AdminOverview() {
       value: formatBytes(stats?.totalUsed ?? 0),
       subtext: 'Actual disk space used',
       icon: HardDrive,
-      color: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-950/30 dark:text-indigo-400',
+      color: '#18AFAF',
       link: '/admin/storage',
     },
     {
@@ -73,7 +73,7 @@ export default function AdminOverview() {
       value: formatBytes(stats?.totalAllocated ?? 0),
       subtext: 'Total assigned capacity',
       icon: Database,
-      color: 'text-cyan-600 bg-cyan-50 dark:bg-cyan-950/30 dark:text-cyan-400',
+      color: '#6675D9',
       link: '/admin/storage',
     },
     {
@@ -81,7 +81,7 @@ export default function AdminOverview() {
       value: stats?.activeShares ?? 0,
       subtext: 'Public shared links',
       icon: Link2,
-      color: 'text-amber-600 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400',
+      color: '#159A8A',
       link: '/admin/shared-links',
     },
   ];
@@ -113,7 +113,7 @@ export default function AdminOverview() {
                 {card.label}
               </span>
               <div className="flex h-10 w-10 items-center justify-center rounded-xl neu-circle">
-                <card.icon className="h-5 w-5 text-[var(--color-primary)]" />
+                <card.icon className="h-5 w-5" style={{ color: card.color }} />
               </div>
             </div>
             <div className="text-2xl font-extrabold text-[var(--color-text-primary)] mb-1">

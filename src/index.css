@@ -3,26 +3,26 @@
 
 @theme {
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
-  --color-primary: #4f46e5;
-  --color-primary-hover: #4338ca;
-  --color-primary-light: #e0e7ff;
-  --color-primary-50: #eef2ff;
-  --color-primary-100: #e0e7ff;
-  --color-primary-500: #6366f1;
-  --color-primary-600: #4f46e5;
-  --color-primary-700: #4338ca;
-  --color-surface: #ffffff;
-  --color-surface-secondary: #ffffff;
-  --color-surface-tertiary: #f1f5f9;
-  --color-border: #d4dce8;
-  --color-border-light: #e1e8f2;
-  --color-text-primary: #1e293b;
-  --color-text-secondary: #475569;
-  --color-text-tertiary: #64748b;
-  --color-danger: #ef4444;
-  --color-danger-hover: #dc2626;
-  --color-success: #10b981;
-  --color-warning: #f59e0b;
+  --color-primary: #5B9FF3;
+  --color-primary-hover: #4B91EA;
+  --color-primary-light: #EAF4FF;
+  --color-primary-50: #F8FBFF;
+  --color-primary-100: #EAF4FF;
+  --color-primary-500: #5B9FF3;
+  --color-primary-600: #4B91EA;
+  --color-primary-700: #3D82DB;
+  --color-surface: #FFFFFF;
+  --color-surface-secondary: #F3F8FD;
+  --color-surface-tertiary: #EAF4FF;
+  --color-border: #E3ECF5;
+  --color-border-light: #EEF4FA;
+  --color-text-primary: #172033;
+  --color-text-secondary: #53627A;
+  --color-text-tertiary: #7D8BA0;
+  --color-danger: #D95C68;
+  --color-danger-hover: #C84B57;
+  --color-success: #22A06B;
+  --color-warning: #E59A32;
   --radius-sm: 0.5rem;
   --radius-md: 0.75rem;
   --radius-lg: 1rem;
@@ -34,10 +34,10 @@
   --sidebar-collapsed-width: 68px;
   --header-height: 64px;
 
-  /* Neumorphism Shadow Tokens - Pure White Background */
-  --neu-bg: #ffffff;
-  --neu-shadow-dark: #d5dded;
-  --neu-shadow-light: #ffffff;
+  /* Color System Surface Tokens */
+  --neu-bg: #F8FBFF;
+  --neu-shadow-dark: #D4E2F4;
+  --neu-shadow-light: #FFFFFF;
   
   --neu-flat-shadow: 6px 6px 14px var(--neu-shadow-dark), -6px -6px 14px var(--neu-shadow-light);
   --neu-flat-hover: 8px 8px 18px var(--neu-shadow-dark), -8px -8px 18px var(--neu-shadow-light);
@@ -49,27 +49,26 @@
 }
 
 .dark {
-  --color-primary: #818cf8;
-  --color-primary-hover: #6366f1;
-  --color-primary-light: #1e1b4b;
-  --color-primary-50: #1e1b4b;
-  --color-primary-100: #312e81;
-  --color-primary-500: #818cf8;
-  --color-primary-600: #6366f1;
-  --color-primary-700: #818cf8;
-  --color-surface: #ffffff;
-  --color-surface-secondary: #ffffff;
-  --color-surface-tertiary: #f1f5f9;
-  --color-border: #e2e8f0;
-  --color-border-light: #f1f5f9;
-  --color-text-primary: #0f172a;
-  --color-text-secondary: #475569;
-  --color-text-tertiary: #64748b;
+  --color-primary: #5B9FF3;
+  --color-primary-hover: #4B91EA;
+  --color-primary-light: #EAF4FF;
+  --color-primary-50: #F8FBFF;
+  --color-primary-100: #EAF4FF;
+  --color-primary-500: #5B9FF3;
+  --color-primary-600: #4B91EA;
+  --color-primary-700: #3D82DB;
+  --color-surface: #FFFFFF;
+  --color-surface-secondary: #F3F8FD;
+  --color-surface-tertiary: #EAF4FF;
+  --color-border: #E3ECF5;
+  --color-border-light: #EEF4FA;
+  --color-text-primary: #172033;
+  --color-text-secondary: #53627A;
+  --color-text-tertiary: #7D8BA0;
 
-  /* Neumorphism Shadow Tokens - Pure White Background */
-  --neu-bg: #ffffff;
-  --neu-shadow-dark: #d5dded;
-  --neu-shadow-light: #ffffff;
+  --neu-bg: #F8FBFF;
+  --neu-shadow-dark: #D4E2F4;
+  --neu-shadow-light: #FFFFFF;
 
   --neu-flat-shadow: 6px 6px 14px var(--neu-shadow-dark), -6px -6px 14px var(--neu-shadow-light);
   --neu-flat-hover: 8px 8px 18px var(--neu-shadow-dark), -8px -8px 18px var(--neu-shadow-light);
