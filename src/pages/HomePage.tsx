@@ -48,8 +48,8 @@ export default function HomePage() {
             onClick={() => navigate('/files')}
             className="flex items-center gap-3.5 rounded-2xl neu-btn p-4 text-left transition-all"
           >
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl neu-circle text-[#3B82F6]">
-              <FolderOpen className="h-5 w-5 text-[#3B82F6]" />
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl neu-circle text-blue-500">
+              <FolderOpen className="h-5 w-5 text-blue-500" />
             </div>
             <span className="text-sm font-bold text-[var(--color-text-primary)]">My Files</span>
           </button>
@@ -58,8 +58,8 @@ export default function HomePage() {
             onClick={() => setUploadOpen(true)}
             className="flex items-center gap-3.5 rounded-2xl neu-btn p-4 text-left transition-all"
           >
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl neu-circle text-[#2AAEB2]">
-              <FileUp className="h-5 w-5 text-[#2AAEB2]" />
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl neu-circle text-emerald-500">
+              <FileUp className="h-5 w-5 text-emerald-500" />
             </div>
             <span className="text-sm font-bold text-[var(--color-text-primary)]">Upload</span>
           </button>
@@ -68,8 +68,8 @@ export default function HomePage() {
             onClick={() => navigate('/recent')}
             className="flex items-center gap-3.5 rounded-2xl neu-btn p-4 text-left transition-all"
           >
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl neu-circle text-[#F59E0B]">
-              <Clock className="h-5 w-5 text-[#F59E0B]" />
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl neu-circle text-amber-500">
+              <Clock className="h-5 w-5 text-amber-500" />
             </div>
             <span className="text-sm font-bold text-[var(--color-text-primary)]">Recent</span>
           </button>
@@ -78,8 +78,8 @@ export default function HomePage() {
             onClick={() => navigate('/starred')}
             className="flex items-center gap-3.5 rounded-2xl neu-btn p-4 text-left transition-all"
           >
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl neu-circle text-[#9B5DE5]">
-              <Star className="h-5 w-5 text-[#9B5DE5]" />
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl neu-circle text-purple-500">
+              <Star className="h-5 w-5 text-purple-500" />
             </div>
             <span className="text-sm font-bold text-[var(--color-text-primary)]">Starred</span>
           </button>
