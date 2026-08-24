@@ -77,6 +77,7 @@ export default function App() {
                   <Route index element={<Navigate to="/files" replace />} />
                   <Route path="home" element={<HomePage />} />
                   <Route path="files" element={<FilesPage />} />
+                  <Route path="folders" element={<Navigate to="/files" replace />} />
                   <Route path="folders/:folderId" element={<FilesPage />} />
                   <Route path="recent" element={<RecentPage />} />
                   <Route path="starred" element={<StarredPage />} />
