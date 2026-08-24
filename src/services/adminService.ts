@@ -538,6 +538,20 @@ export async function deleteAdminFolder(folderId: string): Promise<void> {
   if (error) throw error;
 }
 
+export async function updateAdminTask(taskId: string, name: string): Promise<void> {
+  const taskName = name.trim();
+  if (!taskName) {
+    throw new Error('Task name cannot be empty');
+  }
+
+  const { error } = await supabase
+    .from('folders')
+    .update({ name: taskName, updated_at: new Date().toISOString() })
+    .eq('id', taskId);
+
+  if (error) throw error;
+}
+
 // Task Aliases & Service Methods
 export type AdminTaskItem = AdminFolderItem;
 export const getAdminTasks = getAdminFolders;

@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/features/auth/AuthProvider';
-import { getAdminTasks, createAdminTask, deleteAdminTask } from '@/services/adminService';
+import { getAdminTasks, createAdminTask, deleteAdminTask, updateAdminTask } from '@/services/adminService';
 import type { AdminTaskItem } from '@/services/adminService';
 import { formatDate } from '@/utils';
-import { CheckSquare, Plus, Search, Trash2, Loader2, X, HardDrive } from 'lucide-react';
+import { CheckSquare, Plus, Search, Trash2, Pencil, Loader2, X, HardDrive } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function AdminTasks() {
@@ -12,6 +12,7 @@ export default function AdminTasks() {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<AdminTaskItem | null>(null);
   const [taskName, setTaskName] = useState('');
   const [validationError, setValidationError] = useState('');
 
@@ -24,6 +25,7 @@ export default function AdminTasks() {
     mutationFn: (name: string) => createAdminTask(user!.id, name),
     onSuccess: (newTask) => {
       queryClient.invalidateQueries({ queryKey: ['adminTasks'] });
+      queryClient.invalidateQueries({ queryKey: ['activeTasks'] });
       toast.success(`Task "${newTask.name}" created successfully`);
       closeModal();
     },
@@ -32,10 +34,24 @@ export default function AdminTasks() {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) => updateAdminTask(id, name),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminTasks'] });
+      queryClient.invalidateQueries({ queryKey: ['activeTasks'] });
+      toast.success('Task updated successfully');
+      closeModal();
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Unable to update task. Please try again.');
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: deleteAdminTask,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminTasks'] });
+      queryClient.invalidateQueries({ queryKey: ['activeTasks'] });
       toast.success('Task deleted successfully');
     },
     onError: () => {
@@ -44,13 +60,22 @@ export default function AdminTasks() {
   });
 
   const openCreateModal = () => {
+    setEditingTask(null);
     setTaskName('');
+    setValidationError('');
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (task: AdminTaskItem) => {
+    setEditingTask(task);
+    setTaskName(task.name);
     setValidationError('');
     setIsModalOpen(true);
   };
 
   const closeModal = () => {
     setIsModalOpen(false);
+    setEditingTask(null);
     setTaskName('');
     setValidationError('');
   };
@@ -72,9 +97,9 @@ export default function AdminTasks() {
       return;
     }
 
-    // 3. Duplicate check
+    // 3. Duplicate check (excluding current editing item)
     const duplicate = tasks.find(
-      (t) => t.name.toLowerCase() === trimmed.toLowerCase()
+      (t) => t.name.toLowerCase() === trimmed.toLowerCase() && t.id !== editingTask?.id
     );
     if (duplicate) {
       setValidationError('A task with this name already exists');
@@ -86,7 +111,11 @@ export default function AdminTasks() {
       return;
     }
 
-    createMutation.mutate(trimmed);
+    if (editingTask) {
+      updateMutation.mutate({ id: editingTask.id, name: trimmed });
+    } else {
+      createMutation.mutate(trimmed);
+    }
   };
 
   const filteredTasks = tasks.filter((t) =>
@@ -183,7 +212,14 @@ export default function AdminTasks() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-[var(--color-text-secondary)]">{formatDate(t.created_at)}</td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-6 py-4 text-right space-x-2">
+                      <button
+                        onClick={() => openEditModal(t)}
+                        className="p-2 rounded-xl neu-btn text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 transition-all"
+                        title="Edit / Rename Task"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
                       <button
                         onClick={() => {
                           if (confirm(`Are you sure you want to delete task "${t.name}"?`)) {
@@ -214,7 +250,9 @@ export default function AdminTasks() {
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl neu-pressed text-[var(--color-primary)]">
                   <CheckSquare className="h-5 w-5" />
                 </div>
-                <h3 className="text-base font-extrabold text-[var(--color-text-primary)]">Create Task</h3>
+                <h3 className="text-base font-extrabold text-[var(--color-text-primary)]">
+                  {editingTask ? 'Edit Task' : 'Create Task'}
+                </h3>
               </div>
               <button
                 onClick={closeModal}
@@ -257,16 +295,16 @@ export default function AdminTasks() {
                 </button>
                 <button
                   type="submit"
-                  disabled={createMutation.isPending}
+                  disabled={createMutation.isPending || updateMutation.isPending}
                   className="flex items-center gap-2 rounded-xl neu-btn-primary px-5 py-2 text-xs font-bold text-white shadow-md disabled:opacity-50"
                 >
-                  {createMutation.isPending ? (
+                  {createMutation.isPending || updateMutation.isPending ? (
                     <>
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      <span>Creating...</span>
+                      <span>{editingTask ? 'Saving...' : 'Creating...'}</span>
                     </>
                   ) : (
-                    <span>Create Task</span>
+                    <span>{editingTask ? 'Save Changes' : 'Create Task'}</span>
                   )}
                 </button>
               </div>
