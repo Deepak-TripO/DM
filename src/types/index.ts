@@ -100,3 +100,12 @@ export type BreadcrumbItem = {
   id: string | null;
   name: string;
 };
+
+export interface CategoryItem {
+  id: string;
+  name: string;
+  type: FileCategory;
+  status: 'Active' | 'Inactive';
+  created_at: string;
+  updated_at: string;
+}

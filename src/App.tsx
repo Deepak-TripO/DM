@@ -29,6 +29,7 @@ const AdminStorage = lazy(() => import('@/pages/admin/AdminStorage'));
 const AdminFiles = lazy(() => import('@/pages/admin/AdminFiles'));
 const AdminShares = lazy(() => import('@/pages/admin/AdminShares'));
 const AdminActivity = lazy(() => import('@/pages/admin/AdminActivity'));
+const AdminCategories = lazy(() => import('@/pages/admin/AdminCategories'));
 const AdminSettings = lazy(() => import('@/pages/admin/AdminSettings'));
 
 const queryClient = new QueryClient({
@@ -79,7 +80,7 @@ export default function App() {
                   <Route path="shared" element={<SharedPage />} />
                   <Route path="trash" element={<TrashPage />} />
                   <Route path="profile" element={<ProfilePage />} />
-                  <Route path="settings" element={<SettingsPage />} />
+                  <Route path="settings" element={<Navigate to="/profile" replace />} />
                 </Route>
 
                 {/* Administration Routes */}
@@ -98,6 +99,7 @@ export default function App() {
                   <Route path="shared-links" element={<AdminShares />} />
                   <Route path="shares" element={<Navigate to="/admin/shared-links" replace />} />
                   <Route path="activity" element={<AdminActivity />} />
+                  <Route path="categories" element={<AdminCategories />} />
                   <Route path="settings" element={<AdminSettings />} />
                 </Route>
 

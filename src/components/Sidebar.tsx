@@ -33,7 +33,6 @@ const navItems = [
 
 const bottomItems = [
   { to: '/profile', icon: User, label: 'Profile', color: '#6675D9', bg: '#EEF0FB' },
-  { to: '/settings', icon: Settings, label: 'Settings', color: '#65758B', bg: '#F1F5F9' },
 ];
 
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
