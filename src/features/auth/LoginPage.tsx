@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/features/auth/AuthProvider';
-import { Mail, Lock, Loader2, Eye, EyeOff, ShieldCheck } from 'lucide-react';
+import { Mail, Lock, Loader2, Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
   const { signIn } = useAuth();
@@ -28,11 +28,6 @@ export default function LoginPage() {
         navigate('/', { replace: true });
       }
     }
-  };
-
-  const fillAdminCredentials = () => {
-    setEmail('admin@dm.com');
-    setPassword('AdminPassword123!');
   };
 
   return (
@@ -101,15 +96,7 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between pt-1">
-              <button
-                type="button"
-                onClick={fillAdminCredentials}
-                className="flex items-center gap-1.5 rounded-xl neu-btn px-2.5 py-1.5 text-xs font-bold text-[var(--color-primary)] transition-all"
-              >
-                <ShieldCheck className="h-3.5 w-3.5" />
-                Fill Admin Credentials
-              </button>
+            <div className="flex items-center justify-end pt-1">
               <Link
                 to="/forgot-password"
                 className="text-xs font-semibold text-[var(--color-primary)] hover:underline"

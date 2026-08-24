@@ -1,7 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Upload, X, User, LogOut, Settings, ShieldCheck } from 'lucide-react';
-import { useAuth } from '@/features/auth/AuthProvider';
+import { Search, Upload, X, ShieldCheck } from 'lucide-react';
 import { useAdmin } from '@/hooks/useAdmin';
 import { cn } from '@/lib/utils';
 
@@ -12,24 +11,11 @@ interface HeaderProps {
 }
 
 export function Header({ title, onUploadClick, onSearch }: HeaderProps) {
-  const { user, signOut } = useAuth();
   const { isAdmin } = useAdmin();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
-  const profileRef = useRef<HTMLDivElement>(null);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
-        setProfileOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
@@ -37,11 +23,6 @@ export function Header({ title, onUploadClick, onSearch }: HeaderProps) {
     searchTimerRef.current = setTimeout(() => {
       onSearch?.(value);
     }, 300);
-  };
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/login', { replace: true });
   };
 
   return (
@@ -99,62 +80,6 @@ export function Header({ title, onUploadClick, onSearch }: HeaderProps) {
             <span className="hidden md:inline">Upload</span>
           </button>
         )}
-
-        {/* Profile Menu */}
-        <div ref={profileRef} className="relative">
-          <button
-            onClick={() => setProfileOpen(!profileOpen)}
-            className="flex h-10 w-10 items-center justify-center rounded-full neu-circle text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-all"
-            aria-label="Profile menu"
-          >
-            <User className="h-4 w-4" />
-          </button>
-
-          {profileOpen && (
-            <div className="absolute right-0 top-full z-50 mt-3 w-60 rounded-2xl neu-dropdown p-2 shadow-2xl">
-              <div className="px-3 py-2.5 neu-pressed-deep rounded-xl mb-2">
-                <p className="text-sm font-bold text-[var(--color-text-primary)]">
-                  {user?.user_metadata?.full_name || 'User'}
-                </p>
-                <p className="text-xs text-[var(--color-text-tertiary)] truncate">{user?.email}</p>
-              </div>
-
-              {isAdmin && (
-                <>
-                  <button
-                    onClick={() => { setProfileOpen(false); navigate('/admin'); }}
-                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-[var(--color-primary)] neu-btn mb-1.5"
-                  >
-                    <ShieldCheck className="h-4 w-4 text-[var(--color-primary)]" />
-                    Admin Dashboard
-                  </button>
-                </>
-              )}
-
-              <button
-                onClick={() => { setProfileOpen(false); navigate('/profile'); }}
-                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-[var(--color-text-secondary)] neu-btn mb-1.5 hover:text-[var(--color-text-primary)]"
-              >
-                <User className="h-4 w-4" />
-                Profile
-              </button>
-              <button
-                onClick={() => { setProfileOpen(false); navigate('/settings'); }}
-                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-[var(--color-text-secondary)] neu-btn mb-1.5 hover:text-[var(--color-text-primary)]"
-              >
-                <Settings className="h-4 w-4" />
-                Settings
-              </button>
-              <button
-                onClick={handleSignOut}
-                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-[var(--color-danger)] neu-btn hover:text-[var(--color-danger)]"
-              >
-                <LogOut className="h-4 w-4" />
-                Sign out
-              </button>
-            </div>
-          )}
-        </div>
       </div>
     </header>
   );
