@@ -12,6 +12,7 @@ import {
   Link2,
   Activity,
   FolderTree,
+  Folder,
   Settings,
   ArrowLeft,
   Loader2,
@@ -28,6 +29,7 @@ const adminNavItems = [
   { to: '/admin/shared-links', icon: Link2, label: 'Shared Links', color: '#159A8A', bg: '#E8F8F5' },
   { to: '/admin/activity', icon: Activity, label: 'Activity', color: '#E59A32', bg: '#FFF4E5' },
   { to: '/admin/categories', icon: FolderTree, label: 'Category', color: '#18AFAF', bg: '#E8FAFA' },
+  { to: '/admin/folders', icon: Folder, label: 'Folder', color: '#4D94E8', bg: '#EAF4FF' },
   { to: '/admin/settings', icon: Settings, label: 'Settings', color: '#65758B', bg: '#F1F5F9' },
 ];
 
