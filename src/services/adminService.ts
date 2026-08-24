@@ -454,3 +454,86 @@ export async function getAdminActivity(): Promise<AdminActivityItem[]> {
     metadata: l.metadata || {},
   }));
 }
+
+// 7. Admin Folder Management
+export interface AdminFolderItem {
+  id: string;
+  name: string;
+  owner_id: string;
+  owner_name: string;
+  parent_id: string | null;
+  created_at: string;
+  updated_at: string;
+  storage_path: string;
+}
+
+export async function getAdminFolders(): Promise<AdminFolderItem[]> {
+  const [{ data, error }, profileMap] = await Promise.all([
+    supabase
+      .from('folders')
+      .select('id, name, owner_id, parent_id, created_at, updated_at, deleted_at')
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false }),
+    fetchProfilesMap(),
+  ]);
+
+  if (error) throw error;
+
+  return (data || []).map((f: any) => ({
+    id: f.id,
+    name: f.name,
+    owner_id: f.owner_id,
+    owner_name: profileMap.get(f.owner_id) || 'Administrator',
+    parent_id: f.parent_id,
+    created_at: f.created_at,
+    updated_at: f.updated_at,
+    storage_path: `users/${f.owner_id}/folders/${f.id}/`,
+  }));
+}
+
+export async function createAdminFolder(adminUserId: string, name: string): Promise<AdminFolderItem> {
+  const folderName = name.trim();
+  if (!folderName) {
+    throw new Error('Folder name cannot be empty');
+  }
+
+  const { data, error } = await supabase
+    .from('folders')
+    .insert({
+      owner_id: adminUserId,
+      name: folderName,
+      parent_id: null,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  // Log activity
+  await supabase.from('activity_logs').insert({
+    user_id: adminUserId,
+    action: 'folder_create',
+    folder_id: data.id,
+    metadata: { name: folderName, created_by_admin: true },
+  });
+
+  return {
+    id: data.id,
+    name: data.name,
+    owner_id: data.owner_id,
+    owner_name: 'Administrator',
+    parent_id: data.parent_id,
+    created_at: data.created_at,
+    updated_at: data.updated_at,
+    storage_path: `users/${data.owner_id}/folders/${data.id}/`,
+  };
+}
+
+export async function deleteAdminFolder(folderId: string): Promise<void> {
+  const { error } = await supabase
+    .from('folders')
+    .delete()
+    .eq('id', folderId);
+
+  if (error) throw error;
+}
