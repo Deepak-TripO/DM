@@ -23,6 +23,22 @@ export async function getFolders(
   return (data || []) as FolderItem[];
 }
 
+export async function getFolderById(
+  folderId: string,
+  userId: string
+): Promise<FolderItem | null> {
+  const { data, error } = await supabase
+    .from('folders')
+    .select('*')
+    .eq('id', folderId)
+    .eq('owner_id', userId)
+    .is('deleted_at', null)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return data as FolderItem;
+}
+
 export async function getAllFolders(userId: string): Promise<FolderItem[]> {
   const { data, error } = await supabase
     .from('folders')

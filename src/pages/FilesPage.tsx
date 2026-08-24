@@ -1,9 +1,9 @@
 import { useState, useCallback } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getFiles, renameFile, toggleStarFile, softDeleteFile, getSignedUrl } from '@/services/fileService';
-import { getFolders, createFolder, renameFolder, toggleStarFolder, softDeleteFolder, getFolderBreadcrumbs } from '@/services/folderService';
+import { getFolders, createFolder, renameFolder, toggleStarFolder, softDeleteFolder, getFolderBreadcrumbs, getFolderById } from '@/services/folderService';
 import { Header } from '@/components/Header';
 import { EmptyState } from '@/components/EmptyState';
 import { FileCardSkeleton } from '@/components/LoadingSkeleton';
@@ -16,7 +16,7 @@ import { formatBytes, formatRelativeTime, getFileNameWithoutExtension } from '@/
 import {
   FolderPlus, Grid3X3, List, ChevronRight, Folder,
   MoreVertical, Eye, Download, Pencil, Share2, Star, Trash2, StarOff,
-  SortAsc, ExternalLink,
+  SortAsc, ExternalLink, ArrowLeft,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { FileItem, FolderItem, SortField, SortDirection } from '@/types';
@@ -45,12 +45,20 @@ const FILTER_OPTIONS: { label: string; value: string }[] = [
 
 export default function FilesPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
+  const routeParams = useParams<{ folderId?: string }>();
 
-  const folderId = searchParams.get('folder');
+  const folderId = routeParams.folderId || searchParams.get('folder') || null;
   const searchQuery = searchParams.get('search') || '';
   const previewFileId = searchParams.get('preview');
+
+  const { data: currentFolder, isLoading: loadingCurrentFolder } = useQuery({
+    queryKey: ['currentFolder', user?.id, folderId],
+    queryFn: () => getFolderById(folderId!, user!.id),
+    enabled: !!user && !!folderId,
+  });
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
     return (localStorage.getItem('dm-view-mode') as 'grid' | 'list') || 'grid';
@@ -111,7 +119,11 @@ export default function FilesPage() {
   };
 
   const openFolder = (id: string) => {
-    setSearchParams({ folder: id });
+    navigate(`/folders/${id}`);
+  };
+
+  const goBackToFolders = () => {
+    navigate('/files');
   };
 
   const openPreview = (fileId: string) => {
@@ -247,28 +259,44 @@ export default function FilesPage() {
 
   return (
     <div className="flex flex-col">
-      <Header title="My Files" onUploadClick={() => setUploadOpen(true)} onSearch={handleSearch} />
+      <Header
+        title={folderId ? (currentFolder?.name || 'Folder') : 'My Files'}
+        onUploadClick={() => setUploadOpen(true)}
+        onSearch={handleSearch}
+      />
 
       <div className="p-4 md:p-6 space-y-4">
-        {/* Breadcrumbs */}
-        <div className="flex items-center gap-1.5 text-xs font-bold">
-          <button
-            onClick={() => setSearchParams({})}
-            className="rounded-lg neu-btn px-3 py-1.5 text-[var(--color-primary)] font-extrabold"
-          >
-            My Files
-          </button>
-          {breadcrumbs.map((crumb) => (
-            <span key={crumb.id} className="flex items-center gap-1.5">
-              <ChevronRight className="h-3.5 w-3.5 text-[var(--color-text-tertiary)]" />
-              <button
-                onClick={() => setSearchParams({ folder: crumb.id })}
-                className="rounded-lg neu-btn px-3 py-1.5 text-[var(--color-primary)] font-bold"
-              >
-                {crumb.name}
-              </button>
-            </span>
-          ))}
+        {/* Navigation & Breadcrumbs */}
+        <div className="flex items-center gap-3 flex-wrap">
+          {folderId && (
+            <button
+              onClick={goBackToFolders}
+              className="flex items-center gap-2 rounded-xl neu-btn px-3.5 py-1.5 text-xs font-bold text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
+            >
+              <ArrowLeft className="h-4 w-4 text-[var(--color-primary)]" />
+              <span>Back</span>
+            </button>
+          )}
+
+          <div className="flex items-center gap-1.5 text-xs font-bold">
+            <button
+              onClick={goBackToFolders}
+              className={`rounded-lg neu-btn px-3 py-1.5 text-[var(--color-primary)] ${!folderId ? 'font-extrabold neu-active' : 'font-bold'}`}
+            >
+              My Files
+            </button>
+            {breadcrumbs.map((crumb) => (
+              <span key={crumb.id} className="flex items-center gap-1.5">
+                <ChevronRight className="h-3.5 w-3.5 text-[var(--color-text-tertiary)]" />
+                <button
+                  onClick={() => openFolder(crumb.id)}
+                  className="rounded-lg neu-btn px-3 py-1.5 text-[var(--color-primary)] font-bold"
+                >
+                  {crumb.name}
+                </button>
+              </span>
+            ))}
+          </div>
         </div>
 
         {/* Toolbar */}
@@ -346,15 +374,32 @@ export default function FilesPage() {
         </div>
 
         {/* Content */}
-        {isLoading ? (
+        {folderId && !loadingCurrentFolder && !currentFolder ? (
+          <div className="rounded-3xl neu-card p-12 text-center flex flex-col items-center justify-center min-h-[300px]">
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full neu-circle text-[var(--color-danger)]">
+              <Folder className="h-8 w-8 text-[var(--color-danger)]" />
+            </div>
+            <h2 className="text-lg font-extrabold text-[var(--color-text-primary)]">Folder Not Found or Access Denied</h2>
+            <p className="mt-2 text-xs font-semibold text-[var(--color-text-secondary)] max-w-sm">
+              This folder does not exist or you do not have permission to access it.
+            </p>
+            <button
+              onClick={goBackToFolders}
+              className="mt-6 flex items-center gap-2 rounded-xl neu-btn-primary px-5 py-2.5 text-xs font-bold text-white shadow-md"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span>Back to My Files</span>
+            </button>
+          </div>
+        ) : isLoading ? (
           <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {Array.from({ length: 10 }).map((_, i) => <FileCardSkeleton key={i} />)}
           </div>
         ) : isEmpty ? (
           <EmptyState
-            icon={FolderPlus}
+            icon={Folder}
             title="This folder is empty"
-            description="Upload files or create a folder to get started."
+            description="Upload files to this folder to see them here."
             action={
               <div className="flex gap-3">
                 <button
