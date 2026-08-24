@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useSearchParams, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { useAdmin } from '@/hooks/useAdmin';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getFiles, renameFile, toggleStarFile, softDeleteFile, getSignedUrl } from '@/services/fileService';
 import { getFolders, createFolder, renameFolder, toggleStarFolder, softDeleteFolder, getFolderBreadcrumbs, getFolderById } from '@/services/folderService';
@@ -45,6 +46,7 @@ const FILTER_OPTIONS: { label: string; value: string }[] = [
 
 export default function FilesPage() {
   const { user } = useAuth();
+  const { isAdmin } = useAdmin();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -301,13 +303,15 @@ export default function FilesPage() {
 
         {/* Toolbar */}
         <div className="flex flex-wrap items-center gap-3">
-          <button
-            onClick={() => setCreateFolderOpen(true)}
-            className="flex items-center gap-2 rounded-xl neu-btn px-4 py-2 text-xs font-bold text-[var(--color-text-primary)]"
-          >
-            <FolderPlus className="h-4 w-4 text-[var(--color-primary)]" />
-            <span className="hidden sm:inline">New Folder</span>
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => setCreateFolderOpen(true)}
+              className="flex items-center gap-2 rounded-xl neu-btn px-4 py-2 text-xs font-bold text-[var(--color-text-primary)]"
+            >
+              <FolderPlus className="h-4 w-4 text-[var(--color-primary)]" />
+              <span className="hidden sm:inline">New Folder</span>
+            </button>
+          )}
 
           <div className="ml-auto flex flex-wrap items-center gap-2">
             {/* Category Filter */}
@@ -402,12 +406,14 @@ export default function FilesPage() {
             description="Upload files to this folder to see them here."
             action={
               <div className="flex gap-3">
-                <button
-                  onClick={() => setCreateFolderOpen(true)}
-                  className="rounded-xl neu-btn px-4 py-2 text-sm font-bold text-[var(--color-text-primary)]"
-                >
-                  New folder
-                </button>
+                {isAdmin && (
+                  <button
+                    onClick={() => setCreateFolderOpen(true)}
+                    className="rounded-xl neu-btn px-4 py-2 text-sm font-bold text-[var(--color-text-primary)]"
+                  >
+                    New folder
+                  </button>
+                )}
                 <button
                   onClick={() => setUploadOpen(true)}
                   className="rounded-xl neu-btn-primary px-4 py-2 text-sm font-bold text-white shadow-md"
@@ -553,14 +559,18 @@ export default function FilesPage() {
                   { action: 'star', icon: activeMenu.item.is_starred ? StarOff : Star, label: activeMenu.item.is_starred ? 'Unstar' : 'Star' },
                   { action: 'delete', icon: Trash2, label: 'Move to trash', danger: true },
                 ]
-              : [
+              : isAdmin
+              ? [
                   { action: 'open', icon: ExternalLink, label: 'Open' },
                   { action: 'share', icon: Share2, label: 'Share' },
                   { action: 'rename', icon: Pencil, label: 'Rename' },
                   { action: 'star', icon: activeMenu.item.is_starred ? StarOff : Star, label: activeMenu.item.is_starred ? 'Unstar' : 'Star' },
                   { action: 'delete', icon: Trash2, label: 'Move to trash', danger: true },
                 ]
-            ).map(({ action, icon: Icon, label, danger }) => (
+              : [
+                  { action: 'open', icon: ExternalLink, label: 'Open' },
+                ]
+            ).map(({ action, icon: Icon, label, danger }: any) => (
               <button
                 key={action}
                 onClick={() => handleItemAction(action)}
