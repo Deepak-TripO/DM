@@ -28,16 +28,16 @@ const categoryIcons: Record<FileCategory, typeof File> = {
 };
 
 const categoryColors: Record<FileCategory, string> = {
-  image: 'text-emerald-500 neu-circle',
-  video: 'text-purple-500 neu-circle',
-  audio: 'text-pink-500 neu-circle',
-  document: 'text-blue-500 neu-circle',
-  pdf: 'text-red-500 neu-circle',
-  spreadsheet: 'text-green-500 neu-circle',
-  presentation: 'text-amber-500 neu-circle',
-  archive: 'text-orange-500 neu-circle',
-  code: 'text-indigo-500 neu-circle',
-  other: 'text-gray-500 neu-circle',
+  image: 'text-[#7C83F7] neu-circle',
+  video: 'text-[#3B82F6] neu-circle',
+  audio: 'text-[#9B5DE5] neu-circle',
+  document: 'text-[#3B82F6] neu-circle',
+  pdf: 'text-[#EF4444] neu-circle',
+  spreadsheet: 'text-[#22C55E] neu-circle',
+  presentation: 'text-[#F59E0B] neu-circle',
+  archive: 'text-[#F59E0B] neu-circle',
+  code: 'text-[#7C83F7] neu-circle',
+  other: 'text-[#64748B] neu-circle',
 };
 
 interface FileIconProps {
