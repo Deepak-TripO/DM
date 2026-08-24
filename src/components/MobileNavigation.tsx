@@ -12,30 +12,7 @@ const mobileNavItems = [
 ];
 
 export function MobileNavigation() {
-  return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 neu-flat md:hidden px-2 py-1">
-      <div className="flex items-center justify-around">
-        {mobileNavItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.to === '/'}
-            className={({ isActive }) =>
-              cn(
-                'flex flex-col items-center gap-0.5 rounded-xl px-3 py-1.5 text-[10px] font-bold transition-all',
-                isActive
-                  ? 'neu-active text-[var(--color-primary)]'
-                  : 'text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]'
-              )
-            }
-          >
-            <item.icon className="h-5 w-5" />
-            <span>{item.label}</span>
-          </NavLink>
-        ))}
-      </div>
-    </nav>
-  );
+  return null;
 }
 
 export function MobileMenuButton({ onClick }: { onClick: () => void }) {
