@@ -8,6 +8,7 @@ export async function getFolders(
   let query = supabase
     .from('folders')
     .select('*')
+    .eq('owner_id', userId)
     .is('deleted_at', null)
     .order('name', { ascending: true });
 
@@ -30,6 +31,7 @@ export async function getFolderById(
     .from('folders')
     .select('*')
     .eq('id', folderId)
+    .eq('owner_id', userId)
     .is('deleted_at', null)
     .maybeSingle();
 

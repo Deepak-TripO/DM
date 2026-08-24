@@ -303,16 +303,6 @@ export default function FilesPage() {
 
         {/* Toolbar */}
         <div className="flex flex-wrap items-center gap-3">
-          {isAdmin && (
-            <button
-              onClick={() => setCreateFolderOpen(true)}
-              className="flex items-center gap-2 rounded-xl neu-btn px-4 py-2 text-xs font-bold text-[var(--color-text-primary)]"
-            >
-              <FolderPlus className="h-4 w-4 text-[var(--color-primary)]" />
-              <span className="hidden sm:inline">New Folder</span>
-            </button>
-          )}
-
           <div className="ml-auto flex flex-wrap items-center gap-2">
             {/* Category Filter */}
             <div className="flex flex-wrap gap-1.5">
@@ -402,25 +392,15 @@ export default function FilesPage() {
         ) : isEmpty ? (
           <EmptyState
             icon={Folder}
-            title="This folder is empty"
-            description="Upload files to this folder to see them here."
+            title="No folders available"
+            description="There are currently no folders available."
             action={
-              <div className="flex gap-3">
-                {isAdmin && (
-                  <button
-                    onClick={() => setCreateFolderOpen(true)}
-                    className="rounded-xl neu-btn px-4 py-2 text-sm font-bold text-[var(--color-text-primary)]"
-                  >
-                    New folder
-                  </button>
-                )}
-                <button
-                  onClick={() => setUploadOpen(true)}
-                  className="rounded-xl neu-btn-primary px-4 py-2 text-sm font-bold text-white shadow-md"
-                >
-                  Upload file
-                </button>
-              </div>
+              <button
+                onClick={() => setUploadOpen(true)}
+                className="rounded-xl neu-btn-primary px-5 py-2.5 text-xs font-bold text-white shadow-md"
+              >
+                Upload file
+              </button>
             }
           />
         ) : viewMode === 'grid' ? (
