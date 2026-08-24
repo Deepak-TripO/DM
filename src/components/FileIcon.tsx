@@ -27,17 +27,17 @@ const categoryIcons: Record<FileCategory, typeof File> = {
   other: File,
 };
 
-const categoryColors: Record<FileCategory, { text: string; bg: string }> = {
-  image: { text: '#5B9FF3', bg: '#EAF4FF' },
-  video: { text: '#3B82D0', bg: '#EAF4FF' },
-  audio: { text: '#8A6FD1', bg: '#F3EEFF' },
-  document: { text: '#4D94E8', bg: '#EAF4FF' },
-  pdf: { text: '#D95C68', bg: '#FDECEF' },
-  spreadsheet: { text: '#38A169', bg: '#EAF8F1' },
-  presentation: { text: '#E49A42', bg: '#FFF7E6' },
-  archive: { text: '#D79A35', bg: '#FFF7E6' },
-  code: { text: '#4D94E8', bg: '#EAF4FF' },
-  other: { text: '#718198', bg: '#F3F8FD' },
+const categoryColors: Record<FileCategory, string> = {
+  image: 'text-emerald-500 neu-circle',
+  video: 'text-purple-500 neu-circle',
+  audio: 'text-pink-500 neu-circle',
+  document: 'text-blue-500 neu-circle',
+  pdf: 'text-red-500 neu-circle',
+  spreadsheet: 'text-green-500 neu-circle',
+  presentation: 'text-amber-500 neu-circle',
+  archive: 'text-orange-500 neu-circle',
+  code: 'text-indigo-500 neu-circle',
+  other: 'text-gray-500 neu-circle',
 };
 
 interface FileIconProps {
@@ -49,7 +49,7 @@ interface FileIconProps {
 export function FileIcon({ extension, size = 'md', className }: FileIconProps) {
   const category = getFileCategory(extension);
   const Icon = categoryIcons[category];
-  const style = categoryColors[category];
+  const colorClass = categoryColors[category];
 
   const sizeClasses = {
     sm: 'h-8 w-8 rounded-xl',
@@ -64,10 +64,7 @@ export function FileIcon({ extension, size = 'md', className }: FileIconProps) {
   };
 
   return (
-    <div
-      className={cn('flex items-center justify-center shrink-0 border border-[var(--dm-border)]/40', sizeClasses[size], className)}
-      style={{ color: style.text, backgroundColor: style.bg }}
-    >
+    <div className={cn('flex items-center justify-center shrink-0', sizeClasses[size], colorClass, className)}>
       <Icon className={iconSizes[size]} />
     </div>
   );
