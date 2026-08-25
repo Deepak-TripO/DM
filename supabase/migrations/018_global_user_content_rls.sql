@@ -76,7 +76,7 @@ DROP POLICY IF EXISTS "Users can delete own finance entries" ON public.finance_e
 CREATE POLICY "Authenticated users can view finance entries"
     ON public.finance_entries FOR SELECT
     TO authenticated
-    USING (is_deleted = false OR created_by = auth.uid()::text);
+    USING (is_deleted = false OR created_by::text = auth.uid()::text);
 
 -- 2. Authenticated users can INSERT finance entries
 CREATE POLICY "Authenticated users can insert finance entries"
@@ -89,7 +89,7 @@ CREATE POLICY "Users can update own finance entries"
     ON public.finance_entries FOR UPDATE
     TO authenticated
     USING (
-        created_by = auth.uid()::text OR public.is_admin(auth.uid())
+        created_by::text = auth.uid()::text OR public.is_admin(auth.uid())
     );
 
 -- 4. Only creator (or admin) can DELETE finance entries
@@ -97,5 +97,5 @@ CREATE POLICY "Users can delete own finance entries"
     ON public.finance_entries FOR DELETE
     TO authenticated
     USING (
-        created_by = auth.uid()::text OR public.is_admin(auth.uid())
+        created_by::text = auth.uid()::text OR public.is_admin(auth.uid())
     );
