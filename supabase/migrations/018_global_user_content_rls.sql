@@ -27,9 +27,7 @@ CREATE POLICY "Users can update own files"
     ON public.files FOR UPDATE
     TO authenticated
     USING (
-        auth.uid() = owner_id OR EXISTS (
-            SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true
-        )
+        auth.uid() = owner_id OR public.is_admin(auth.uid())
     );
 
 -- 4. Only owner (or admin) can DELETE files
@@ -37,9 +35,7 @@ CREATE POLICY "Users can delete own files"
     ON public.files FOR DELETE
     TO authenticated
     USING (
-        auth.uid() = owner_id OR EXISTS (
-            SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true
-        )
+        auth.uid() = owner_id OR public.is_admin(auth.uid())
     );
 
 -- Enable RLS on finance_entries table
@@ -67,9 +63,7 @@ CREATE POLICY "Users can update own finance entries"
     ON public.finance_entries FOR UPDATE
     TO authenticated
     USING (
-        created_by = auth.uid()::text OR EXISTS (
-            SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true
-        )
+        created_by = auth.uid()::text OR public.is_admin(auth.uid())
     );
 
 -- 4. Only creator (or admin) can DELETE finance entries
@@ -77,7 +71,5 @@ CREATE POLICY "Users can delete own finance entries"
     ON public.finance_entries FOR DELETE
     TO authenticated
     USING (
-        created_by = auth.uid()::text OR EXISTS (
-            SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true
-        )
+        created_by = auth.uid()::text OR public.is_admin(auth.uid())
     );
