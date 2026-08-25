@@ -1,6 +1,5 @@
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/features/auth/AuthProvider';
 import { useAdmin } from '@/hooks/useAdmin';
 import {
   Home,
@@ -9,9 +8,7 @@ import {
   Star,
   Share2,
   Trash2,
-  User,
   ShieldCheck,
-  LogOut,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -28,20 +25,9 @@ const navItems = [
   { to: '/files', icon: FolderOpen, label: 'My Files', color: '#18AFAF', bg: '#E8FAFA' },
 ];
 
-const bottomItems = [
-  { to: '/profile', icon: User, label: 'Profile', color: '#6675D9', bg: '#EEF0FB' },
-];
-
 export function Sidebar({ open, onToggle }: SidebarProps) {
-  const { signOut } = useAuth();
   const { isAdmin } = useAdmin();
-  const navigate = useNavigate();
   const location = useLocation();
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/login', { replace: true });
-  };
 
   const isItemActive = (itemTo: string) => {
     const path = location.pathname;
@@ -120,41 +106,6 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
           </>
         )}
       </nav>
-
-      {/* Bottom Profile & Sign Out */}
-      <div className="space-y-2 px-3 py-3 neu-pressed-deep my-3 mx-3 rounded-2xl">
-        {bottomItems.map((item) => {
-          const active = isItemActive(item.to);
-          return (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              style={active ? { backgroundColor: item.bg, color: item.color } : undefined}
-              className={cn(
-                'flex items-center gap-3.5 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all duration-150',
-                active
-                  ? 'neu-pressed font-bold'
-                  : 'neu-btn text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
-              )}
-            >
-              <item.icon
-                className="h-5 w-5 shrink-0"
-                style={{ color: item.color }}
-              />
-              <span>{item.label}</span>
-            </NavLink>
-          );
-        })}
-
-        <button
-          onClick={handleSignOut}
-          className="flex w-full items-center gap-3.5 rounded-xl px-3.5 py-2.5 text-sm font-medium text-[var(--color-text-secondary)] neu-btn transition-colors hover:text-[var(--color-danger)]"
-          aria-label="Sign out"
-        >
-          <LogOut className="h-5 w-5 shrink-0 text-[#D95C68]" />
-          <span>Sign out</span>
-        </button>
-      </div>
     </aside>
   );
 }

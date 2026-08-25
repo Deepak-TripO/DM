@@ -92,17 +92,19 @@ export async function getFiles(
   }
 
   if (options?.category) {
+    const cat = options.category.toLowerCase();
     const extensionMap: Record<string, string[]> = {
+      files: ['pdf', 'jpg', 'jpeg', 'docx', 'doc', 'txt'],
+      file: ['pdf', 'jpg', 'jpeg', 'docx', 'doc', 'txt'],
       image: ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'],
-      video: ['mp4', 'webm', 'mov', 'avi'],
-      audio: ['mp3', 'wav', 'ogg', 'm4a'],
+      images: ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'],
+      video: ['mp4', 'webm', 'mov', 'avi', 'mkv'],
+      videos: ['mp4', 'webm', 'mov', 'avi', 'mkv'],
+      audio: ['mp3', 'wav', 'ogg', 'm4a', 'flac'],
       document: ['doc', 'docx', 'odt', 'txt', 'rtf'],
       pdf: ['pdf'],
-      spreadsheet: ['xls', 'xlsx', 'csv', 'ods'],
-      presentation: ['ppt', 'pptx', 'odp'],
-      archive: ['zip', 'rar', '7z', 'tar', 'gz'],
     };
-    const exts = extensionMap[options.category];
+    const exts = extensionMap[cat];
     if (exts) {
       query = query.in('extension', exts);
     }
@@ -128,6 +130,165 @@ export async function getRecentFiles(userId: string, limit = 50): Promise<FileIt
 
   if (error) throw error;
   return (data || []) as FileItem[];
+}
+
+export interface UnifiedRecentItem {
+  id: string;
+  itemType: 'file' | 'finance';
+  name: string;
+  subtitle: string;
+  extension?: string;
+  mimeType?: string;
+  sizeBytes?: number;
+  updatedAt: string;
+  file?: FileItem;
+  financeEntry?: any;
+}
+
+export async function getRecentItems(userId: string, limit = 50): Promise<UnifiedRecentItem[]> {
+  // Fetch files
+  const { data: filesData } = await supabase
+    .from('files')
+    .select('*')
+    .eq('owner_id', userId)
+    .is('deleted_at', null)
+    .order('updated_at', { ascending: false })
+    .limit(limit);
+
+  // Fetch finance entries
+  const { data: financeData } = await supabase
+    .from('finance_entries')
+    .select('*')
+    .is('is_deleted', false)
+    .order('updated_at', { ascending: false })
+    .limit(limit);
+
+  const fileItems: UnifiedRecentItem[] = (filesData || []).map((f: FileItem) => ({
+    id: `file-${f.id}`,
+    itemType: 'file',
+    name: f.name,
+    subtitle: `${f.extension.toUpperCase()} · ${new Date(f.updated_at || f.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}`,
+    extension: f.extension,
+    mimeType: f.mime_type,
+    sizeBytes: f.size_bytes,
+    updatedAt: f.updated_at || f.created_at,
+    file: f,
+  }));
+
+  const financeItems: UnifiedRecentItem[] = (financeData || []).map((fe: any) => ({
+    id: `fin-${fe.id}`,
+    itemType: 'finance',
+    name: fe.item || 'Finance Entry',
+    subtitle: `Finance · ${fe.category || 'Expense'} · ${fe.date || ''}`,
+    updatedAt: fe.updated_at || fe.created_at || new Date().toISOString(),
+    financeEntry: fe,
+  }));
+
+  // Merge and sort latest updated first
+  const combined = [...fileItems, ...financeItems].sort(
+    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+  );
+
+  // Deduplicate by ID
+  const seen = new Set<string>();
+  const deduplicated: UnifiedRecentItem[] = [];
+
+  for (const item of combined) {
+    if (!seen.has(item.id)) {
+      seen.add(item.id);
+      deduplicated.push(item);
+    }
+  }
+
+  return deduplicated.slice(0, limit);
+}
+
+export async function saveExportedFileToShared(
+  filename: string,
+  blob: Blob,
+  mimeType: string
+): Promise<FileItem | null> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    const fileId = crypto.randomUUID();
+    const ext = filename.split('.').pop()?.toLowerCase() || '';
+    const storagePath = `users/${user.id}/files/${fileId}/${filename}`;
+
+    // Upload to 'files' bucket
+    const { error: uploadError } = await supabase.storage
+      .from('files')
+      .upload(storagePath, blob, {
+        cacheControl: '3600',
+        upsert: true,
+      });
+
+    if (uploadError) {
+      console.warn('Storage upload notice:', uploadError);
+    }
+
+    // Check existing
+    const { data: existing } = await supabase
+      .from('files')
+      .select('*')
+      .eq('owner_id', user.id)
+      .eq('name', filename)
+      .is('deleted_at', null)
+      .maybeSingle();
+
+    let targetFile: FileItem | null = null;
+
+    if (existing) {
+      const { data: updated } = await supabase
+        .from('files')
+        .update({
+          size_bytes: blob.size,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existing.id)
+        .select()
+        .single();
+      targetFile = updated as FileItem;
+    } else {
+      const { data: inserted } = await supabase
+        .from('files')
+        .insert({
+          id: fileId,
+          owner_id: user.id,
+          folder_id: null,
+          name: filename,
+          original_name: filename,
+          storage_path: storagePath,
+          mime_type: mimeType,
+          extension: ext,
+          size_bytes: blob.size,
+          metadata: { is_export: true },
+        })
+        .select()
+        .single();
+      targetFile = inserted as FileItem;
+    }
+
+    // Create share record so it automatically appears in Shared section
+    if (targetFile) {
+      const { createShare, getFileShareByFileId } = await import('./shareService');
+      const existingShare = await getFileShareByFileId(targetFile.id);
+      if (!existingShare) {
+        await createShare({
+          ownerId: user.id,
+          fileId: targetFile.id,
+          passwordEnabled: false,
+          allowDownload: true,
+        });
+      }
+    }
+
+    return targetFile;
+  } catch (err) {
+    console.error('Error saving export to shared:', err);
+    return null;
+  }
 }
 
 export async function getStarredFiles(userId: string): Promise<FileItem[]> {

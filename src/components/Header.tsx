@@ -25,14 +25,14 @@ export function Header({ onUploadClick, onLogoClick, sidebarOpen }: HeaderProps)
 
   return (
     <header className="flex h-[var(--header-height)] items-center justify-between gap-3 bg-[var(--neu-bg)] px-4 md:px-6 neu-flat z-20 sticky top-0">
-      {/* Top-Left Branding Logo — DM only (visible when sidebar is closed or on logo click) */}
+      {/* Top-Left Branding Logo — DM only (visible when sidebar is closed or on pages without sidebar) */}
       <div className="flex items-center gap-2">
-        {(!sidebarOpen || onLogoClick) && (
+        {!sidebarOpen && (
           <button
             onClick={onLogoClick}
             className="text-lg font-black tracking-tight text-[var(--color-text-primary)] md:text-xl cursor-pointer hover:opacity-80 transition-opacity focus:outline-none"
-            aria-label="Toggle navigation"
-            title="Toggle navigation sidebar"
+            aria-label="DM logo"
+            title={onLogoClick ? "Toggle navigation sidebar" : "DM"}
           >
             DM
           </button>

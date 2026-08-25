@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import type { ShareItem } from '@/types';
 import { useAppLayout } from '@/layouts/AppLayout';
 
-const TABS = ['All', 'Files', 'Folders', 'Active', 'Expired', 'Revoked'] as const;
+const TABS = ['All', 'Files', 'Image', 'Video', 'Audio', 'Revoked'] as const;
 
 export default function SharedPage() {
   const { user } = useAuth();
@@ -28,16 +28,22 @@ export default function SharedPage() {
   });
 
   const filteredShares = shares.filter((s) => {
-    const isExpired = s.expires_at && new Date(s.expires_at) < new Date();
     const isRevoked = !!s.revoked_at;
+    const ext = (s.file?.extension || '').toLowerCase();
 
     switch (tab) {
-      case 'Files': return !!s.file_id;
-      case 'Folders': return !!s.folder_id;
-      case 'Active': return !isRevoked && !isExpired;
-      case 'Expired': return isExpired && !isRevoked;
-      case 'Revoked': return isRevoked;
-      default: return true;
+      case 'Files':
+        return ['pdf', 'jpg', 'jpeg', 'docx', 'doc', 'txt'].includes(ext) || !!s.file_id;
+      case 'Image':
+        return ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'].includes(ext);
+      case 'Video':
+        return ['mp4', 'webm', 'mov', 'avi', 'mkv'].includes(ext);
+      case 'Audio':
+        return ['mp3', 'wav', 'ogg', 'm4a', 'flac'].includes(ext);
+      case 'Revoked':
+        return isRevoked;
+      default:
+        return true;
     }
   });
 

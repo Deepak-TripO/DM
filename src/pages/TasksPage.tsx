@@ -19,7 +19,7 @@ import { useAppLayout } from '@/layouts/AppLayout';
 export default function TasksPage() {
   const { taskId } = useParams<{ taskId?: string }>();
   const navigate = useNavigate();
-  const { sidebarOpen, toggleSidebar } = useAppLayout();
+  const { sidebarOpen, toggleSidebar, hasSidebar } = useAppLayout();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
 
@@ -61,7 +61,7 @@ export default function TasksPage() {
 
   return (
     <div className="flex flex-col min-h-screen">
-      <Header onLogoClick={toggleSidebar} sidebarOpen={sidebarOpen} />
+      <Header onLogoClick={hasSidebar ? toggleSidebar : undefined} sidebarOpen={sidebarOpen} />
 
       <div className="flex-1 space-y-6 p-4 md:p-6 max-w-7xl mx-auto w-full">
         {/* Task Detail View */}

@@ -35,14 +35,10 @@ const SORT_OPTIONS = [
 
 const FILTER_OPTIONS: { label: string; value: string }[] = [
   { label: 'All', value: '' },
-  { label: 'Images', value: 'image' },
-  { label: 'Videos', value: 'video' },
+  { label: 'Files', value: 'files' },
+  { label: 'Image', value: 'image' },
+  { label: 'Video', value: 'video' },
   { label: 'Audio', value: 'audio' },
-  { label: 'Documents', value: 'document' },
-  { label: 'PDF', value: 'pdf' },
-  { label: 'Spreadsheets', value: 'spreadsheet' },
-  { label: 'Presentations', value: 'presentation' },
-  { label: 'Archives', value: 'archive' },
 ];
 
 export default function FilesPage() {

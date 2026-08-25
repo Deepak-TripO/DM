@@ -19,6 +19,11 @@ import { useAuth } from '@/features/auth/AuthProvider';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { cn } from '@/lib/utils';
 import {
+  exportToPdf,
+  exportToJpg,
+  exportToDocx,
+} from '@/utils/exportService';
+import {
   Plus,
   Search,
   Filter,
@@ -27,6 +32,11 @@ import {
   ArrowLeft,
   Loader2,
   IndianRupee,
+  Receipt,
+  Download,
+  FileText,
+  Image as ImageIcon,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -155,9 +165,91 @@ export function FinanceView({ task }: FinanceViewProps) {
     queryFn: () => getFinanceEntries(taskId, searchQuery, selectedCategory),
   });
 
-  // Calculate total amount from visible entries
-  const totalAmount = useMemo(() => {
-    return entries.reduce((sum, entry) => sum + (Number(entry.amount) || 0), 0);
+  const [expenseCardOpen, setExpenseCardOpen] = useState(false);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState<'pdf' | 'jpg' | 'docx' | null>(null);
+
+  const handleExportPdf = async () => {
+    setIsExporting('pdf');
+    try {
+      await exportToPdf(entries, {
+        deepakTotal: expenseDeepakTotal,
+        elumugamTotal: expenseElumugamTotal,
+        overallTotal: expenseOverallTotal,
+      });
+      toast.success('PDF generated and downloaded successfully!');
+      setExportModalOpen(false);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to generate PDF. Please try again.');
+    } finally {
+      setIsExporting(null);
+    }
+  };
+
+  const handleExportJpg = async () => {
+    setIsExporting('jpg');
+    try {
+      await exportToJpg(entries, {
+        deepakTotal: expenseDeepakTotal,
+        elumugamTotal: expenseElumugamTotal,
+        overallTotal: expenseOverallTotal,
+      });
+      toast.success('JPG generated and downloaded successfully!');
+      setExportModalOpen(false);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to generate JPG. Please try again.');
+    } finally {
+      setIsExporting(null);
+    }
+  };
+
+  const handleExportDocx = async () => {
+    setIsExporting('docx');
+    try {
+      await exportToDocx(entries, {
+        deepakTotal: expenseDeepakTotal,
+        elumugamTotal: expenseElumugamTotal,
+        overallTotal: expenseOverallTotal,
+      });
+      toast.success('Document generated and downloaded successfully!');
+      setExportModalOpen(false);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to generate Document. Please try again.');
+    } finally {
+      setIsExporting(null);
+    }
+  };
+
+  // Calculate Expense amounts (Deepak Amount, Elumugam Amount, Total Amount)
+  const { expenseDeepakTotal, expenseElumugamTotal, expenseOverallTotal } = useMemo(() => {
+    let deepak = 0;
+    let elumugam = 0;
+
+    entries.forEach((entry) => {
+      const amt = Number(entry.amount) || 0;
+      const p = (entry.person || '').trim();
+
+      if (entry.deepak_amount != null || entry.elumugam_amount != null) {
+        deepak += Number(entry.deepak_amount) || 0;
+        elumugam += Number(entry.elumugam_amount) || 0;
+      } else if (p === 'Deepak') {
+        deepak += amt;
+      } else if (p === 'Elumugam') {
+        elumugam += amt;
+      } else if (p === 'Elumugam+Deepak' || p === 'Elumugam + Deepak') {
+        deepak += amt / 2;
+        elumugam += amt / 2;
+      }
+    });
+
+    return {
+      expenseDeepakTotal: deepak,
+      expenseElumugamTotal: elumugam,
+      expenseOverallTotal: deepak + elumugam,
+    };
   }, [entries]);
 
   // Entry Mutations
@@ -196,10 +288,12 @@ export function FinanceView({ task }: FinanceViewProps) {
   });
 
   const resetForm = () => {
+    const defaultCat = 'Software';
+    const defaultItems = categoryItems.length > 0 ? categoryItems : ['Renewal (KVM1) VPS'];
     setFormData({
       date: new Date().toISOString().split('T')[0],
-      item: '',
-      category: 'Software',
+      item: defaultItems[0] || 'Renewal (KVM1) VPS',
+      category: defaultCat,
       description: '',
       person: 'Deepak',
       amount: '',
@@ -367,9 +461,10 @@ export function FinanceView({ task }: FinanceViewProps) {
             <p className="text-xs font-semibold text-[var(--color-text-secondary)] mt-0.5">Finance Updated</p>
           </div>
 
-        {/* Top Controls: Search, Neumorphism Category Filter, Add Entry */}
+        {/* Top Controls: Expense Option, Total Option, Search, Neumorphism Category Filter, Add Entry */}
+        {/* Top Controls: 1. Search Bar, 2. Total Option, 3. Expense Option, 4. Neumorphism Category Filter, 5. Add Entry */}
         <div className="flex flex-wrap items-center gap-3">
-          {/* Search */}
+          {/* 1. Search Bar */}
           <div className="relative flex-1 sm:w-64">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-tertiary)]" />
             <input
@@ -381,7 +476,29 @@ export function FinanceView({ task }: FinanceViewProps) {
             />
           </div>
 
-          {/* Marked Category Section — Neumorphism UI */}
+          {/* 2. Total Option Card */}
+          <div className="flex items-center gap-2 rounded-xl neu-card px-3.5 py-2 text-xs font-bold shadow-sm border border-[var(--color-border-light)]/50">
+            <span className="text-[var(--color-text-secondary)] font-extrabold uppercase tracking-wider">Total</span>
+            <span className="text-sm font-black text-[var(--color-primary)]">{formatCurrency(expenseOverallTotal)}</span>
+          </div>
+
+          {/* 3. Expense Option Button */}
+          <button
+            type="button"
+            onClick={() => setExpenseCardOpen((prev) => !prev)}
+            className={cn(
+              'flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition-all cursor-pointer shadow-sm',
+              expenseCardOpen
+                ? 'neu-pressed text-[var(--color-primary)] font-black border border-[var(--color-primary)]/30'
+                : 'neu-btn text-[var(--color-text-primary)] hover:scale-[1.02]'
+            )}
+            title="Toggle Expense summary card"
+          >
+            <Receipt className="h-4 w-4 text-[var(--color-primary)]" />
+            <span>Expense</span>
+          </button>
+
+          {/* 4. Marked Category Section — Neumorphism UI */}
           <div className="flex items-center gap-1.5 neu-card rounded-2xl p-1.5 shadow-sm border border-[var(--color-border-light)]/50">
             <Filter className="ml-2 h-3.5 w-3.5 text-[var(--color-primary)]" />
             <select
@@ -408,7 +525,7 @@ export function FinanceView({ task }: FinanceViewProps) {
             )}
           </div>
 
-          {/* Add Entry Button */}
+          {/* 5. Add Entry Button */}
           <button
             onClick={handleOpenAdd}
             className="flex items-center gap-1.5 rounded-xl neu-btn-primary px-4 py-2 text-xs font-bold text-white transition-all shadow-md hover:scale-[1.02]"
@@ -416,8 +533,52 @@ export function FinanceView({ task }: FinanceViewProps) {
             <Plus className="h-4 w-4" />
             <span>Add Entry</span>
           </button>
+
+          {/* Export Button */}
+          <button
+            type="button"
+            onClick={() => setExportModalOpen(true)}
+            className="flex items-center gap-1.5 rounded-xl neu-btn px-4 py-2 text-xs font-bold text-[var(--color-text-primary)] transition-all shadow-md hover:scale-[1.02] cursor-pointer"
+            title="Export Finance Data"
+          >
+            <Download className="h-4 w-4 text-[var(--color-primary)]" />
+            <span>Export</span>
+          </button>
         </div>
       </div>
+
+      {/* Compact Expense Summary Card */}
+      {expenseCardOpen && (
+        <div className="rounded-3xl neu-card p-5 border border-[var(--color-primary)]/20 shadow-md space-y-3 transition-all animate-in fade-in duration-200">
+          <div className="flex items-center justify-between border-b border-[var(--color-border-light)]/40 pb-2">
+            <div className="flex items-center gap-2">
+              <Receipt className="h-4.5 w-4.5 text-[var(--color-primary)]" />
+              <h3 className="text-sm font-black text-[var(--color-text-primary)]">Expense Summary</h3>
+            </div>
+            <button
+              onClick={() => setExpenseCardOpen(false)}
+              className="text-[11px] font-bold text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] cursor-pointer"
+            >
+              Close
+            </button>
+          </div>
+
+          <div className="space-y-2 text-xs font-bold text-[var(--color-text-secondary)]">
+            <div className="flex items-center justify-between p-2.5 rounded-xl neu-pressed">
+              <span className="uppercase tracking-wider font-extrabold">Deepak Amount</span>
+              <span className="text-sm font-black text-[var(--color-text-primary)]">{formatCurrency(expenseDeepakTotal)}</span>
+            </div>
+            <div className="flex items-center justify-between p-2.5 rounded-xl neu-pressed">
+              <span className="uppercase tracking-wider font-extrabold">Elumugam Amount</span>
+              <span className="text-sm font-black text-[var(--color-text-primary)]">{formatCurrency(expenseElumugamTotal)}</span>
+            </div>
+            <div className="flex items-center justify-between p-2.5 rounded-xl neu-pressed border border-[var(--color-primary)]/30 bg-[var(--color-primary)]/5">
+              <span className="text-xs font-black uppercase tracking-wider text-[var(--color-text-primary)]">Total Amount</span>
+              <span className="text-base font-black text-[var(--color-primary)]">{formatCurrency(expenseOverallTotal)}</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Finance Table Container */}
       <div className="rounded-3xl neu-card p-4 md:p-6 space-y-4">
@@ -485,10 +646,10 @@ export function FinanceView({ task }: FinanceViewProps) {
                     </td>
                     <td className="py-3.5 px-4 text-center whitespace-nowrap">
                       <div className="flex items-center justify-center gap-1.5">
-                        {/* Edit Button: Yellow / Amber */}
+                        {/* Edit Button: Green */}
                         <button
                           onClick={() => handleOpenEdit(entry)}
-                          className="rounded-lg p-1.5 neu-btn text-amber-500 hover:text-amber-600 hover:bg-amber-500/10 transition-colors"
+                          className="rounded-lg p-1.5 neu-btn text-green-600 hover:text-green-700 hover:bg-green-500/10 transition-colors"
                           aria-label="Edit entry"
                           title="Edit entry"
                         >
@@ -512,16 +673,6 @@ export function FinanceView({ task }: FinanceViewProps) {
             </table>
           </div>
         )}
-
-        {/* Total Summary Section — Label updated to "Total" */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between rounded-2xl neu-pressed p-4 gap-2">
-          <span className="text-xs font-black uppercase tracking-wider text-[var(--color-text-secondary)]">
-            Total
-          </span>
-          <span className="text-xl font-black text-[var(--color-primary)]">
-            {formatCurrency(totalAmount)}
-          </span>
-        </div>
       </div>
 
       {/* Add / Edit Entry Modal */}
@@ -941,6 +1092,122 @@ export function FinanceView({ task }: FinanceViewProps) {
         description={`Are you sure you want to delete "${deletingEntry?.item}" (${formatCurrency(Number(deletingEntry?.amount || 0))})?`}
         confirmLabel="Delete"
       />
+
+      {/* Export Options Modal */}
+      {exportModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-xs"
+            onClick={() => !isExporting && setExportModalOpen(false)}
+          />
+          <div className="relative w-full max-w-sm rounded-3xl neu-modal p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-[var(--color-border-light)]/40 pb-3">
+              <div className="flex items-center gap-2">
+                <Download className="h-5 w-5 text-[var(--color-primary)]" />
+                <h3 className="text-base font-extrabold text-[var(--color-text-primary)]">Export Finance Data</h3>
+              </div>
+              {!isExporting && (
+                <button
+                  onClick={() => setExportModalOpen(false)}
+                  className="text-xs font-bold text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] cursor-pointer"
+                >
+                  Close
+                </button>
+              )}
+            </div>
+
+            <p className="text-xs font-medium text-[var(--color-text-secondary)]">
+              Choose a format to export the complete Finance dataset:
+            </p>
+
+            <div className="space-y-2.5">
+              {/* PDF Option */}
+              <button
+                type="button"
+                disabled={isExporting !== null}
+                onClick={handleExportPdf}
+                className={cn(
+                  'w-full flex items-center justify-between p-3.5 rounded-2xl neu-btn text-left transition-all cursor-pointer border border-transparent hover:border-[var(--color-primary)]/30',
+                  isExporting === 'pdf' && 'neu-pressed opacity-80 cursor-wait'
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl neu-circle text-red-500 bg-red-500/10">
+                    <FileText className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-extrabold text-[var(--color-text-primary)]">PDF Document</h4>
+                    <p className="text-[10px] font-semibold text-[var(--color-text-tertiary)]">Print-ready formatted PDF report (.pdf)</p>
+                  </div>
+                </div>
+                {isExporting === 'pdf' ? (
+                  <span className="text-xs font-bold text-[var(--color-primary)] flex items-center gap-1">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Generating...
+                  </span>
+                ) : (
+                  <Download className="h-4 w-4 text-[var(--color-text-tertiary)]" />
+                )}
+              </button>
+
+              {/* JPG Option */}
+              <button
+                type="button"
+                disabled={isExporting !== null}
+                onClick={handleExportJpg}
+                className={cn(
+                  'w-full flex items-center justify-between p-3.5 rounded-2xl neu-btn text-left transition-all cursor-pointer border border-transparent hover:border-[var(--color-primary)]/30',
+                  isExporting === 'jpg' && 'neu-pressed opacity-80 cursor-wait'
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl neu-circle text-blue-500 bg-blue-500/10">
+                    <ImageIcon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-extrabold text-[var(--color-text-primary)]">JPG Image</h4>
+                    <p className="text-[10px] font-semibold text-[var(--color-text-tertiary)]">High-resolution export image (.jpg)</p>
+                  </div>
+                </div>
+                {isExporting === 'jpg' ? (
+                  <span className="text-xs font-bold text-[var(--color-primary)] flex items-center gap-1">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Generating...
+                  </span>
+                ) : (
+                  <Download className="h-4 w-4 text-[var(--color-text-tertiary)]" />
+                )}
+              </button>
+
+              {/* DOCX Option */}
+              <button
+                type="button"
+                disabled={isExporting !== null}
+                onClick={handleExportDocx}
+                className={cn(
+                  'w-full flex items-center justify-between p-3.5 rounded-2xl neu-btn text-left transition-all cursor-pointer border border-transparent hover:border-[var(--color-primary)]/30',
+                  isExporting === 'docx' && 'neu-pressed opacity-80 cursor-wait'
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl neu-circle text-emerald-600 bg-emerald-500/10">
+                    <FileSpreadsheet className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-extrabold text-[var(--color-text-primary)]">Document (DOCX)</h4>
+                    <p className="text-[10px] font-semibold text-[var(--color-text-tertiary)]">Editable Word document (.docx)</p>
+                  </div>
+                </div>
+                {isExporting === 'docx' ? (
+                  <span className="text-xs font-bold text-[var(--color-primary)] flex items-center gap-1">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Generating...
+                  </span>
+                ) : (
+                  <Download className="h-4 w-4 text-[var(--color-text-tertiary)]" />
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
