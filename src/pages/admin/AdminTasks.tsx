@@ -278,7 +278,6 @@ export default function AdminTasks() {
                   <th className="px-6 py-4">Task Name</th>
                   <th className="px-6 py-4">Assigned Users</th>
                   <th className="px-6 py-4">Created By</th>
-                  <th className="px-6 py-4">Storage Path</th>
                   <th className="px-6 py-4">Created Date</th>
                   <th className="px-6 py-4 text-right">Actions</th>
                 </tr>
@@ -299,12 +298,6 @@ export default function AdminTasks() {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-[var(--color-text-secondary)]">{t.owner_name}</td>
-                      <td className="px-6 py-4 font-mono text-[10px] text-[var(--color-text-tertiary)] max-w-xs truncate">
-                        <span className="inline-flex items-center gap-1">
-                          <HardDrive className="h-3 w-3 text-blue-400" />
-                          {t.storage_path}
-                        </span>
-                      </td>
                       <td className="px-6 py-4 text-[var(--color-text-secondary)]">{formatDate(t.created_at)}</td>
                       <td className="px-6 py-4 text-right space-x-2">
                         <button

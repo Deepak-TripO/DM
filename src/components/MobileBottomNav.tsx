@@ -54,6 +54,10 @@ const navItemsConfig = [
 export function MobileBottomNav() {
   const location = useLocation();
 
+  // On MOBILE VIEW: Hide bottom navigation bar on "Select Task" page (/tasks)
+  const isSelectTaskPage = location.pathname === '/tasks' || location.pathname === '/tasks/';
+  if (isSelectTaskPage) return null;
+
   const isPathActive = (path: string) => {
     const p = location.pathname;
     if (path === '/home') {

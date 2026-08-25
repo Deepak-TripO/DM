@@ -32,7 +32,7 @@ export function AppLayout() {
           hasSidebar && sidebarOpen ? 'md:ml-64' : 'ml-0'
         )}
       >
-        <main className="flex-1 min-w-0 pb-20 md:pb-0">
+        <main className={cn('flex-1 min-w-0', isSelectTaskPage ? 'pb-0' : 'pb-20 md:pb-0')}>
           <Outlet context={{ sidebarOpen: hasSidebar && sidebarOpen, toggleSidebar, hasSidebar }} />
         </main>
       </div>

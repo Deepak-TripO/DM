@@ -1,8 +1,8 @@
-import { useState } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAdmin } from '@/hooks/useAdmin';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { AccessDenied } from '@/components/admin/AccessDenied';
+import { AdminMobileBottomNav } from '@/components/AdminMobileBottomNav';
 import { cn } from '@/lib/utils';
 import {
   LayoutDashboard,
@@ -35,7 +35,7 @@ const adminNavItems = [
 
 export default function AdminLayout() {
   const { isAdmin, loading } = useAdmin();
-  const { user, signOut } = useAuth();
+  const { signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -98,7 +98,7 @@ export default function AdminLayout() {
                 )
               }
             >
-              {({ isActive }) => (
+              {() => (
                 <>
                   <item.icon className="h-4 w-4 shrink-0" style={{ color: item.color }} />
                   <span>{item.label}</span>
@@ -112,7 +112,7 @@ export default function AdminLayout() {
         <div className="p-3 space-y-2 neu-pressed-deep my-2 mx-2 rounded-2xl">
           <button
             onClick={() => navigate('/')}
-            className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold neu-btn text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
+            className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold neu-btn text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] cursor-pointer"
           >
             <ArrowLeft className="h-4 w-4 text-[var(--color-text-tertiary)]" />
             Back to App
@@ -120,7 +120,7 @@ export default function AdminLayout() {
 
           <button
             onClick={() => navigate('/profile')}
-            className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold neu-btn text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
+            className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold neu-btn text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] cursor-pointer"
           >
             <User className="h-4 w-4 text-[var(--color-text-tertiary)]" />
             <span className="truncate">Admin Profile</span>
@@ -128,7 +128,7 @@ export default function AdminLayout() {
 
           <button
             onClick={handleLogout}
-            className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold neu-btn text-[var(--color-danger)] hover:text-[var(--color-danger)]"
+            className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold neu-btn text-[var(--color-danger)] hover:text-[var(--color-danger)] cursor-pointer"
           >
             <LogOut className="h-4 w-4" />
             Logout
@@ -136,54 +136,34 @@ export default function AdminLayout() {
         </div>
       </aside>
 
-      {/* Mobile Top Administration Bar */}
-      <div className="fixed left-0 right-0 top-0 z-40 flex flex-col neu-flat md:hidden">
-        <div className="flex h-12 items-center justify-between px-3">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => navigate('/')}
-              className="rounded-lg p-1.5 neu-circle text-[var(--color-text-tertiary)]"
-              aria-label="Back to DM"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </button>
-            <span className="text-xs font-black uppercase tracking-wider text-[var(--color-primary)]">DM Admin</span>
-          </div>
+      {/* Mobile Header Bar — Clean top bar for Admin (Top Category scroll bar removed) */}
+      <div className="fixed left-0 right-0 top-0 z-40 flex h-13 items-center justify-between px-3 bg-[var(--neu-bg)] border-b border-[var(--color-border-light)]/60 shadow-xs md:hidden">
+        <div className="flex items-center gap-2">
           <button
-            onClick={handleLogout}
-            className="rounded-lg p-1.5 neu-circle text-[var(--color-danger)]"
-            title="Logout"
+            onClick={() => navigate('/')}
+            className="rounded-lg p-1.5 neu-circle text-[var(--color-text-tertiary)] cursor-pointer"
+            aria-label="Back to DM"
           >
-            <LogOut className="h-4 w-4" />
+            <ArrowLeft className="h-4 w-4" />
           </button>
+          <span className="text-xs font-black uppercase tracking-wider text-[var(--color-primary)]">DM Admin</span>
         </div>
-
-        {/* Mobile Horizontal Navigation Tabs */}
-        <div className="flex gap-1.5 overflow-x-auto px-2 pb-2 scrollbar-none">
-          {adminNavItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) =>
-                cn(
-                  'shrink-0 rounded-xl px-3 py-1.5 text-xs font-bold transition-all',
-                  isActive
-                    ? 'neu-active text-[var(--color-primary)]'
-                    : 'neu-btn text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
-                )
-              }
-            >
-              {item.label}
-            </NavLink>
-          ))}
-        </div>
+        <button
+          onClick={handleLogout}
+          className="rounded-lg p-1.5 neu-circle text-[var(--color-danger)] cursor-pointer"
+          title="Logout"
+        >
+          <LogOut className="h-4 w-4" />
+        </button>
       </div>
 
       {/* Main Content Area */}
-      <main className="flex-1 min-w-0 pt-20 md:ml-60 md:pt-0">
+      <main className="flex-1 min-w-0 pt-14 pb-20 md:ml-60 md:pt-0 md:pb-0">
         <Outlet />
       </main>
+
+      {/* Mobile Admin Bottom Navigation */}
+      <AdminMobileBottomNav />
     </div>
   );
 }
