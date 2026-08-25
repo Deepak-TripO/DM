@@ -160,8 +160,8 @@ export default function AdminUsers() {
         </div>
       </div>
 
-      {/* Users Table */}
-      <div className="rounded-3xl neu-card p-2">
+      {/* Users View — Desktop Table & Mobile Compact Cards */}
+      <div className="hidden md:block rounded-3xl neu-card p-2">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
@@ -327,20 +327,86 @@ export default function AdminUsers() {
             </tbody>
           </table>
         </div>
-
-        {isLoading && (
-          <div className="flex items-center justify-center py-12 text-xs font-semibold text-[var(--color-text-tertiary)]">
-            <Loader2 className="h-5 w-5 animate-spin text-[var(--color-primary)] mr-2" />
-            Loading registered users...
-          </div>
-        )}
-
-        {!isLoading && users.length === 0 && (
-          <div className="py-12 text-center text-xs font-semibold text-[var(--color-text-tertiary)]">
-            No users found matching your search and filter criteria.
-          </div>
-        )}
       </div>
+
+      {/* Mobile Compact Users Cards View */}
+      <div className="block md:hidden space-y-3">
+        {users.map((u) => (
+          <div key={u.id} className="rounded-2xl neu-card p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full neu-circle">
+                  {u.avatar_url ? (
+                    <img src={u.avatar_url} className="h-10 w-10 rounded-full object-cover" alt="" />
+                  ) : (
+                    <User className="h-5 w-5 text-[var(--color-primary)]" />
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <p className="font-extrabold text-sm text-[var(--color-text-primary)] truncate">{u.full_name || 'User'}</p>
+                  <p className="text-[11px] font-semibold text-[var(--color-text-tertiary)] truncate">@{u.username || u.id.slice(0, 8)}</p>
+                </div>
+              </div>
+
+              {u.is_disabled ? (
+                <span className="inline-flex items-center gap-1 rounded-full neu-badge px-2 py-0.5 text-[10px] font-bold text-red-500">
+                  <XCircle className="h-3 w-3" />
+                  Disabled
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-full neu-badge px-2 py-0.5 text-[10px] font-bold text-emerald-500">
+                  <CheckCircle className="h-3 w-3" />
+                  Active
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between text-xs pt-1 border-t border-[var(--color-border-light)]/40">
+              <span className="text-[var(--color-text-tertiary)] font-semibold">Storage:</span>
+              <span className="font-bold text-[var(--color-text-primary)]">{formatBytes(u.used_bytes)} / {formatBytes(u.quota_bytes)}</span>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                onClick={() => {
+                  setEditingQuotaUser(u);
+                  setNewQuotaGB(String(Math.round((u.quota_bytes / (1024 * 1024 * 1024)) * 10) / 10));
+                }}
+                className="px-3 py-1.5 rounded-xl neu-btn text-xs font-bold text-[var(--color-primary)] cursor-pointer"
+              >
+                Quota
+              </button>
+              <button
+                onClick={() => handleViewFiles(u)}
+                className="px-3 py-1.5 rounded-xl neu-btn text-xs font-bold text-purple-500 cursor-pointer"
+              >
+                Files ({u.file_count})
+              </button>
+              <button
+                onClick={() => handleToggleStatus(u)}
+                className={`px-3 py-1.5 rounded-xl neu-btn text-xs font-bold cursor-pointer ${
+                  u.is_disabled ? 'text-emerald-500' : 'text-red-500'
+                }`}
+              >
+                {u.is_disabled ? 'Enable' : 'Disable'}
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {isLoading && (
+        <div className="flex items-center justify-center py-12 text-xs font-semibold text-[var(--color-text-tertiary)]">
+          <Loader2 className="h-5 w-5 animate-spin text-[var(--color-primary)] mr-2" />
+          Loading registered users...
+        </div>
+      )}
+
+      {!isLoading && users.length === 0 && (
+        <div className="py-12 text-center text-xs font-semibold text-[var(--color-text-tertiary)]">
+          No users found matching your search and filter criteria.
+        </div>
+      )}
 
       {/* MODAL 1: Change Storage Quota */}
       {editingQuotaUser && (

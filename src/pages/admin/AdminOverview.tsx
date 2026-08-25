@@ -100,26 +100,28 @@ export default function AdminOverview() {
         </div>
       </div>
 
-      {/* 6 Core Stat Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {statCards.map((card) => (
+      {/* 6 Core Stat Cards — Compact 2-column grid on mobile view */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {statCards.map((card, idx) => (
           <div
             key={card.label}
             onClick={() => navigate(card.link)}
-            className="group relative cursor-pointer rounded-2xl neu-card p-5 transition-all hover:scale-[1.01]"
+            className={`group relative cursor-pointer rounded-2xl neu-card p-3 md:p-5 transition-all hover:scale-[1.01] ${
+              idx === statCards.length - 1 ? 'col-span-2 sm:col-span-1' : ''
+            }`}
           >
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-[10px] font-extrabold tracking-wider text-[var(--color-text-tertiary)] uppercase">
+            <div className="flex items-center justify-between mb-1.5 md:mb-3">
+              <span className="text-[9px] md:text-[10px] font-extrabold tracking-wider text-[var(--color-text-tertiary)] uppercase truncate">
                 {card.label}
               </span>
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl neu-circle">
-                <card.icon className="h-5 w-5" style={{ color: card.color }} />
+              <div className="flex h-7 w-7 md:h-10 md:w-10 shrink-0 items-center justify-center rounded-xl neu-circle">
+                <card.icon className="h-3.5 w-3.5 md:h-5 md:w-5" style={{ color: card.color }} />
               </div>
             </div>
-            <div className="text-2xl font-extrabold text-[var(--color-text-primary)] mb-1">
+            <div className="text-lg md:text-2xl font-extrabold text-[var(--color-text-primary)] mb-0.5">
               {card.value}
             </div>
-            <p className="text-xs font-medium text-[var(--color-text-tertiary)]">{card.subtext}</p>
+            <p className="hidden md:block text-xs font-medium text-[var(--color-text-tertiary)]">{card.subtext}</p>
           </div>
         ))}
       </div>

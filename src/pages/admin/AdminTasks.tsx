@@ -270,71 +270,130 @@ export default function AdminTasks() {
           )}
         </div>
       ) : (
-        <div className="rounded-3xl neu-card overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs font-semibold">
-              <thead className="bg-[var(--neu-bg)] text-[var(--color-text-tertiary)] uppercase tracking-wider text-[10px] border-b border-[var(--color-border-light)]/40">
-                <tr>
-                  <th className="px-6 py-4">Task Name</th>
-                  <th className="px-6 py-4">Assigned Users</th>
-                  <th className="px-6 py-4">Created By</th>
-                  <th className="px-6 py-4">Created Date</th>
-                  <th className="px-6 py-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--color-border-light)]/30 text-[var(--color-text-primary)]">
-                {filteredTasks.map((t: AdminTaskItem) => {
-                  const count = accessCounts[t.id] || 0;
-                  return (
-                    <tr key={t.id} className="hover:bg-[var(--color-primary)]/5 transition-colors">
-                      <td className="px-6 py-4 font-bold flex items-center gap-3">
-                        <CheckSquare className="h-5 w-5 text-blue-500 shrink-0" />
-                        <span className="truncate max-w-xs">{t.name}</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="inline-flex items-center gap-1.5 rounded-xl neu-pressed px-2.5 py-1 text-[11px] font-bold text-[var(--color-primary)]">
-                          <Users className="h-3.5 w-3.5 text-[var(--color-primary)]" />
-                          <span>{count} User{count === 1 ? '' : 's'}</span>
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-[var(--color-text-secondary)]">{t.owner_name}</td>
-                      <td className="px-6 py-4 text-[var(--color-text-secondary)]">{formatDate(t.created_at)}</td>
-                      <td className="px-6 py-4 text-right space-x-2">
-                        <button
-                          onClick={() => openAccessModal(t)}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl neu-btn text-xs font-bold text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 transition-all cursor-pointer"
-                          title="Manage Task Access & User Assignments"
-                        >
-                          <UserPlus className="h-3.5 w-3.5" />
-                          <span>Manage Access</span>
-                        </button>
-                        <button
-                          onClick={() => openEditModal(t)}
-                          className="p-2 rounded-xl neu-btn text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 transition-all cursor-pointer"
-                          title="Edit / Rename Task"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (confirm(`Are you sure you want to delete task "${t.name}"?`)) {
-                              deleteMutation.mutate(t.id);
-                            }
-                          }}
-                          disabled={deleteMutation.isPending}
-                          className="p-2 rounded-xl neu-btn text-[var(--color-danger)] hover:bg-red-500/10 transition-all disabled:opacity-50 cursor-pointer"
-                          title="Delete Task"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+        <>
+          {/* Desktop Task Table */}
+          <div className="hidden md:block rounded-3xl neu-card overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs font-semibold">
+                <thead className="bg-[var(--neu-bg)] text-[var(--color-text-tertiary)] uppercase tracking-wider text-[10px] border-b border-[var(--color-border-light)]/40">
+                  <tr>
+                    <th className="px-6 py-4">Task Name</th>
+                    <th className="px-6 py-4">Assigned Users</th>
+                    <th className="px-6 py-4">Created By</th>
+                    <th className="px-6 py-4">Created Date</th>
+                    <th className="px-6 py-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--color-border-light)]/30 text-[var(--color-text-primary)]">
+                  {filteredTasks.map((t: AdminTaskItem) => {
+                    const count = accessCounts[t.id] || 0;
+                    return (
+                      <tr key={t.id} className="hover:bg-[var(--color-primary)]/5 transition-colors">
+                        <td className="px-6 py-4 font-bold flex items-center gap-3">
+                          <CheckSquare className="h-5 w-5 text-blue-500 shrink-0" />
+                          <span className="truncate max-w-xs">{t.name}</span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="inline-flex items-center gap-1.5 rounded-xl neu-pressed px-2.5 py-1 text-[11px] font-bold text-[var(--color-primary)]">
+                            <Users className="h-3.5 w-3.5 text-[var(--color-primary)]" />
+                            <span>{count} User{count === 1 ? '' : 's'}</span>
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-[var(--color-text-secondary)]">{t.owner_name}</td>
+                        <td className="px-6 py-4 text-[var(--color-text-secondary)]">{formatDate(t.created_at)}</td>
+                        <td className="px-6 py-4 text-right space-x-2">
+                          <button
+                            onClick={() => openAccessModal(t)}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl neu-btn text-xs font-bold text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 transition-all cursor-pointer"
+                            title="Manage Task Access & User Assignments"
+                          >
+                            <UserPlus className="h-3.5 w-3.5" />
+                            <span>Manage Access</span>
+                          </button>
+                          <button
+                            onClick={() => openEditModal(t)}
+                            className="p-2 rounded-xl neu-btn text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 transition-all cursor-pointer"
+                            title="Edit / Rename Task"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (confirm(`Are you sure you want to delete task "${t.name}"?`)) {
+                                deleteMutation.mutate(t.id);
+                              }
+                            }}
+                            disabled={deleteMutation.isPending}
+                            className="p-2 rounded-xl neu-btn text-[var(--color-danger)] hover:bg-red-500/10 transition-all disabled:opacity-50 cursor-pointer"
+                            title="Delete Task"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+
+          {/* Mobile Task Compact Cards */}
+          <div className="block md:hidden space-y-3">
+            {filteredTasks.map((t: AdminTaskItem) => {
+              const count = accessCounts[t.id] || 0;
+              return (
+                <div key={t.id} className="rounded-2xl neu-card p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl neu-pressed text-blue-500">
+                        <CheckSquare className="h-4 w-4" />
+                      </div>
+                      <h3 className="font-extrabold text-sm text-[var(--color-text-primary)] truncate">{t.name}</h3>
+                    </div>
+                    <span className="inline-flex items-center gap-1 rounded-xl neu-pressed px-2 py-0.5 text-[10px] font-bold text-[var(--color-primary)]">
+                      <Users className="h-3 w-3" />
+                      <span>{count} User{count === 1 ? '' : 's'}</span>
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs pt-1 border-t border-[var(--color-border-light)]/40 text-[var(--color-text-tertiary)]">
+                    <span>Created: {formatDate(t.created_at)}</span>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-1">
+                    <button
+                      onClick={() => openAccessModal(t)}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl neu-btn text-xs font-bold text-[var(--color-primary)] cursor-pointer"
+                    >
+                      <UserPlus className="h-3.5 w-3.5" />
+                      <span>Manage Access</span>
+                    </button>
+                    <button
+                      onClick={() => openEditModal(t)}
+                      className="p-1.5 rounded-xl neu-btn text-[var(--color-primary)] cursor-pointer"
+                      title="Edit"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (confirm(`Are you sure you want to delete task "${t.name}"?`)) {
+                          deleteMutation.mutate(t.id);
+                        }
+                      }}
+                      disabled={deleteMutation.isPending}
+                      className="p-1.5 rounded-xl neu-btn text-[var(--color-danger)] cursor-pointer disabled:opacity-50"
+                      title="Delete"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
       )}
 
       {/* Create / Edit Task Modal Dialog */}
