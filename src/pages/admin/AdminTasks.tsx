@@ -1,24 +1,56 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/features/auth/AuthProvider';
-import { getAdminTasks, createAdminTask, deleteAdminTask, updateAdminTask } from '@/services/adminService';
-import type { AdminTaskItem } from '@/services/adminService';
+import {
+  getAdminTasks,
+  createAdminTask,
+  deleteAdminTask,
+  updateAdminTask,
+  getTaskAccessList,
+  assignTaskAccess,
+  revokeTaskAccess,
+  getTaskAccessCountsMap,
+  getAdminUsers,
+} from '@/services/adminService';
+import type { AdminTaskItem, TaskAccessItem, AdminUserItem } from '@/services/adminService';
 import { formatDate } from '@/utils';
-import { CheckSquare, Plus, Search, Trash2, Pencil, Loader2, X, HardDrive } from 'lucide-react';
+import { CheckSquare, Plus, Search, Trash2, Pencil, Loader2, X, HardDrive, Users, UserPlus, UserMinus, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function AdminTasks() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<AdminTaskItem | null>(null);
   const [taskName, setTaskName] = useState('');
   const [validationError, setValidationError] = useState('');
 
+  // Manage Access Modal State
+  const [accessModalTask, setAccessModalTask] = useState<AdminTaskItem | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState('');
+  const [assignError, setAssignError] = useState('');
+
   const { data: tasks = [], isLoading } = useQuery({
     queryKey: ['adminTasks'],
     queryFn: getAdminTasks,
+  });
+
+  const { data: accessCounts = {} } = useQuery({
+    queryKey: ['taskAccessCounts'],
+    queryFn: getTaskAccessCountsMap,
+  });
+
+  const { data: adminUsers = [] } = useQuery({
+    queryKey: ['adminUsersList'],
+    queryFn: () => getAdminUsers({ statusFilter: 'all' }),
+  });
+
+  const { data: accessList = [], isLoading: loadingAccessList } = useQuery({
+    queryKey: ['taskAccessList', accessModalTask?.id],
+    queryFn: () => (accessModalTask ? getTaskAccessList(accessModalTask.id) : Promise.resolve([])),
+    enabled: !!accessModalTask,
   });
 
   const createMutation = useMutation({
@@ -59,6 +91,36 @@ export default function AdminTasks() {
     },
   });
 
+  const assignMutation = useMutation({
+    mutationFn: ({ taskId, targetUserId }: { taskId: string; targetUserId: string }) =>
+      assignTaskAccess(taskId, targetUserId, user!.id),
+    onSuccess: (newItem) => {
+      queryClient.invalidateQueries({ queryKey: ['taskAccessList', accessModalTask?.id] });
+      queryClient.invalidateQueries({ queryKey: ['taskAccessCounts'] });
+      queryClient.invalidateQueries({ queryKey: ['activeTasks'] });
+      toast.success(`Access granted to user ${newItem.user_name}`);
+      setSelectedUserId('');
+      setAssignError('');
+    },
+    onError: (err: any) => {
+      setAssignError(err?.message || 'Failed to assign task access.');
+    },
+  });
+
+  const revokeMutation = useMutation({
+    mutationFn: ({ taskId, targetUserId }: { taskId: string; targetUserId: string }) =>
+      revokeTaskAccess(taskId, targetUserId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['taskAccessList', accessModalTask?.id] });
+      queryClient.invalidateQueries({ queryKey: ['taskAccessCounts'] });
+      queryClient.invalidateQueries({ queryKey: ['activeTasks'] });
+      toast.success('Task access revoked');
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Failed to revoke task access.');
+    },
+  });
+
   const openCreateModal = () => {
     setEditingTask(null);
     setTaskName('');
@@ -80,24 +142,33 @@ export default function AdminTasks() {
     setValidationError('');
   };
 
+  const openAccessModal = (task: AdminTaskItem) => {
+    setAccessModalTask(task);
+    setSelectedUserId('');
+    setAssignError('');
+  };
+
+  const closeAccessModal = () => {
+    setAccessModalTask(null);
+    setSelectedUserId('');
+    setAssignError('');
+  };
+
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = taskName.trim();
-    
-    // 1. Empty check
+
     if (!trimmed) {
       setValidationError('Task name cannot be empty');
       return;
     }
 
-    // 2. Invalid character check
     const invalidCharsRegex = /[\\/:*?"<>|]/;
     if (invalidCharsRegex.test(trimmed)) {
       setValidationError('Task name contains invalid characters (\\ / : * ? " < > |)');
       return;
     }
 
-    // 3. Duplicate check (excluding current editing item)
     const duplicate = tasks.find(
       (t) => t.name.toLowerCase() === trimmed.toLowerCase() && t.id !== editingTask?.id
     );
@@ -118,9 +189,23 @@ export default function AdminTasks() {
     }
   };
 
-  const filteredTasks = tasks.filter((t) =>
-    t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    t.owner_name.toLowerCase().includes(searchQuery.toLowerCase())
+  const handleAssignSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const targetId = selectedUserId.trim();
+    if (!targetId) {
+      setAssignError('Please select or enter a User ID');
+      return;
+    }
+    if (!accessModalTask || !user) return;
+
+    setAssignError('');
+    assignMutation.mutate({ taskId: accessModalTask.id, targetUserId: targetId });
+  };
+
+  const filteredTasks = tasks.filter(
+    (t) =>
+      t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      t.owner_name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -134,14 +219,14 @@ export default function AdminTasks() {
           <div>
             <h1 className="text-xl font-extrabold text-[var(--color-text-primary)]">Task</h1>
             <p className="text-xs font-semibold text-[var(--color-text-secondary)]">
-              Manage administrative system tasks and organization
+              Manage administrative system tasks, user assignments, and access control
             </p>
           </div>
         </div>
 
         <button
           onClick={openCreateModal}
-          className="flex items-center justify-center gap-2 rounded-2xl neu-btn-primary px-5 py-2.5 text-xs font-bold text-white shadow-md transition-all"
+          className="flex items-center justify-center gap-2 rounded-2xl neu-btn-primary px-5 py-2.5 text-xs font-bold text-white shadow-md transition-all cursor-pointer"
         >
           <Plus className="h-4 w-4" />
           <span>Create Task</span>
@@ -177,7 +262,7 @@ export default function AdminTasks() {
           {!searchQuery && (
             <button
               onClick={openCreateModal}
-              className="mt-5 flex items-center gap-2 rounded-xl neu-btn-primary px-4 py-2 text-xs font-bold text-white shadow-md"
+              className="mt-5 flex items-center gap-2 rounded-xl neu-btn-primary px-4 py-2 text-xs font-bold text-white shadow-md cursor-pointer"
             >
               <Plus className="h-4 w-4" />
               <span>Create Task</span>
@@ -191,6 +276,7 @@ export default function AdminTasks() {
               <thead className="bg-[var(--neu-bg)] text-[var(--color-text-tertiary)] uppercase tracking-wider text-[10px] border-b border-[var(--color-border-light)]/40">
                 <tr>
                   <th className="px-6 py-4">Task Name</th>
+                  <th className="px-6 py-4">Assigned Users</th>
                   <th className="px-6 py-4">Created By</th>
                   <th className="px-6 py-4">Storage Path</th>
                   <th className="px-6 py-4">Created Date</th>
@@ -198,50 +284,67 @@ export default function AdminTasks() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--color-border-light)]/30 text-[var(--color-text-primary)]">
-                {filteredTasks.map((t: AdminTaskItem) => (
-                  <tr key={t.id} className="hover:bg-[var(--color-primary)]/5 transition-colors">
-                    <td className="px-6 py-4 font-bold flex items-center gap-3">
-                      <CheckSquare className="h-5 w-5 text-blue-500 shrink-0" />
-                      <span className="truncate max-w-xs">{t.name}</span>
-                    </td>
-                    <td className="px-6 py-4 text-[var(--color-text-secondary)]">{t.owner_name}</td>
-                    <td className="px-6 py-4 font-mono text-[10px] text-[var(--color-text-tertiary)] max-w-xs truncate">
-                      <span className="inline-flex items-center gap-1">
-                        <HardDrive className="h-3 w-3 text-blue-400" />
-                        {t.storage_path}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-[var(--color-text-secondary)]">{formatDate(t.created_at)}</td>
-                    <td className="px-6 py-4 text-right space-x-2">
-                      <button
-                        onClick={() => openEditModal(t)}
-                        className="p-2 rounded-xl neu-btn text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 transition-all"
-                        title="Edit / Rename Task"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (confirm(`Are you sure you want to delete task "${t.name}"?`)) {
-                            deleteMutation.mutate(t.id);
-                          }
-                        }}
-                        disabled={deleteMutation.isPending}
-                        className="p-2 rounded-xl neu-btn text-[var(--color-danger)] hover:bg-red-500/10 transition-all disabled:opacity-50"
-                        title="Delete Task"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {filteredTasks.map((t: AdminTaskItem) => {
+                  const count = accessCounts[t.id] || 0;
+                  return (
+                    <tr key={t.id} className="hover:bg-[var(--color-primary)]/5 transition-colors">
+                      <td className="px-6 py-4 font-bold flex items-center gap-3">
+                        <CheckSquare className="h-5 w-5 text-blue-500 shrink-0" />
+                        <span className="truncate max-w-xs">{t.name}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="inline-flex items-center gap-1.5 rounded-xl neu-pressed px-2.5 py-1 text-[11px] font-bold text-[var(--color-primary)]">
+                          <Users className="h-3.5 w-3.5 text-[var(--color-primary)]" />
+                          <span>{count} User{count === 1 ? '' : 's'}</span>
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-[var(--color-text-secondary)]">{t.owner_name}</td>
+                      <td className="px-6 py-4 font-mono text-[10px] text-[var(--color-text-tertiary)] max-w-xs truncate">
+                        <span className="inline-flex items-center gap-1">
+                          <HardDrive className="h-3 w-3 text-blue-400" />
+                          {t.storage_path}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-[var(--color-text-secondary)]">{formatDate(t.created_at)}</td>
+                      <td className="px-6 py-4 text-right space-x-2">
+                        <button
+                          onClick={() => openAccessModal(t)}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl neu-btn text-xs font-bold text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 transition-all cursor-pointer"
+                          title="Manage Task Access & User Assignments"
+                        >
+                          <UserPlus className="h-3.5 w-3.5" />
+                          <span>Manage Access</span>
+                        </button>
+                        <button
+                          onClick={() => openEditModal(t)}
+                          className="p-2 rounded-xl neu-btn text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 transition-all cursor-pointer"
+                          title="Edit / Rename Task"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (confirm(`Are you sure you want to delete task "${t.name}"?`)) {
+                              deleteMutation.mutate(t.id);
+                            }
+                          }}
+                          disabled={deleteMutation.isPending}
+                          className="p-2 rounded-xl neu-btn text-[var(--color-danger)] hover:bg-red-500/10 transition-all disabled:opacity-50 cursor-pointer"
+                          title="Delete Task"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         </div>
       )}
 
-      {/* Create Task Modal Dialog */}
+      {/* Create / Edit Task Modal Dialog */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-3xl neu-card p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in duration-200">
@@ -256,7 +359,7 @@ export default function AdminTasks() {
               </div>
               <button
                 onClick={closeModal}
-                className="p-1.5 rounded-full neu-circle text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]"
+                className="p-1.5 rounded-full neu-circle text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] cursor-pointer"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -289,14 +392,14 @@ export default function AdminTasks() {
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="rounded-xl neu-btn px-4 py-2 text-xs font-bold text-[var(--color-text-secondary)]"
+                  className="rounded-xl neu-btn px-4 py-2 text-xs font-bold text-[var(--color-text-secondary)] cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={createMutation.isPending || updateMutation.isPending}
-                  className="flex items-center gap-2 rounded-xl neu-btn-primary px-5 py-2 text-xs font-bold text-white shadow-md disabled:opacity-50"
+                  className="flex items-center gap-2 rounded-xl neu-btn-primary px-5 py-2 text-xs font-bold text-white shadow-md disabled:opacity-50 cursor-pointer"
                 >
                   {createMutation.isPending || updateMutation.isPending ? (
                     <>
@@ -309,6 +412,169 @@ export default function AdminTasks() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MANAGE TASK ACCESS MODAL DIALOG */}
+      {accessModalTask && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+          <div className="w-full max-w-lg rounded-3xl neu-card p-6 shadow-2xl space-y-6 animate-in fade-in zoom-in duration-200 max-h-[85vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-[var(--color-border-light)]/40 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl neu-pressed text-[var(--color-primary)]">
+                  <ShieldCheck className="h-5 w-5 text-[var(--color-primary)]" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-[var(--color-text-primary)]">
+                    Manage Access
+                  </h3>
+                  <p className="text-xs font-bold text-[var(--color-primary)] truncate max-w-xs">
+                    Task: {accessModalTask.name}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={closeAccessModal}
+                className="p-1.5 rounded-full neu-circle text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Assign User Form */}
+            <form onSubmit={handleAssignSubmit} className="rounded-2xl neu-card p-4 space-y-3">
+              <h4 className="text-xs font-bold text-[var(--color-text-primary)] uppercase tracking-wider">
+                Grant Task Access to User
+              </h4>
+              <div className="space-y-2">
+                <label className="block text-[11px] font-semibold text-[var(--color-text-secondary)]">
+                  Select User or Enter User ID (UUID)
+                </label>
+
+                {/* Dropdown Selection from system users */}
+                {adminUsers.length > 0 && (
+                  <select
+                    value={selectedUserId}
+                    onChange={(e) => {
+                      setSelectedUserId(e.target.value);
+                      if (assignError) setAssignError('');
+                    }}
+                    className="w-full rounded-xl neu-input px-3.5 py-2 text-xs font-semibold text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] mb-2"
+                  >
+                    <option value="">-- Select Existing User --</option>
+                    {adminUsers.map((u: AdminUserItem) => (
+                      <option key={u.id} value={u.id}>
+                        {u.full_name || u.username || 'User'} ({u.id})
+                      </option>
+                    ))}
+                  </select>
+                )}
+
+                {/* Manual User ID Input */}
+                <input
+                  type="text"
+                  value={selectedUserId}
+                  onChange={(e) => {
+                    setSelectedUserId(e.target.value);
+                    if (assignError) setAssignError('');
+                  }}
+                  placeholder="Or enter User ID (e.g. 12345678-1234-1234-1234-123456789abc)"
+                  className="w-full rounded-xl neu-input px-3.5 py-2 text-xs font-mono text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+                />
+
+                {assignError && (
+                  <p className="text-[11px] font-bold text-[var(--color-danger)] pt-1">
+                    {assignError}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex justify-end pt-1">
+                <button
+                  type="submit"
+                  disabled={assignMutation.isPending}
+                  className="flex items-center gap-1.5 rounded-xl neu-btn-primary px-4 py-2 text-xs font-bold text-white shadow-sm disabled:opacity-50 cursor-pointer"
+                >
+                  {assignMutation.isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <UserPlus className="h-3.5 w-3.5" />
+                  )}
+                  <span>Allow Access</span>
+                </button>
+              </div>
+            </form>
+
+            {/* Currently Assigned Users List */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold text-[var(--color-text-primary)] uppercase tracking-wider">
+                  Assigned Users ({accessList.length})
+                </h4>
+              </div>
+
+              {loadingAccessList ? (
+                <div className="flex h-24 items-center justify-center neu-card rounded-2xl">
+                  <Loader2 className="h-5 w-5 animate-spin text-[var(--color-primary)]" />
+                </div>
+              ) : accessList.length === 0 ? (
+                <div className="p-6 text-center neu-card rounded-2xl">
+                  <p className="text-xs font-semibold text-[var(--color-text-secondary)]">
+                    No specific user permissions assigned yet.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                  {accessList.map((item: TaskAccessItem) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between gap-3 p-3 rounded-2xl neu-card hover:bg-[var(--color-primary)]/5 transition-all"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <Users className="h-4 w-4 text-[var(--color-primary)] shrink-0" />
+                          <span className="text-xs font-extrabold text-[var(--color-text-primary)] truncate">
+                            {item.user_name}
+                          </span>
+                        </div>
+                        <p className="text-[10px] font-mono text-[var(--color-text-tertiary)] truncate mt-0.5">
+                          ID: {item.user_id}
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          if (confirm(`Revoke task access for user "${item.user_name}" (${item.user_id})?`)) {
+                            revokeMutation.mutate({
+                              taskId: accessModalTask.id,
+                              targetUserId: item.user_id,
+                            });
+                          }
+                        }}
+                        disabled={revokeMutation.isPending}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-xl neu-btn text-[11px] font-bold text-[var(--color-danger)] hover:bg-red-500/10 transition-all disabled:opacity-50 cursor-pointer shrink-0"
+                        title="Revoke Task Access"
+                      >
+                        <UserMinus className="h-3.5 w-3.5" />
+                        <span>Revoke</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-end pt-2 border-t border-[var(--color-border-light)]/40">
+              <button
+                onClick={closeAccessModal}
+                className="rounded-xl neu-btn px-4 py-2 text-xs font-bold text-[var(--color-text-primary)] cursor-pointer"
+              >
+                Done
+              </button>
+            </div>
           </div>
         </div>
       )}

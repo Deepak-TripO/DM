@@ -11,6 +11,8 @@ export interface TaskItem {
 }
 
 export async function getActiveTasks(): Promise<TaskItem[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+
   const { data, error } = await supabase
     .from('folders')
     .select('id, name, owner_id, created_at, updated_at')
@@ -18,13 +20,39 @@ export async function getActiveTasks(): Promise<TaskItem[]> {
     .order('name', { ascending: true });
 
   if (error) throw error;
-  const filtered = (data || []).filter(
+
+  const rawTasks = (data || []).filter(
     (item: any) => item.name.trim().toLowerCase() !== 'photos'
   );
-  return filtered as TaskItem[];
+
+  if (!user) return [];
+
+  // Check if current user is authorized admin
+  const { data: rpcAdmin } = await supabase.rpc('is_admin', { uid: user.id });
+  if (rpcAdmin === true) {
+    return rawTasks as TaskItem[];
+  }
+
+  // Non-admin user: Fetch task IDs explicitly assigned in task_access table
+  const { data: accessRows } = await supabase
+    .from('task_access')
+    .select('task_id')
+    .eq('user_id', user.id);
+
+  const assignedTaskIds = new Set((accessRows || []).map((a: any) => a.task_id));
+
+  // Filter: Normal users see only tasks owned by them OR assigned to their user ID
+  const allowedTasks = rawTasks.filter(
+    (t: any) => t.owner_id === user.id || assignedTaskIds.has(t.id)
+  );
+
+  return allowedTasks as TaskItem[];
 }
 
 export async function getTaskById(taskId: string): Promise<TaskItem | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
   const { data, error } = await supabase
     .from('folders')
     .select('id, name, owner_id, created_at, updated_at')
@@ -33,7 +61,32 @@ export async function getTaskById(taskId: string): Promise<TaskItem | null> {
     .maybeSingle();
 
   if (error || !data) return null;
-  return data as TaskItem;
+
+  // Check if user is authorized admin
+  const { data: rpcAdmin } = await supabase.rpc('is_admin', { uid: user.id });
+  if (rpcAdmin === true) {
+    return data as TaskItem;
+  }
+
+  // Owner check
+  if (data.owner_id === user.id) {
+    return data as TaskItem;
+  }
+
+  // Check task_access relationship for user ID
+  const { data: accessRow } = await supabase
+    .from('task_access')
+    .select('id')
+    .eq('task_id', taskId)
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (accessRow) {
+    return data as TaskItem;
+  }
+
+  // Access Denied: User is not authorized to access this task
+  return null;
 }
 
 export async function getTaskFiles(taskId: string): Promise<FileItem[]> {

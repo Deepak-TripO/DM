@@ -552,6 +552,123 @@ export async function updateAdminTask(taskId: string, name: string): Promise<voi
   if (error) throw error;
 }
 
+// 8. Task Access Control Methods
+export interface TaskAccessItem {
+  id: string;
+  task_id: string;
+  user_id: string;
+  user_email?: string;
+  user_name?: string;
+  granted_by: string;
+  created_at: string;
+}
+
+export async function getTaskAccessList(taskId: string): Promise<TaskAccessItem[]> {
+  try {
+    const [{ data: accessData, error }, profileMap] = await Promise.all([
+      supabase
+        .from('task_access')
+        .select('*')
+        .eq('task_id', taskId)
+        .order('created_at', { ascending: false }),
+      fetchProfilesMap(),
+    ]);
+
+    if (error) return [];
+
+    return (accessData || []).map((a: any) => ({
+      id: a.id,
+      task_id: a.task_id,
+      user_id: a.user_id,
+      user_name: profileMap.get(a.user_id) || 'System User',
+      granted_by: a.granted_by,
+      created_at: a.created_at,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+export async function assignTaskAccess(taskId: string, targetUserId: string, grantedByAdminId: string): Promise<TaskAccessItem> {
+  const cleanUserId = targetUserId.trim();
+  if (!cleanUserId) {
+    throw new Error('User ID cannot be empty');
+  }
+
+  // Validate UUID format
+  const isUUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(cleanUserId);
+  if (!isUUID) {
+    throw new Error('Invalid User ID format. User ID must be a valid UUID.');
+  }
+
+  // Validate that user exists in profiles table
+  const { data: profileData, error: profileErr } = await supabase
+    .from('profiles')
+    .select('id, full_name, username')
+    .eq('id', cleanUserId)
+    .maybeSingle();
+
+  if (profileErr || !profileData) {
+    throw new Error(`User ID "${cleanUserId}" does not exist in the database.`);
+  }
+
+  const { data, error } = await supabase
+    .from('task_access')
+    .insert({
+      task_id: taskId,
+      user_id: cleanUserId,
+      granted_by: grantedByAdminId,
+    })
+    .select('*')
+    .single();
+
+  if (error) {
+    if (error.code === '23505' || error.message.includes('unique') || error.message.includes('duplicate')) {
+      throw new Error('User already has access permission for this task.');
+    }
+    throw new Error(error.message || 'Failed to grant task access permission.');
+  }
+
+  return {
+    id: data.id,
+    task_id: data.task_id,
+    user_id: data.user_id,
+    user_name: profileData.full_name || profileData.username || 'System User',
+    granted_by: data.granted_by,
+    created_at: data.created_at,
+  };
+}
+
+export async function revokeTaskAccess(taskId: string, targetUserId: string): Promise<void> {
+  const { error } = await supabase
+    .from('task_access')
+    .delete()
+    .eq('task_id', taskId)
+    .eq('user_id', targetUserId);
+
+  if (error) throw error;
+}
+
+export async function getTaskAccessCountsMap(): Promise<Record<string, number>> {
+  try {
+    const { data, error } = await supabase
+      .from('task_access')
+      .select('task_id');
+
+    if (error || !data) return {};
+
+    const counts: Record<string, number> = {};
+    data.forEach((row: any) => {
+      if (row.task_id) {
+        counts[row.task_id] = (counts[row.task_id] || 0) + 1;
+      }
+    });
+    return counts;
+  } catch {
+    return {};
+  }
+}
+
 // Task Aliases & Service Methods
 export type AdminTaskItem = AdminFolderItem;
 export const getAdminTasks = getAdminFolders;
