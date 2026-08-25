@@ -103,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (!signUpErr && signUpData?.user) {
         try {
-          await supabase.from('admin_users').upsert({ user_id: signUpData.user.id, role: 'admin' });
+          await supabase.rpc('is_admin', { uid: signUpData.user.id });
         } catch {
           // Ignore RLS check
         }
@@ -120,7 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Ensure admin role entry exists if logged in as admin@dm.com
     if (!error && data?.user && email.trim().toLowerCase() === 'admin@dm.com') {
       try {
-        await supabase.from('admin_users').upsert({ user_id: data.user.id, role: 'admin' });
+        await supabase.rpc('is_admin', { uid: data.user.id });
       } catch {
         // Ignore RLS check
       }

@@ -21,8 +21,8 @@ export function useAdmin() {
       // Primary security check: RPC is_admin function (SECURITY DEFINER)
       const { data: rpcAdmin, error: rpcError } = await supabase.rpc('is_admin', { uid: user.id });
 
-      if (!rpcError && typeof rpcAdmin === 'boolean' && rpcAdmin === true) {
-        setIsAdmin(true);
+      if (!rpcError && typeof rpcAdmin === 'boolean') {
+        setIsAdmin(rpcAdmin);
         setLoading(false);
         return;
       }

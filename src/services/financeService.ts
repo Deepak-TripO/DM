@@ -207,11 +207,18 @@ function saveMemoryEntries() {
   } catch {}
 }
 
+function isUUID(val: string): boolean {
+  return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(val);
+}
+
 export async function getFinanceEntries(
   taskId: string,
   search?: string,
   categoryFilter?: string
 ): Promise<FinanceEntry[]> {
+  if (!isUUID(taskId)) {
+    return filterMemoryEntries(taskId, search, categoryFilter);
+  }
   try {
     let query = supabase
       .from('finance_entries')
@@ -301,6 +308,12 @@ export async function createFinanceEntry(
     created_at: now,
     updated_at: now,
   };
+
+  if (!isUUID(entry.task_id)) {
+    memoryFinanceEntries.unshift(newRecord);
+    saveMemoryEntries();
+    return newRecord;
+  }
 
   try {
     const { data, error } = await supabase
