@@ -173,30 +173,7 @@ function loadStoredFinanceEntries(): FinanceEntry[] {
     const stored = localStorage.getItem(ENTRIES_STORAGE_KEY);
     if (stored) return JSON.parse(stored);
   } catch {}
-  return [
-    {
-      id: 'fin-1',
-      task_id: 'finance-default',
-      date: new Date().toISOString().split('T')[0],
-      item: 'Flight Booking',
-      category: 'Travel',
-      description: 'Round trip ticket for client meeting',
-      person: 'John Doe',
-      amount: 500,
-      created_at: new Date().toISOString(),
-    },
-    {
-      id: 'fin-2',
-      task_id: 'finance-default',
-      date: new Date().toISOString().split('T')[0],
-      item: 'Team Dinner',
-      category: 'Food',
-      description: 'Dinner with project stakeholders',
-      person: 'David Smith',
-      amount: 750,
-      created_at: new Date().toISOString(),
-    },
-  ];
+  return [];
 }
 
 let memoryFinanceEntries: FinanceEntry[] = loadStoredFinanceEntries();
@@ -216,15 +193,15 @@ export async function getFinanceEntries(
   search?: string,
   categoryFilter?: string
 ): Promise<FinanceEntry[]> {
-  if (!isUUID(taskId)) {
-    return filterMemoryEntries(taskId, search, categoryFilter);
-  }
   try {
     let query = supabase
       .from('finance_entries')
       .select('*')
-      .eq('task_id', taskId)
       .order('date', { ascending: false });
+
+    if (isUUID(taskId)) {
+      query = query.eq('task_id', taskId);
+    }
 
     if (categoryFilter && categoryFilter !== 'All') {
       query = query.eq('category', categoryFilter);
@@ -239,7 +216,6 @@ export async function getFinanceEntries(
     const { data, error } = await query;
 
     if (error || !data) {
-      // Return memory fallback if database table not yet migrated
       return filterMemoryEntries(taskId, search, categoryFilter);
     }
 
@@ -267,8 +243,11 @@ function filterMemoryEntries(
     .map((e) => ({
       ...e,
       item: mapLegacyItemName(e.item),
-    }))
-    .filter((e) => e.task_id === taskId || e.task_id === 'finance-default');
+    }));
+
+  if (isUUID(taskId)) {
+    list = list.filter((e) => e.task_id === taskId);
+  }
 
   if (categoryFilter && categoryFilter !== 'All') {
     list = list.filter((e) => e.category === categoryFilter);
@@ -296,10 +275,12 @@ export async function createFinanceEntry(
   const now = new Date().toISOString();
   const { data: { user } } = await supabase.auth.getUser();
   const createdBy = entry.created_by || user?.id || 'anonymous';
+  const targetTaskId = isUUID(entry.task_id) ? entry.task_id : null;
 
   const newRecord: FinanceEntry = {
     ...entry,
     id: newId,
+    task_id: targetTaskId || entry.task_id,
     amount: Number(entry.amount),
     elumugam_amount: entry.elumugam_amount != null ? Number(entry.elumugam_amount) : null,
     deepak_amount: entry.deepak_amount != null ? Number(entry.deepak_amount) : null,
@@ -309,18 +290,12 @@ export async function createFinanceEntry(
     updated_at: now,
   };
 
-  if (!isUUID(entry.task_id)) {
-    memoryFinanceEntries.unshift(newRecord);
-    saveMemoryEntries();
-    return newRecord;
-  }
-
   try {
     const { data, error } = await supabase
       .from('finance_entries')
       .insert({
         id: newId,
-        task_id: entry.task_id,
+        task_id: targetTaskId,
         date: entry.date,
         item: entry.item,
         category: entry.category,
