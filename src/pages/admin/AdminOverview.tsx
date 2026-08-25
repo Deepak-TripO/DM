@@ -96,7 +96,7 @@ export default function AdminOverview() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
           <h1 className="text-2xl font-extrabold text-[var(--color-text-primary)]">System Overview</h1>
-          <p className="text-xs font-semibold text-[var(--color-text-secondary)]">Real-time SaaS administrative metrics and performance</p>
+          <p className="hidden md:block text-xs font-semibold text-[var(--color-text-secondary)]">Real-time SaaS administrative metrics and performance</p>
         </div>
       </div>
 

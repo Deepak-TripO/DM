@@ -118,7 +118,7 @@ export default function AdminUsers() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-extrabold text-[var(--color-text-primary)]">User Management</h1>
-        <p className="text-xs font-semibold text-[var(--color-text-secondary)]">Inspect accounts, manage storage quotas, and adjust user permissions</p>
+        <p className="hidden md:block text-xs font-semibold text-[var(--color-text-secondary)]">Inspect accounts, manage storage quotas, and adjust user permissions</p>
       </div>
 
       {/* Search, Filter & Sort Bar */}

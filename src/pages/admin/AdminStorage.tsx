@@ -102,7 +102,7 @@ export default function AdminStorage() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-extrabold text-[var(--color-text-primary)]">Storage Management</h1>
-        <p className="text-xs font-semibold text-[var(--color-text-secondary)]">Global default quota controls, total system capacity, and individual user storage limits</p>
+        <p className="hidden md:block text-xs font-semibold text-[var(--color-text-secondary)]">Global default quota controls, total system capacity, and individual user storage limits</p>
       </div>
 
       {/* 5 Core Metric Cards */}

@@ -41,7 +41,7 @@ export default function AdminShares() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-extrabold text-[var(--color-text-primary)]">Shared Links Administration</h1>
-        <p className="text-xs font-semibold text-[var(--color-text-secondary)]">Manage active and revoked public share links, password protections, and expirations</p>
+        <p className="hidden md:block text-xs font-semibold text-[var(--color-text-secondary)]">Manage active and revoked public share links, password protections, and expirations</p>
       </div>
 
       {isLoading ? (

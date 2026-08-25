@@ -45,7 +45,7 @@ export default function AdminActivity() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-extrabold text-[var(--color-text-primary)]">System Activity Log</h1>
-        <p className="text-xs font-semibold text-[var(--color-text-secondary)]">Audit trail of user actions, file modifications, share creations, and administrative updates</p>
+        <p className="hidden md:block text-xs font-semibold text-[var(--color-text-secondary)]">Audit trail of user actions, file modifications, share creations, and administrative updates</p>
       </div>
 
       {/* Search & Filter Bar */}

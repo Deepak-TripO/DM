@@ -218,7 +218,7 @@ export default function AdminTasks() {
           </div>
           <div>
             <h1 className="text-xl font-extrabold text-[var(--color-text-primary)]">Task</h1>
-            <p className="text-xs font-semibold text-[var(--color-text-secondary)]">
+            <p className="hidden md:block text-xs font-semibold text-[var(--color-text-secondary)]">
               Manage administrative system tasks, user assignments, and access control
             </p>
           </div>

@@ -175,7 +175,7 @@ export default function AdminCategories() {
             </div>
             <h1 className="text-2xl font-extrabold text-[var(--color-text-primary)]">Category Management</h1>
           </div>
-          <p className="mt-1 text-xs font-semibold text-[var(--color-text-secondary)]">
+          <p className="hidden md:block mt-1 text-xs font-semibold text-[var(--color-text-secondary)]">
             Manage file classification categories and application taxonomy
           </p>
         </div>

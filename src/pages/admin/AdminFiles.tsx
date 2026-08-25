@@ -35,7 +35,7 @@ export default function AdminFiles() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-extrabold text-[var(--color-text-primary)]">System File Management</h1>
-        <p className="text-xs font-semibold text-[var(--color-text-secondary)]">Administrative overview of stored files across all users, type breakdown, and system-wide storage distribution</p>
+        <p className="hidden md:block text-xs font-semibold text-[var(--color-text-secondary)]">Administrative overview of stored files across all users, type breakdown, and system-wide storage distribution</p>
       </div>
 
       {isLoading ? (
