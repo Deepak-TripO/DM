@@ -2,14 +2,45 @@ import { supabase } from '@/lib/supabase/client';
 import type { StorageQuota, Profile } from '@/types';
 
 export async function getProfile(userId: string): Promise<Profile | null> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .maybeSingle();
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
 
-  if (error || !data) return null;
-  return data as Profile;
+    if (!error && data) {
+      return data as Profile;
+    }
+  } catch {
+    // Ignore fetch error
+  }
+
+  // Auto-create default profile if missing to prevent 406 / null crashes
+  try {
+    const { data: userData } = await supabase.auth.getUser();
+    const defaultProfile = {
+      id: userId,
+      full_name: userData.user?.user_metadata?.full_name || 'User',
+      username: userData.user?.email?.split('@')[0] || 'user',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data: newProfile, error: insertErr } = await supabase
+      .from('profiles')
+      .upsert(defaultProfile)
+      .select()
+      .maybeSingle();
+
+    if (!insertErr && newProfile) {
+      return newProfile as Profile;
+    }
+  } catch {
+    // Ignore upsert fallback error
+  }
+
+  return null;
 }
 
 export async function updateProfile(
@@ -21,9 +52,9 @@ export async function updateProfile(
     .update({ ...updates, updated_at: new Date().toISOString() })
     .eq('id', userId)
     .select()
-    .single();
+    .maybeSingle();
 
-  if (error) throw error;
+  if (error || !data) throw error || new Error('Failed to update profile');
   return data as Profile;
 }
 

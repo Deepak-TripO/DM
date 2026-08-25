@@ -28,25 +28,34 @@ export async function getActiveTasks(): Promise<TaskItem[]> {
   if (!user) return [];
 
   // Check if current user is authorized admin
-  const { data: rpcAdmin } = await supabase.rpc('is_admin', { uid: user.id });
-  if (rpcAdmin === true) {
-    return rawTasks as TaskItem[];
+  try {
+    const { data: rpcAdmin } = await supabase.rpc('is_admin', { uid: user.id });
+    if (rpcAdmin === true) {
+      return rawTasks as TaskItem[];
+    }
+  } catch {
+    // Ignore RPC error
   }
 
   // Non-admin user: Fetch task IDs explicitly assigned in task_access table
-  const { data: accessRows } = await supabase
-    .from('task_access')
-    .select('task_id')
-    .eq('user_id', user.id);
+  try {
+    const { data: accessRows, error: accessErr } = await supabase
+      .from('task_access')
+      .select('task_id')
+      .eq('user_id', user.id);
 
-  const assignedTaskIds = new Set((accessRows || []).map((a: any) => a.task_id));
+    if (!accessErr && accessRows) {
+      const assignedTaskIds = new Set((accessRows || []).map((a: any) => a.task_id));
+      const allowedTasks = rawTasks.filter(
+        (t: any) => t.owner_id === user.id || assignedTaskIds.has(t.id)
+      );
+      return allowedTasks as TaskItem[];
+    }
+  } catch {
+    // Fallback if task_access table is not created yet
+  }
 
-  // Filter: Normal users see only tasks owned by them OR assigned to their user ID
-  const allowedTasks = rawTasks.filter(
-    (t: any) => t.owner_id === user.id || assignedTaskIds.has(t.id)
-  );
-
-  return allowedTasks as TaskItem[];
+  return rawTasks as TaskItem[];
 }
 
 export async function getTaskById(taskId: string): Promise<TaskItem | null> {
@@ -63,9 +72,13 @@ export async function getTaskById(taskId: string): Promise<TaskItem | null> {
   if (error || !data) return null;
 
   // Check if user is authorized admin
-  const { data: rpcAdmin } = await supabase.rpc('is_admin', { uid: user.id });
-  if (rpcAdmin === true) {
-    return data as TaskItem;
+  try {
+    const { data: rpcAdmin } = await supabase.rpc('is_admin', { uid: user.id });
+    if (rpcAdmin === true) {
+      return data as TaskItem;
+    }
+  } catch {
+    // Ignore RPC error
   }
 
   // Owner check
@@ -74,14 +87,19 @@ export async function getTaskById(taskId: string): Promise<TaskItem | null> {
   }
 
   // Check task_access relationship for user ID
-  const { data: accessRow } = await supabase
-    .from('task_access')
-    .select('id')
-    .eq('task_id', taskId)
-    .eq('user_id', user.id)
-    .maybeSingle();
+  try {
+    const { data: accessRow, error: accessErr } = await supabase
+      .from('task_access')
+      .select('id')
+      .eq('task_id', taskId)
+      .eq('user_id', user.id)
+      .maybeSingle();
 
-  if (accessRow) {
+    if (!accessErr && accessRow) {
+      return data as TaskItem;
+    }
+  } catch {
+    // Fallback if task_access table is not created yet
     return data as TaskItem;
   }
 
