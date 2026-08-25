@@ -43,7 +43,7 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
   if (!open) return null;
 
   return (
-    <aside className="fixed left-0 top-0 bottom-0 z-30 flex h-screen w-64 flex-col neu-flat bg-[var(--neu-bg)] border-r border-[var(--color-border-light)]/40 shadow-md transition-all duration-200">
+    <aside className="fixed left-0 top-0 bottom-0 z-30 hidden md:flex h-screen w-64 flex-col neu-flat bg-[var(--neu-bg)] border-r border-[var(--color-border-light)]/40 shadow-md transition-all duration-200">
       {/* Header with Clickable DM Product Logo */}
       <div className="flex h-[var(--header-height)] items-center px-5 border-b border-[var(--color-border-light)]/40">
         <button

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Outlet, useOutletContext, useLocation } from 'react-router-dom';
 import { Sidebar } from '@/components/Sidebar';
+import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { cn } from '@/lib/utils';
 
 export interface AppLayoutContext {
@@ -31,10 +32,12 @@ export function AppLayout() {
           hasSidebar && sidebarOpen ? 'md:ml-64' : 'ml-0'
         )}
       >
-        <main className="flex-1 min-w-0">
+        <main className="flex-1 min-w-0 pb-20 md:pb-0">
           <Outlet context={{ sidebarOpen: hasSidebar && sidebarOpen, toggleSidebar, hasSidebar }} />
         </main>
       </div>
+
+      <MobileBottomNav />
     </div>
   );
 }

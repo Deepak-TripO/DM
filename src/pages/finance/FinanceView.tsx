@@ -39,6 +39,7 @@ import {
   FileText,
   Image as ImageIcon,
   FileSpreadsheet,
+  MoreVertical,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -57,6 +58,7 @@ export function FinanceView({ task }: FinanceViewProps) {
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<FinanceEntry | null>(null);
   const [deletingEntry, setDeletingEntry] = useState<FinanceEntry | null>(null);
+  const [financeMoreOpen, setFinanceMoreOpen] = useState(false);
 
   // Category State & Modals
   const [addCategoryModalOpen, setAddCategoryModalOpen] = useState(false);
@@ -466,12 +468,53 @@ export function FinanceView({ task }: FinanceViewProps) {
     <div className="w-full space-y-6">
       {/* Header & Page Title */}
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-primary)]">Finance</h1>
-            <p className="text-xs font-semibold text-[var(--color-text-secondary)] mt-0.5">Finance Updated</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-primary)]">Finance</h1>
+              <p className="hidden md:block text-xs font-semibold text-[var(--color-text-secondary)] mt-0.5">Finance Updated</p>
+            </div>
+
+            {/* Mobile Finance More Dropdown Button */}
+            <div className="relative md:hidden">
+              <button
+                type="button"
+                onClick={() => setFinanceMoreOpen((prev) => !prev)}
+                className="flex items-center gap-1.5 rounded-xl neu-btn px-3 py-1.5 text-xs font-bold text-[var(--color-text-primary)] transition-all cursor-pointer"
+              >
+                <span>More</span>
+                <MoreVertical className="h-4 w-4 text-[var(--color-primary)]" />
+              </button>
+
+              {financeMoreOpen && (
+                <div className="absolute right-0 top-full mt-2 w-44 z-50 rounded-2xl neu-flat bg-[var(--neu-bg)] border border-[var(--color-border-light)]/40 p-2 shadow-xl animate-in fade-in zoom-in-95 duration-100">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFinanceMoreOpen(false);
+                      setExpenseCardOpen((prev) => !prev);
+                    }}
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-[var(--color-primary)] hover:neu-pressed"
+                  >
+                    <Receipt className="h-4 w-4 text-[var(--color-primary)]" />
+                    <span>Expense</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFinanceMoreOpen(false);
+                      setExportModalOpen(true);
+                    }}
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-[var(--color-text-primary)] hover:neu-pressed"
+                  >
+                    <Download className="h-4 w-4 text-[var(--color-primary)]" />
+                    <span>Export</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
-        {/* Top Controls: Expense Option, Total Option, Search, Neumorphism Category Filter, Add Entry */}
         {/* Top Controls: 1. Search Bar, 2. Total Option, 3. Expense Option, 4. Neumorphism Category Filter, 5. Add Entry */}
         <div className="flex flex-wrap items-center gap-3">
           {/* 1. Search Bar */}
@@ -492,12 +535,12 @@ export function FinanceView({ task }: FinanceViewProps) {
             <span className="text-sm font-black text-[var(--color-primary)]">{formatCurrency(expenseOverallTotal)}</span>
           </div>
 
-          {/* 3. Expense Option Button */}
+          {/* 3. Expense Option Button (Desktop view / existing) */}
           <button
             type="button"
             onClick={() => setExpenseCardOpen((prev) => !prev)}
             className={cn(
-              'flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition-all cursor-pointer shadow-sm',
+              'hidden md:flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition-all cursor-pointer shadow-sm',
               expenseCardOpen
                 ? 'neu-pressed text-[var(--color-primary)] font-black border border-[var(--color-primary)]/30'
                 : 'neu-btn text-[var(--color-text-primary)] hover:scale-[1.02]'
@@ -544,11 +587,11 @@ export function FinanceView({ task }: FinanceViewProps) {
             <span>Add Entry</span>
           </button>
 
-          {/* Export Button */}
+          {/* Export Button (Desktop view / existing) */}
           <button
             type="button"
             onClick={() => setExportModalOpen(true)}
-            className="flex items-center gap-1.5 rounded-xl neu-btn px-4 py-2 text-xs font-bold text-[var(--color-text-primary)] transition-all shadow-md hover:scale-[1.02] cursor-pointer"
+            className="hidden md:flex items-center gap-1.5 rounded-xl neu-btn px-4 py-2 text-xs font-bold text-[var(--color-text-primary)] transition-all shadow-md hover:scale-[1.02] cursor-pointer"
             title="Export Finance Data"
           >
             <Download className="h-4 w-4 text-[var(--color-primary)]" />
