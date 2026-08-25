@@ -287,6 +287,8 @@ export async function createFinanceEntry(
 ): Promise<FinanceEntry> {
   const newId = crypto.randomUUID();
   const now = new Date().toISOString();
+  const { data: { user } } = await supabase.auth.getUser();
+  const createdBy = entry.created_by || user?.id || 'anonymous';
 
   const newRecord: FinanceEntry = {
     ...entry,
@@ -295,6 +297,7 @@ export async function createFinanceEntry(
     elumugam_amount: entry.elumugam_amount != null ? Number(entry.elumugam_amount) : null,
     deepak_amount: entry.deepak_amount != null ? Number(entry.deepak_amount) : null,
     is_deleted: false,
+    created_by: createdBy,
     created_at: now,
     updated_at: now,
   };
@@ -314,7 +317,7 @@ export async function createFinanceEntry(
         elumugam_amount: entry.elumugam_amount,
         deepak_amount: entry.deepak_amount,
         is_deleted: false,
-        created_by: entry.created_by,
+        created_by: createdBy,
       })
       .select('*')
       .single();
@@ -461,4 +464,21 @@ export async function permanentDeleteFinanceEntry(id: string): Promise<void> {
     memoryFinanceEntries = memoryFinanceEntries.filter((e) => e.id !== id);
     saveMemoryEntries();
   }
+}
+
+export function subscribeToFinanceChange(onUpdate: () => void) {
+  const channel = supabase
+    .channel('global-finance-changes')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'finance_entries' },
+      () => {
+        onUpdate();
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
 }

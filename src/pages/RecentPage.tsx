@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/features/auth/AuthProvider';
-import { useQuery } from '@tanstack/react-query';
-import { getRecentItems, type UnifiedRecentItem } from '@/services/fileService';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { getRecentItems, subscribeToFilesChange, type UnifiedRecentItem } from '@/services/fileService';
+import { subscribeToFinanceChange } from '@/services/financeService';
 import { Header } from '@/components/Header';
 import { EmptyState } from '@/components/EmptyState';
 import { FileCardSkeleton } from '@/components/LoadingSkeleton';
@@ -15,6 +16,7 @@ import type { FileItem } from '@/types';
 export default function RecentPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { sidebarOpen, toggleSidebar } = useAppLayout();
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
 
@@ -23,6 +25,19 @@ export default function RecentPage() {
     queryFn: () => getRecentItems(user!.id),
     enabled: !!user,
   });
+
+  useEffect(() => {
+    const unsubFiles = subscribeToFilesChange(() => {
+      queryClient.invalidateQueries({ queryKey: ['recentItems'] });
+    });
+    const unsubFinance = subscribeToFinanceChange(() => {
+      queryClient.invalidateQueries({ queryKey: ['recentItems'] });
+    });
+    return () => {
+      unsubFiles();
+      unsubFinance();
+    };
+  }, [queryClient]);
 
   const handleItemClick = (item: UnifiedRecentItem) => {
     if (item.itemType === 'finance') {

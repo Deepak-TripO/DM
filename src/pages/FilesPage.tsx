@@ -1,9 +1,9 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useSearchParams, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { useAdmin } from '@/hooks/useAdmin';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getFiles, renameFile, toggleStarFile, softDeleteFile, getSignedUrl } from '@/services/fileService';
+import { getFiles, renameFile, toggleStarFile, softDeleteFile, getSignedUrl, subscribeToFilesChange } from '@/services/fileService';
 import { getFolders, createFolder, renameFolder, toggleStarFolder, softDeleteFolder, getFolderBreadcrumbs, getFolderById } from '@/services/folderService';
 import { Header } from '@/components/Header';
 import { EmptyState } from '@/components/EmptyState';
@@ -101,6 +101,13 @@ export default function FilesPage() {
   });
 
   const previewFile = previewFileId ? files.find((f) => f.id === previewFileId) : null;
+
+  useEffect(() => {
+    const unsubscribe = subscribeToFilesChange(() => {
+      queryClient.invalidateQueries({ queryKey: ['files'] });
+    });
+    return () => unsubscribe();
+  }, [queryClient]);
 
   const createFolderMutation = useMutation({
     mutationFn: () => createFolder(user!.id, newFolderName.trim(), folderId),
@@ -530,25 +537,32 @@ export default function FilesPage() {
             className="fixed z-50 w-52 rounded-2xl neu-dropdown p-2 shadow-2xl"
             style={{ left: Math.min(menuPos.x, window.innerWidth - 220), top: Math.min(menuPos.y, window.innerHeight - 300) }}
           >
-            {(activeMenu.type === 'file'
+            {((activeMenu.item as any).owner_id === user?.id || isAdmin
+              ? activeMenu.type === 'file'
+                ? [
+                    { action: 'preview', icon: Eye, label: 'Preview' },
+                    { action: 'download', icon: Download, label: 'Download' },
+                    { action: 'share', icon: Share2, label: 'Share' },
+                    { action: 'rename', icon: Pencil, label: 'Rename' },
+                    { action: 'star', icon: activeMenu.item.is_starred ? StarOff : Star, label: activeMenu.item.is_starred ? 'Unstar' : 'Star' },
+                    { action: 'delete', icon: Trash2, label: 'Move to trash', danger: true },
+                  ]
+                : [
+                    { action: 'open', icon: ExternalLink, label: 'Open' },
+                    { action: 'share', icon: Share2, label: 'Share' },
+                    { action: 'rename', icon: Pencil, label: 'Rename' },
+                    { action: 'star', icon: activeMenu.item.is_starred ? StarOff : Star, label: activeMenu.item.is_starred ? 'Unstar' : 'Star' },
+                    { action: 'delete', icon: Trash2, label: 'Move to trash', danger: true },
+                  ]
+              : activeMenu.type === 'file'
               ? [
                   { action: 'preview', icon: Eye, label: 'Preview' },
                   { action: 'download', icon: Download, label: 'Download' },
                   { action: 'share', icon: Share2, label: 'Share' },
-                  { action: 'rename', icon: Pencil, label: 'Rename' },
-                  { action: 'star', icon: activeMenu.item.is_starred ? StarOff : Star, label: activeMenu.item.is_starred ? 'Unstar' : 'Star' },
-                  { action: 'delete', icon: Trash2, label: 'Move to trash', danger: true },
-                ]
-              : isAdmin
-              ? [
-                  { action: 'open', icon: ExternalLink, label: 'Open' },
-                  { action: 'share', icon: Share2, label: 'Share' },
-                  { action: 'rename', icon: Pencil, label: 'Rename' },
-                  { action: 'star', icon: activeMenu.item.is_starred ? StarOff : Star, label: activeMenu.item.is_starred ? 'Unstar' : 'Star' },
-                  { action: 'delete', icon: Trash2, label: 'Move to trash', danger: true },
                 ]
               : [
                   { action: 'open', icon: ExternalLink, label: 'Open' },
+                  { action: 'share', icon: Share2, label: 'Share' },
                 ]
             ).map(({ action, icon: Icon, label, danger }: any) => (
               <button

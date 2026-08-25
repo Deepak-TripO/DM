@@ -12,10 +12,12 @@ import {
   getFinanceItems,
   addFinanceItem,
   deleteFinanceItem,
+  subscribeToFinanceChange,
 } from '@/services/financeService';
 import type { FinanceEntry } from '@/services/financeService';
 import type { TaskItem } from '@/services/taskService';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { useAdmin } from '@/hooks/useAdmin';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { cn } from '@/lib/utils';
 import {
@@ -46,6 +48,7 @@ interface FinanceViewProps {
 
 export function FinanceView({ task }: FinanceViewProps) {
   const { user } = useAuth();
+  const { isAdmin } = useAdmin();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -100,6 +103,13 @@ export function FinanceView({ task }: FinanceViewProps) {
       setFormData((prev) => ({ ...prev, item: '' }));
     }
   }, [formData.category, categoryItems]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToFinanceChange(() => {
+      queryClient.invalidateQueries({ queryKey: ['financeEntries'] });
+    });
+    return () => unsubscribe();
+  }, [queryClient]);
 
   // Category Mutations
   const addCategoryMutation = useMutation({
@@ -645,27 +655,33 @@ export function FinanceView({ task }: FinanceViewProps) {
                       {formatCurrency(Number(entry.amount))}
                     </td>
                     <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                      <div className="flex items-center justify-center gap-1.5">
-                        {/* Edit Button: Green */}
-                        <button
-                          onClick={() => handleOpenEdit(entry)}
-                          className="rounded-lg p-1.5 neu-btn text-green-600 hover:text-green-700 hover:bg-green-500/10 transition-colors"
-                          aria-label="Edit entry"
-                          title="Edit entry"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
+                      {(!entry.created_by || entry.created_by === user?.id || isAdmin) ? (
+                        <div className="flex items-center justify-center gap-1.5">
+                          {/* Edit Button: Green */}
+                          <button
+                            onClick={() => handleOpenEdit(entry)}
+                            className="rounded-lg p-1.5 neu-btn text-green-600 hover:text-green-700 hover:bg-green-500/10 transition-colors"
+                            aria-label="Edit entry"
+                            title="Edit entry"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
 
-                        {/* Delete Button: Red */}
-                        <button
-                          onClick={() => setDeletingEntry(entry)}
-                          className="rounded-lg p-1.5 neu-btn text-red-500 hover:text-red-600 hover:bg-red-500/10 transition-colors"
-                          aria-label="Delete entry"
-                          title="Delete entry"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
+                          {/* Delete Button: Red */}
+                          <button
+                            onClick={() => setDeletingEntry(entry)}
+                            className="rounded-lg p-1.5 neu-btn text-red-500 hover:text-red-600 hover:bg-red-500/10 transition-colors"
+                            aria-label="Delete entry"
+                            title="Delete entry"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-[10px] font-extrabold text-[var(--color-text-tertiary)] uppercase tracking-wider">
+                          View Only
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))}

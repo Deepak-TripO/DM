@@ -66,7 +66,7 @@ export async function uploadFile(
 }
 
 export async function getFiles(
-  userId: string,
+  _userId: string,
   folderId: string | null,
   options?: {
     sortField?: string;
@@ -77,8 +77,7 @@ export async function getFiles(
 ): Promise<FileItem[]> {
   let query = supabase
     .from('files')
-    .select('*')
-    .eq('owner_id', userId)
+    .select('*, owner:profiles(*)')
     .is('deleted_at', null);
 
   if (folderId) {
@@ -145,17 +144,16 @@ export interface UnifiedRecentItem {
   financeEntry?: any;
 }
 
-export async function getRecentItems(userId: string, limit = 50): Promise<UnifiedRecentItem[]> {
-  // Fetch files
+export async function getRecentItems(_userId: string, limit = 50): Promise<UnifiedRecentItem[]> {
+  // Fetch global files created by any user
   const { data: filesData } = await supabase
     .from('files')
-    .select('*')
-    .eq('owner_id', userId)
+    .select('*, owner:profiles(full_name, email)')
     .is('deleted_at', null)
     .order('updated_at', { ascending: false })
     .limit(limit);
 
-  // Fetch finance entries
+  // Fetch global finance entries
   const { data: financeData } = await supabase
     .from('finance_entries')
     .select('*')
@@ -409,4 +407,21 @@ export async function searchFiles(userId: string, query: string): Promise<FileIt
 
   if (error) throw error;
   return (data || []) as FileItem[];
+}
+
+export function subscribeToFilesChange(onUpdate: () => void) {
+  const channel = supabase
+    .channel('global-files-changes')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'files' },
+      () => {
+        onUpdate();
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
 }
