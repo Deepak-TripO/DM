@@ -1,16 +1,20 @@
 import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { useAdmin } from '@/hooks/useAdmin';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getProfile, updateProfile, uploadAvatar, getStorageQuota } from '@/services/profileService';
 import { Header } from '@/components/Header';
 import { ProfileSkeleton } from '@/components/LoadingSkeleton';
 import { formatBytes, formatDate } from '@/utils';
-import { Camera, Loader2, HardDrive, User, Calendar, Mail, Key } from 'lucide-react';
+import { Camera, Loader2, HardDrive, User, Calendar, Mail, Key, ShieldCheck, LogOut } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAppLayout } from '@/layouts/AppLayout';
 
 export default function ProfilePage() {
-  const { user, updatePassword, updateEmail } = useAuth();
+  const { user, signOut, updatePassword, updateEmail } = useAuth();
+  const { isAdmin } = useAdmin();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { sidebarOpen, toggleSidebar } = useAppLayout();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -119,7 +123,12 @@ export default function ProfilePage() {
   const usedPercent = quota ? Math.min((quota.used_bytes / quota.quota_bytes) * 100, 100) : 0;
 
   if (loadingProfile) {
-    return <div className="flex flex-col"><Header title="Profile" onLogoClick={toggleSidebar} sidebarOpen={sidebarOpen} /><ProfileSkeleton /></div>;
+    return (
+      <div className="flex flex-col">
+        <Header title="Profile" onLogoClick={toggleSidebar} sidebarOpen={sidebarOpen} />
+        <ProfileSkeleton />
+      </div>
+    );
   }
 
   return (
@@ -147,9 +156,28 @@ export default function ProfilePage() {
           </div>
           <div>
             <h2 className="text-xl font-extrabold text-[var(--color-text-primary)]">{profile?.full_name || 'User'}</h2>
-            <p className="text-xs font-semibold text-[var(--color-text-tertiary)]">{user?.email}</p>
+            {/* Account Email — Desktop view ONLY (hidden on mobile view) */}
+            <p className="hidden md:block text-xs font-semibold text-[var(--color-text-tertiary)]">{user?.email}</p>
           </div>
         </div>
+
+        {/* Admin Dashboard Access Button — Rendered ONLY if user is an authorized admin */}
+        {isAdmin && (
+          <div className="rounded-3xl neu-card p-5">
+            <button
+              onClick={() => navigate('/admin')}
+              className="flex w-full items-center justify-between gap-3 rounded-2xl neu-btn p-3.5 text-sm font-bold text-[var(--color-primary)] hover:scale-[1.01] transition-all cursor-pointer"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl neu-circle text-[var(--color-primary)]">
+                  <ShieldCheck className="h-5 w-5 text-[var(--color-primary)]" />
+                </div>
+                <span>Admin Dashboard</span>
+              </div>
+              <span className="text-xs font-extrabold">&rarr;</span>
+            </button>
+          </div>
+        )}
 
         {/* Profile fields */}
         <div className="space-y-4 rounded-3xl neu-card p-6">
@@ -161,7 +189,9 @@ export default function ProfilePage() {
               className="w-full rounded-xl neu-input px-3.5 py-2.5 text-sm text-[var(--color-text-primary)]"
             />
           </div>
-          <div>
+
+          {/* Username — Desktop View ONLY (hidden on mobile view) */}
+          <div className="hidden md:block">
             <label className="mb-1.5 block text-xs font-bold text-[var(--color-text-primary)] uppercase tracking-wider">Username</label>
             <input
               value={username}
@@ -169,7 +199,9 @@ export default function ProfilePage() {
               className="w-full rounded-xl neu-input px-3.5 py-2.5 text-sm text-[var(--color-text-primary)]"
             />
           </div>
-          <div>
+
+          {/* Bio — Desktop View ONLY (hidden on mobile view) */}
+          <div className="hidden md:block">
             <label className="mb-1.5 block text-xs font-bold text-[var(--color-text-primary)] uppercase tracking-wider">Bio</label>
             <textarea
               value={bio}
@@ -215,8 +247,8 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* Admin ID / Login Email */}
-        <div className="rounded-3xl neu-card p-6">
+        {/* Account Email — Desktop View ONLY (hidden on mobile view) */}
+        <div className="hidden md:block rounded-3xl neu-card p-6">
           <div className="mb-4 flex items-center gap-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl neu-circle text-[var(--color-primary)]">
               <Mail className="h-4 w-4 text-[var(--color-primary)]" />
@@ -247,7 +279,7 @@ export default function ProfilePage() {
           )}
         </div>
 
-        {/* Password */}
+        {/* Security & Password */}
         <div className="rounded-3xl neu-card p-6">
           <div className="mb-4 flex items-center gap-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl neu-circle text-[var(--color-primary)]">
@@ -269,6 +301,20 @@ export default function ProfilePage() {
           ) : (
             <button onClick={() => setChangingPassword(true)} className="rounded-xl neu-btn px-3.5 py-2 text-xs font-bold text-[var(--color-text-primary)]">Change Password</button>
           )}
+        </div>
+
+        {/* Mobile Sign Out Button */}
+        <div className="block md:hidden pt-2">
+          <button
+            onClick={async () => {
+              await signOut();
+              navigate('/login', { replace: true });
+            }}
+            className="flex w-full items-center justify-center gap-2.5 rounded-2xl neu-btn p-3.5 text-sm font-bold text-[var(--color-danger)] hover:bg-red-500/10 transition-all cursor-pointer"
+          >
+            <LogOut className="h-5 w-5 text-[var(--color-danger)]" />
+            <span>Sign Out</span>
+          </button>
         </div>
       </div>
     </div>
