@@ -25,6 +25,7 @@ export const DEFAULT_FINANCE_CATEGORIES = [
   'ID Card',
   'Seal',
   'PAN',
+  'Workshop',
 ];
 
 export const DEFAULT_CATEGORY_ITEMS: Record<string, string[]> = {
@@ -33,12 +34,47 @@ export const DEFAULT_CATEGORY_ITEMS: Record<string, string[]> = {
     'Organisation Gmail',
     'Supabase',
     'Claude',
+    'Domain name',
+    'VPS (KVM 1)',
+    'Playstore developer account',
   ],
-  Document: ['Agreement', 'Invoice', 'Report'],
-  'ID Card': ['Employee ID', 'Company ID'],
+  Document: ['Partnership firm', 'Agreement', 'Invoice', 'Report'],
+  'ID Card': ['ID Card pre cost', 'ID Card pending payment', 'Employee ID', 'Company ID'],
   Seal: ['Company Seal', 'Office Seal'],
-  PAN: ['PAN Document'],
+  PAN: ['Company PAN card', 'PAN Document'],
+  Workshop: ['Workshop Expense'],
 };
+
+export const INITIAL_FINANCE_ENTRIES: Omit<FinanceEntry, 'id'>[] = [
+  { date: '2026-03-02', item: 'Domain name', category: 'Software', description: 'Domain name for hosting', person: 'Elumugam', amount: 650 },
+  { date: '2026-03-02', item: 'VPS (KVM 1)', category: 'Software', description: 'Server for hosting', person: 'Jana', amount: 567 },
+  { date: '2026-03-08', item: 'Claude', category: 'Software', description: 'Coding assistant AI tool', person: 'Elumugam, Jana, Deepak', amount: 2000 },
+  { date: '2026-03-19', item: 'Partnership firm', category: 'Document', description: 'Document printing for partnership firm', person: 'Deepak, Elumugam', amount: 650 },
+  { date: '2026-04-01', item: 'Renewal (KVM1) VPS', category: 'Software', description: 'Server for hosting', person: 'Elumugam', amount: 1651 },
+  { date: '2026-04-12', item: 'Claude', category: 'Software', description: 'Coding assistant AI tool', person: 'Deepak', amount: 2000 },
+  { date: '2026-04-13', item: 'ID Card pre cost', category: 'ID Card', description: 'TripO ID Card for 3', person: 'Deepak', amount: 500 },
+  { date: '2026-04-16', item: 'ID Card pending payment', category: 'ID Card', description: 'Pending ID card payment', person: 'Elumugam', amount: 220 },
+  { date: '2026-04-17', item: 'Playstore developer account', category: 'Software', description: 'Developer account for Playstore', person: 'Deepak', amount: 2500 },
+  { date: '2026-04-25', item: 'Supabase', category: 'Software', description: 'Renewal of Supabase storage', person: 'Deepak', amount: 2500 },
+  { date: '2026-05-01', item: 'Partnership firm', category: 'Document', description: 'Partnership firm registration', person: 'Elumugam', amount: 200 },
+  { date: '2026-05-02', item: 'Renewal (KVM1) VPS', category: 'Software', description: 'Server for hosting', person: 'Elumugam', amount: 1651 },
+  { date: '2026-05-16', item: 'Organisation Gmail', category: 'Software', description: 'Gmail for Organisation', person: 'Elumugam', amount: 500 },
+  { date: '2026-05-25', item: 'Supabase', category: 'Software', description: 'Renewal of Supabase storage', person: 'Elumugam, Deepak', amount: 2500, elumugam_amount: 1500, deepak_amount: 1000 },
+  { date: '2026-06-02', item: 'Renewal (KVM1) VPS', category: 'Software', description: 'Server for hosting', person: 'Elumugam, Deepak', amount: 1651, elumugam_amount: 851, deepak_amount: 800 },
+  { date: '2026-06-05', item: 'Organisation Gmail', category: 'Software', description: 'Organisation Gmail renewal', person: 'Elumugam', amount: 140 },
+  { date: '2026-06-16', item: 'Claude', category: 'Software', description: 'Coding assistant AI tool', person: 'Elumugam, Deepak', amount: 2000, elumugam_amount: 900, deepak_amount: 1100 },
+  { date: '2026-06-26', item: 'Supabase', category: 'Software', description: 'Renewal of Supabase storage', person: 'Elumugam, Deepak', amount: 2500, elumugam_amount: 1500, deepak_amount: 1000 },
+  { date: '2026-07-01', item: 'Organisation Gmail', category: 'Software', description: 'Organisation Gmail renewal', person: 'Elumugam', amount: 524 },
+  { date: '2026-07-04', item: 'Renewal (KVM1) VPS', category: 'Software', description: 'Server for hosting', person: 'Deepak', amount: 1651 },
+  { date: '2026-07-26', item: 'Supabase', category: 'Software', description: 'Renewal of Supabase storage', person: 'Elumugam, Deepak', amount: 2527, elumugam_amount: 1500, deepak_amount: 1027 },
+  { date: '2026-08-03', item: 'Organisation Gmail', category: 'Software', description: 'Organisation Gmail renewal', person: 'Elumugam', amount: 850 },
+  { date: '2026-08-04', item: 'Renewal (KVM1) VPS', category: 'Software', description: 'Server for hosting', person: 'Elumugam, Deepak', amount: 1850, elumugam_amount: 1550, deepak_amount: 300 },
+  { date: '2026-08-10', item: 'Claude', category: 'Software', description: 'Coding assistant AI tool', person: 'Elumugam', amount: 2000 },
+  { date: '2026-08-17', item: 'Company Seal', category: 'Seal', description: 'Authorized signature seal', person: 'Deepak', amount: 185 },
+  { date: '2026-08-17', item: 'Company PAN card', category: 'PAN', description: 'Company PAN apply', person: 'Deepak', amount: 250 },
+  { date: '2026-08-23', item: 'Workshop Expense', category: 'Workshop', description: 'EgaleAI Workshop', person: 'Deepak', amount: 100 },
+  { date: '2026-08-25', item: 'Supabase', category: 'Software', description: 'Renewal of Supabase storage', person: 'Elumugam, Deepak', amount: 2950, elumugam_amount: 2300, deepak_amount: 650 },
+];
 
 export const ITEM_NAME_MAPPINGS: Record<string, string> = {
   'Microsoft 365': 'Renewal (KVM1) VPS',
@@ -167,17 +203,74 @@ export async function deleteFinanceItem(category: string, itemName: string): Pro
   }
 }
 
-const ENTRIES_STORAGE_KEY = 'dm_finance_entries_data';
+const ENTRIES_STORAGE_KEY = 'dm_finance_entries_data_v2';
+
+function generateInitialSeedEntries(): FinanceEntry[] {
+  return INITIAL_FINANCE_ENTRIES.map((entry, idx) => ({
+    ...entry,
+    id: `f1000000-0000-4000-8000-${String(idx + 1).padStart(12, '0')}`,
+    task_id: '',
+    is_deleted: false,
+    created_at: new Date(entry.date).toISOString(),
+    updated_at: new Date(entry.date).toISOString(),
+  }));
+}
 
 function loadStoredFinanceEntries(): FinanceEntry[] {
   try {
     const stored = localStorage.getItem(ENTRIES_STORAGE_KEY);
-    if (stored) return JSON.parse(stored);
+    if (stored) {
+      const parsed: FinanceEntry[] = JSON.parse(stored);
+      if (parsed && parsed.length > 0) return parsed;
+    }
   } catch {}
-  return [];
+
+  const initial = generateInitialSeedEntries();
+  try {
+    localStorage.setItem(ENTRIES_STORAGE_KEY, JSON.stringify(initial));
+  } catch {}
+  return initial;
 }
 
 let memoryFinanceEntries: FinanceEntry[] = loadStoredFinanceEntries();
+
+function saveMemoryEntries() {
+  try {
+    localStorage.setItem(ENTRIES_STORAGE_KEY, JSON.stringify(memoryFinanceEntries));
+  } catch {}
+}
+
+function isUUID(val: string): boolean {
+  return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(val);
+}
+
+// Automatically seed missing 28 initial records into Supabase DB if empty or missing
+async function ensureSupabaseSeeded(existingSupabaseEntries: any[]) {
+  try {
+    const seedEntries = generateInitialSeedEntries();
+    const existingIds = new Set(existingSupabaseEntries.map((e) => e.id));
+    const missingSeedEntries = seedEntries.filter((s) => !existingIds.has(s.id));
+
+    if (missingSeedEntries.length > 0) {
+      const payload = missingSeedEntries.map((entry) => ({
+        id: entry.id,
+        date: entry.date,
+        item: entry.item,
+        category: entry.category,
+        description: entry.description,
+        person: entry.person,
+        amount: entry.amount,
+        elumugam_amount: entry.elumugam_amount || null,
+        deepak_amount: entry.deepak_amount || null,
+        is_deleted: false,
+      }));
+
+      await supabase.from('finance_entries').upsert(payload, { onConflict: 'id' });
+    }
+  } catch {
+    // Ignore seeding failures if offline
+  }
+}
 
 function saveMemoryEntries() {
   try {
@@ -220,7 +313,14 @@ export async function getFinanceEntries(
       return filterMemoryEntries(taskId, search, categoryFilter);
     }
 
+    if (!search && (!categoryFilter || categoryFilter === 'All') && !isUUID(taskId)) {
+      ensureSupabaseSeeded(data);
+    }
+
     const activeRows = (data || []).filter((row: any) => !row.is_deleted);
+    if (activeRows.length === 0) {
+      return filterMemoryEntries(taskId, search, categoryFilter);
+    }
 
     return activeRows.map((row: any) => ({
       ...row,
