@@ -8,31 +8,52 @@ import { ProtectedRoute } from '@/features/auth/ProtectedRoute';
 import { AppLayout } from '@/layouts/AppLayout';
 import { Loader2 } from 'lucide-react';
 
-// Lazy load pages
-const LoginPage = lazy(() => import('@/features/auth/LoginPage'));
-const SignupPage = lazy(() => import('@/features/auth/SignupPage'));
-const ForgotPasswordPage = lazy(() => import('@/features/auth/ForgotPasswordPage'));
-const ResetPasswordPage = lazy(() => import('@/features/auth/ResetPasswordPage'));
-const HomePage = lazy(() => import('@/pages/HomePage'));
-const TasksPage = lazy(() => import('@/pages/TasksPage'));
-const FilesPage = lazy(() => import('@/pages/FilesPage'));
-const RecentPage = lazy(() => import('@/pages/RecentPage'));
-const StarredPage = lazy(() => import('@/pages/StarredPage'));
-const SharedPage = lazy(() => import('@/pages/SharedPage'));
-const TrashPage = lazy(() => import('@/pages/TrashPage'));
-const ProfilePage = lazy(() => import('@/pages/ProfilePage'));
-const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
-const SharePage = lazy(() => import('@/pages/SharePage'));
-const AdminLayout = lazy(() => import('@/layouts/AdminLayout'));
-const AdminOverview = lazy(() => import('@/pages/admin/AdminOverview'));
-const AdminUsers = lazy(() => import('@/pages/admin/AdminUsers'));
-const AdminStorage = lazy(() => import('@/pages/admin/AdminStorage'));
-const AdminFiles = lazy(() => import('@/pages/admin/AdminFiles'));
-const AdminShares = lazy(() => import('@/pages/admin/AdminShares'));
-const AdminActivity = lazy(() => import('@/pages/admin/AdminActivity'));
-const AdminCategories = lazy(() => import('@/pages/admin/AdminCategories'));
-const AdminTasks = lazy(() => import('@/pages/admin/AdminTasks'));
-const AdminSettings = lazy(() => import('@/pages/admin/AdminSettings'));
+// Helper to automatically recover from stale chunk 404 errors after new Vercel deployments
+function lazyRetry<T extends React.ComponentType<any>>(
+  componentImport: () => Promise<{ default: T }>
+) {
+  return lazy(async () => {
+    const pageHasBeenRefreshed = window.sessionStorage.getItem('page-refreshed-on-chunk-error');
+    try {
+      const component = await componentImport();
+      window.sessionStorage.removeItem('page-refreshed-on-chunk-error');
+      return component;
+    } catch (error) {
+      if (!pageHasBeenRefreshed) {
+        window.sessionStorage.setItem('page-refreshed-on-chunk-error', 'true');
+        window.location.reload();
+        return new Promise<{ default: T }>(() => {});
+      }
+      throw error;
+    }
+  });
+}
+
+// Lazy load pages with automatic retry on 404 chunk error
+const LoginPage = lazyRetry(() => import('@/features/auth/LoginPage'));
+const SignupPage = lazyRetry(() => import('@/features/auth/SignupPage'));
+const ForgotPasswordPage = lazyRetry(() => import('@/features/auth/ForgotPasswordPage'));
+const ResetPasswordPage = lazyRetry(() => import('@/features/auth/ResetPasswordPage'));
+const HomePage = lazyRetry(() => import('@/pages/HomePage'));
+const TasksPage = lazyRetry(() => import('@/pages/TasksPage'));
+const FilesPage = lazyRetry(() => import('@/pages/FilesPage'));
+const RecentPage = lazyRetry(() => import('@/pages/RecentPage'));
+const StarredPage = lazyRetry(() => import('@/pages/StarredPage'));
+const SharedPage = lazyRetry(() => import('@/pages/SharedPage'));
+const TrashPage = lazyRetry(() => import('@/pages/TrashPage'));
+const ProfilePage = lazyRetry(() => import('@/pages/ProfilePage'));
+const SettingsPage = lazyRetry(() => import('@/pages/SettingsPage'));
+const SharePage = lazyRetry(() => import('@/pages/SharePage'));
+const AdminLayout = lazyRetry(() => import('@/layouts/AdminLayout'));
+const AdminOverview = lazyRetry(() => import('@/pages/admin/AdminOverview'));
+const AdminUsers = lazyRetry(() => import('@/pages/admin/AdminUsers'));
+const AdminStorage = lazyRetry(() => import('@/pages/admin/AdminStorage'));
+const AdminFiles = lazyRetry(() => import('@/pages/admin/AdminFiles'));
+const AdminShares = lazyRetry(() => import('@/pages/admin/AdminShares'));
+const AdminActivity = lazyRetry(() => import('@/pages/admin/AdminActivity'));
+const AdminCategories = lazyRetry(() => import('@/pages/admin/AdminCategories'));
+const AdminTasks = lazyRetry(() => import('@/pages/admin/AdminTasks'));
+const AdminSettings = lazyRetry(() => import('@/pages/admin/AdminSettings'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
