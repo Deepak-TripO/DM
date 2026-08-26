@@ -353,10 +353,10 @@ export async function createFinanceEntry(
       .single();
 
     if (error) {
+      const errStatus = (error as any)?.status;
       if (
         error.code === '42501' ||
-        (error as any).status === 403 ||
-        error.status === 403 ||
+        errStatus === 403 ||
         error.message?.includes('policy') ||
         error.message?.includes('permission')
       ) {
