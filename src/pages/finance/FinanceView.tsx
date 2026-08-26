@@ -493,13 +493,15 @@ export function FinanceView({ task }: FinanceViewProps) {
 
   return (
     <div className="w-full space-y-6">
-      {/* Mobile-Only Header Row 1 & Row 2 (< md) */}
+      {/* Mobile-Only Header & Controls (< md) */}
       <div className="block md:hidden space-y-3">
-        {/* Row 1: Finance + Search Bar */}
-        <div className="flex items-center justify-between gap-2.5">
-          <h1 className="text-xl font-black tracking-tight text-[var(--color-text-primary)] shrink-0">
-            Finance
-          </h1>
+        {/* Finance Header Title */}
+        <h1 className="text-xl font-black tracking-tight text-[var(--color-text-primary)]">
+          Finance
+        </h1>
+
+        {/* Row 1: Search Bar (flex: 1) + More (⋮) directly beside Search Bar */}
+        <div className="flex items-center gap-2 w-full">
           <div className="relative flex-1 min-w-0">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--color-text-tertiary)]" />
             <input
@@ -510,9 +512,50 @@ export function FinanceView({ task }: FinanceViewProps) {
               className="w-full rounded-xl neu-input py-1.5 pl-8 pr-2.5 text-xs font-medium text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)] focus:outline-none"
             />
           </div>
+
+          {/* More Option: Icon ONLY (⋮) directly beside Search Bar */}
+          <div className="relative shrink-0">
+            <button
+              type="button"
+              onClick={() => setFinanceMoreOpen((prev) => !prev)}
+              className="flex h-8 w-8 items-center justify-center rounded-xl neu-btn text-[var(--color-text-primary)] transition-all cursor-pointer"
+              title="More options"
+              aria-label="More options"
+            >
+              <MoreVertical className="h-4 w-4 text-[var(--color-primary)]" />
+            </button>
+
+            {financeMoreOpen && (
+              <div className="absolute right-0 top-full mt-2 w-44 z-50 rounded-2xl neu-flat bg-[var(--neu-bg)] border border-[var(--color-border-light)]/40 p-2 shadow-xl animate-in fade-in zoom-in-95 duration-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFinanceMoreOpen(false);
+                    setExpenseCardOpen((prev) => !prev);
+                  }}
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-[var(--color-primary)] hover:neu-pressed"
+                >
+                  <Receipt className="h-4 w-4 text-[var(--color-primary)]" />
+                  <span>Expense</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFinanceMoreOpen(false);
+                    setExportModalOpen(true);
+                  }}
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-[var(--color-text-primary)] hover:neu-pressed"
+                >
+                  <Download className="h-4 w-4 text-[var(--color-primary)]" />
+                  <span>Export</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Row 2: Total + Category + Add Entry + More (icon-only: ⋮) */}
+        {/* Row 2: Total + Category + Add Entry */}
         <div className="flex items-center justify-between gap-1.5 w-full">
           {/* Total */}
           <div className="flex items-center gap-1 rounded-xl neu-card px-2 py-1 text-[11px] font-bold shadow-sm border border-[var(--color-border-light)]/50 shrink-0">
@@ -556,47 +599,6 @@ export function FinanceView({ task }: FinanceViewProps) {
               <span>Add Entry</span>
             </button>
           )}
-
-          {/* More Option: Icon ONLY (⋮) */}
-          <div className="relative shrink-0">
-            <button
-              type="button"
-              onClick={() => setFinanceMoreOpen((prev) => !prev)}
-              className="flex h-8 w-8 items-center justify-center rounded-xl neu-btn text-[var(--color-text-primary)] transition-all cursor-pointer"
-              title="More options"
-              aria-label="More options"
-            >
-              <MoreVertical className="h-4 w-4 text-[var(--color-primary)]" />
-            </button>
-
-            {financeMoreOpen && (
-              <div className="absolute right-0 top-full mt-2 w-44 z-50 rounded-2xl neu-flat bg-[var(--neu-bg)] border border-[var(--color-border-light)]/40 p-2 shadow-xl animate-in fade-in zoom-in-95 duration-100">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFinanceMoreOpen(false);
-                    setExpenseCardOpen((prev) => !prev);
-                  }}
-                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-[var(--color-primary)] hover:neu-pressed"
-                >
-                  <Receipt className="h-4 w-4 text-[var(--color-primary)]" />
-                  <span>Expense</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFinanceMoreOpen(false);
-                    setExportModalOpen(true);
-                  }}
-                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-[var(--color-text-primary)] hover:neu-pressed"
-                >
-                  <Download className="h-4 w-4 text-[var(--color-primary)]" />
-                  <span>Export</span>
-                </button>
-              </div>
-            )}
-          </div>
         </div>
       </div>
 
