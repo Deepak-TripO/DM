@@ -353,7 +353,13 @@ export async function createFinanceEntry(
       .single();
 
     if (error) {
-      if (error.code === '42501' || error.message?.includes('policy') || error.message?.includes('permission')) {
+      if (
+        error.code === '42501' ||
+        (error as any).status === 403 ||
+        error.status === 403 ||
+        error.message?.includes('policy') ||
+        error.message?.includes('permission')
+      ) {
         throw new Error('Finance entry access is locked by administrator.');
       }
       memoryFinanceEntries.unshift(newRecord);
