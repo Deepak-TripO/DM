@@ -24,7 +24,7 @@ export function Header({ onUploadClick, onLogoClick, sidebarOpen }: HeaderProps)
   };
 
   return (
-    <header className="flex h-[var(--header-height)] items-center justify-between gap-3 bg-[var(--neu-bg)] px-4 md:px-6 neu-flat z-20 sticky top-0">
+    <header className="flex h-[var(--header-height)] items-center justify-between gap-3 bg-[var(--neu-bg)] px-4 md:px-6 neu-flat z-20 sticky top-0 rounded-b-2xl border-b border-[var(--color-border-light)]/40 shadow-xs">
       {/* Top-Left Branding Logo — DM anchored on top-left for Mobile & Desktop */}
       <div className="flex items-center gap-2">
         {/* Mobile: DM logo is always anchored at top-left */}

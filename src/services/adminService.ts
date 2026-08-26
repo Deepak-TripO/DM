@@ -674,3 +674,80 @@ export type AdminTaskItem = AdminFolderItem;
 export const getAdminTasks = getAdminFolders;
 export const createAdminTask = createAdminFolder;
 export const deleteAdminTask = deleteAdminFolder;
+
+// 10. User Finance Entry Access Management
+export interface UserPermissionItem {
+  user_id: string;
+  finance_entry_access: 'unlocked' | 'locked';
+}
+
+const USER_PERMISSIONS_KEY = 'dm_user_permissions';
+
+export function getLocalUserFinanceAccessMap(): Record<string, 'unlocked' | 'locked'> {
+  try {
+    const stored = localStorage.getItem(USER_PERMISSIONS_KEY);
+    return stored ? JSON.parse(stored) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function saveLocalUserFinanceAccess(targetUserId: string, accessStatus: 'unlocked' | 'locked') {
+  try {
+    const current = getLocalUserFinanceAccessMap();
+    current[targetUserId] = accessStatus;
+    localStorage.setItem(USER_PERMISSIONS_KEY, JSON.stringify(current));
+  } catch {
+    // ignore
+  }
+}
+
+export async function getUserFinanceAccessMap(): Promise<Record<string, 'unlocked' | 'locked'>> {
+  const localMap = getLocalUserFinanceAccessMap();
+  try {
+    const { data, error } = await supabase
+      .from('user_permissions')
+      .select('user_id, finance_entry_access');
+
+    if (error || !data) {
+      return localMap;
+    }
+
+    const map: Record<string, 'unlocked' | 'locked'> = {};
+    data.forEach((row: any) => {
+      if (row.user_id) {
+        map[row.user_id] = row.finance_entry_access === 'locked' ? 'locked' : 'unlocked';
+      }
+    });
+    return { ...localMap, ...map };
+  } catch {
+    return localMap;
+  }
+}
+
+export async function setUserFinanceAccess(
+  targetUserId: string,
+  accessStatus: 'unlocked' | 'locked'
+): Promise<void> {
+  // Update local memory fallback first for instant state update
+  saveLocalUserFinanceAccess(targetUserId, accessStatus);
+
+  try {
+    const { error } = await supabase
+      .from('user_permissions')
+      .upsert(
+        {
+          user_id: targetUserId,
+          finance_entry_access: accessStatus,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'user_id' }
+      );
+
+    if (error) {
+      console.warn('Supabase user_permissions notice:', error.message);
+    }
+  } catch (err) {
+    console.warn('Supabase user_permissions catch notice:', err);
+  }
+}

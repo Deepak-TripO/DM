@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/client';
+import { getLocalUserFinanceAccessMap } from '@/services/adminService';
 
 export interface FinanceEntry {
   id: string;
@@ -277,6 +278,47 @@ export async function createFinanceEntry(
   const createdBy = entry.created_by || user?.id || 'anonymous';
   const targetTaskId = isUUID(entry.task_id) ? entry.task_id : null;
 
+  // Server-side / Service-level check: Verify admin permission or user finance entry lock
+  if (user) {
+    const isDefaultAdmin = user.email?.toLowerCase() === 'admin@dm.com';
+    if (!isDefaultAdmin) {
+      const { data: rpcAdmin } = await supabase.rpc('is_admin', { uid: user.id });
+      if (rpcAdmin === false) {
+        const { data: adminData } = await supabase
+          .from('admin_users')
+          .select('user_id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (!adminData) {
+          // Check if user finance_entry_access is locked (Supabase DB or local storage)
+          let isLocked = false;
+          try {
+            const { data: permData, error: permError } = await supabase
+              .from('user_permissions')
+              .select('finance_entry_access')
+              .eq('user_id', user.id)
+              .maybeSingle();
+
+            if (!permError && permData) {
+              isLocked = permData.finance_entry_access === 'locked';
+            } else {
+              const localMap = getLocalUserFinanceAccessMap();
+              isLocked = localMap[user.id] === 'locked';
+            }
+          } catch {
+            const localMap = getLocalUserFinanceAccessMap();
+            isLocked = localMap[user.id] === 'locked';
+          }
+
+          if (isLocked) {
+            throw new Error('Finance entry access is locked by administrator.');
+          }
+        }
+      }
+    }
+  }
+
   const newRecord: FinanceEntry = {
     ...entry,
     id: newId,
@@ -310,7 +352,16 @@ export async function createFinanceEntry(
       .select('*')
       .single();
 
-    if (error || !data) {
+    if (error) {
+      if (error.code === '42501' || error.message?.includes('policy') || error.message?.includes('permission')) {
+        throw new Error('Finance entry access is locked by administrator.');
+      }
+      memoryFinanceEntries.unshift(newRecord);
+      saveMemoryEntries();
+      return newRecord;
+    }
+
+    if (!data) {
       memoryFinanceEntries.unshift(newRecord);
       saveMemoryEntries();
       return newRecord;
@@ -322,7 +373,13 @@ export async function createFinanceEntry(
       elumugam_amount: data.elumugam_amount != null ? Number(data.elumugam_amount) : null,
       deepak_amount: data.deepak_amount != null ? Number(data.deepak_amount) : null,
     } as FinanceEntry;
-  } catch {
+  } catch (err: any) {
+    if (
+      err.message === 'Finance entry access is locked by administrator.' ||
+      err.message === 'Only administrators can add finance entries.'
+    ) {
+      throw err;
+    }
     memoryFinanceEntries.unshift(newRecord);
     saveMemoryEntries();
     return newRecord;

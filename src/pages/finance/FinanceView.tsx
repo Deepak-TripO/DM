@@ -18,6 +18,7 @@ import type { FinanceEntry } from '@/services/financeService';
 import type { TaskItem } from '@/services/taskService';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { useAdmin } from '@/hooks/useAdmin';
+import { useFinanceAccess } from '@/hooks/useFinanceAccess';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { cn } from '@/lib/utils';
 import {
@@ -27,6 +28,7 @@ import {
 } from '@/utils/exportService';
 import {
   Plus,
+  Lock,
   Search,
   Filter,
   Pencil,
@@ -40,6 +42,8 @@ import {
   Image as ImageIcon,
   FileSpreadsheet,
   MoreVertical,
+  Eye,
+  X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -50,6 +54,7 @@ interface FinanceViewProps {
 export function FinanceView({ task }: FinanceViewProps) {
   const { user } = useAuth();
   const { isAdmin } = useAdmin();
+  const { canAddEntry } = useFinanceAccess();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -57,6 +62,7 @@ export function FinanceView({ task }: FinanceViewProps) {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<FinanceEntry | null>(null);
+  const [viewingEntry, setViewingEntry] = useState<FinanceEntry | null>(null);
   const [deletingEntry, setDeletingEntry] = useState<FinanceEntry | null>(null);
   const [financeMoreOpen, setFinanceMoreOpen] = useState(false);
 
@@ -315,6 +321,10 @@ export function FinanceView({ task }: FinanceViewProps) {
   };
 
   const handleOpenAdd = () => {
+    if (!canAddEntry) {
+      toast.error('Finance entry access is locked by administrator.');
+      return;
+    }
     resetForm();
     setAddModalOpen(true);
   };
@@ -337,6 +347,10 @@ export function FinanceView({ task }: FinanceViewProps) {
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!editingEntry && !canAddEntry) {
+      toast.error('Finance entry access is locked by administrator.');
+      return;
+    }
     if (!formData.item.trim() || !formData.person.trim()) {
       toast.error('Please fill in all required fields');
       return;
@@ -452,6 +466,19 @@ export function FinanceView({ task }: FinanceViewProps) {
     }
   };
 
+  const formatMobileDateString = (dateStr: string) => {
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      return `${day}/${month}/${year}`;
+    } catch {
+      return dateStr;
+    }
+  };
+
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
@@ -466,66 +493,132 @@ export function FinanceView({ task }: FinanceViewProps) {
 
   return (
     <div className="w-full space-y-6">
-      {/* Header & Page Title */}
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-primary)]">Finance</h1>
-              <p className="hidden md:block text-xs font-semibold text-[var(--color-text-secondary)] mt-0.5">Finance Updated</p>
-            </div>
-
-            {/* Mobile Finance More Dropdown Button */}
-            <div className="relative md:hidden">
-              <button
-                type="button"
-                onClick={() => setFinanceMoreOpen((prev) => !prev)}
-                className="flex items-center gap-1.5 rounded-xl neu-btn px-3 py-1.5 text-xs font-bold text-[var(--color-text-primary)] transition-all cursor-pointer"
-              >
-                <span>More</span>
-                <MoreVertical className="h-4 w-4 text-[var(--color-primary)]" />
-              </button>
-
-              {financeMoreOpen && (
-                <div className="absolute right-0 top-full mt-2 w-44 z-50 rounded-2xl neu-flat bg-[var(--neu-bg)] border border-[var(--color-border-light)]/40 p-2 shadow-xl animate-in fade-in zoom-in-95 duration-100">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setFinanceMoreOpen(false);
-                      setExpenseCardOpen((prev) => !prev);
-                    }}
-                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-[var(--color-primary)] hover:neu-pressed"
-                  >
-                    <Receipt className="h-4 w-4 text-[var(--color-primary)]" />
-                    <span>Expense</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setFinanceMoreOpen(false);
-                      setExportModalOpen(true);
-                    }}
-                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-[var(--color-text-primary)] hover:neu-pressed"
-                  >
-                    <Download className="h-4 w-4 text-[var(--color-primary)]" />
-                    <span>Export</span>
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-        {/* Top Controls: 1. Search Bar, 2. Total Option, 3. Expense Option, 4. Neumorphism Category Filter, 5. Add Entry */}
-        <div className="flex flex-wrap items-center gap-3">
-          {/* 1. Search Bar */}
-          <div className="relative flex-1 sm:w-64">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-tertiary)]" />
+      {/* Mobile-Only Header Row 1 & Row 2 (< md) */}
+      <div className="block md:hidden space-y-3">
+        {/* Row 1: Finance + Search Bar */}
+        <div className="flex items-center justify-between gap-2.5">
+          <h1 className="text-xl font-black tracking-tight text-[var(--color-text-primary)] shrink-0">
+            Finance
+          </h1>
+          <div className="relative flex-1 min-w-0">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--color-text-tertiary)]" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search finance entries..."
-              className="w-full rounded-xl neu-input py-2 pl-9 pr-3 text-xs font-medium text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)]"
+              placeholder="Search..."
+              className="w-full rounded-xl neu-input py-1.5 pl-8 pr-2.5 text-xs font-medium text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)] focus:outline-none"
+            />
+          </div>
+        </div>
+
+        {/* Row 2: Total + Category + Add Entry + More (icon-only: ⋮) */}
+        <div className="flex items-center justify-between gap-1.5 w-full">
+          {/* Total */}
+          <div className="flex items-center gap-1 rounded-xl neu-card px-2 py-1 text-[11px] font-bold shadow-sm border border-[var(--color-border-light)]/50 shrink-0">
+            <span className="text-[var(--color-text-secondary)] font-extrabold uppercase text-[9px] tracking-tight">Total</span>
+            <span className="text-xs font-black text-[var(--color-primary)]">{formatCurrency(expenseOverallTotal)}</span>
+          </div>
+
+          {/* Category Dropdown */}
+          <div className="flex items-center gap-1 neu-card rounded-xl px-1.5 py-1 shadow-sm border border-[var(--color-border-light)]/50 shrink-0 max-w-[110px]">
+            <Filter className="h-3 w-3 text-[var(--color-primary)] shrink-0" />
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="bg-transparent py-0.5 pr-1 text-[11px] font-extrabold text-[var(--color-text-primary)] focus:outline-none cursor-pointer truncate w-full"
+            >
+              <option value="All">All</option>
+              {categories.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Add Entry */}
+          {canAddEntry ? (
+            <button
+              onClick={handleOpenAdd}
+              className="flex items-center gap-1 rounded-xl neu-btn-primary px-2.5 py-1 text-[11px] font-bold text-white shadow-md hover:scale-[1.02] shrink-0"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>Add Entry</span>
+            </button>
+          ) : (
+            <button
+              onClick={handleOpenAdd}
+              className="flex items-center gap-1 rounded-xl neu-btn px-2.5 py-1 text-[11px] font-bold text-[var(--color-text-secondary)] opacity-60 cursor-not-allowed shadow-sm shrink-0"
+              title="Finance entry access is locked by administrator"
+            >
+              <Lock className="h-3.5 w-3.5 text-[var(--color-text-secondary)]" />
+              <span>Add Entry</span>
+            </button>
+          )}
+
+          {/* More Option: Icon ONLY (⋮) */}
+          <div className="relative shrink-0">
+            <button
+              type="button"
+              onClick={() => setFinanceMoreOpen((prev) => !prev)}
+              className="flex h-8 w-8 items-center justify-center rounded-xl neu-btn text-[var(--color-text-primary)] transition-all cursor-pointer"
+              title="More options"
+              aria-label="More options"
+            >
+              <MoreVertical className="h-4 w-4 text-[var(--color-primary)]" />
+            </button>
+
+            {financeMoreOpen && (
+              <div className="absolute right-0 top-full mt-2 w-44 z-50 rounded-2xl neu-flat bg-[var(--neu-bg)] border border-[var(--color-border-light)]/40 p-2 shadow-xl animate-in fade-in zoom-in-95 duration-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFinanceMoreOpen(false);
+                    setExpenseCardOpen((prev) => !prev);
+                  }}
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-[var(--color-primary)] hover:neu-pressed"
+                >
+                  <Receipt className="h-4 w-4 text-[var(--color-primary)]" />
+                  <span>Expense</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFinanceMoreOpen(false);
+                    setExportModalOpen(true);
+                  }}
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-[var(--color-text-primary)] hover:neu-pressed"
+                >
+                  <Download className="h-4 w-4 text-[var(--color-primary)]" />
+                  <span>Export</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Desktop-Only Header & Top Controls (md:flex / strictly unchanged) */}
+      <div className="hidden md:flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-primary)]">Finance</h1>
+            <p className="text-xs font-semibold text-[var(--color-text-secondary)] mt-0.5">Finance Updated</p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          {/* 1. Search Bar (slightly decreased size) */}
+          <div className="relative flex-1 sm:w-56">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--color-text-tertiary)]" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search..."
+              className="w-full rounded-xl neu-input py-1.5 pl-8 pr-3 text-xs font-medium text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)] focus:outline-none"
             />
           </div>
 
@@ -535,12 +628,12 @@ export function FinanceView({ task }: FinanceViewProps) {
             <span className="text-sm font-black text-[var(--color-primary)]">{formatCurrency(expenseOverallTotal)}</span>
           </div>
 
-          {/* 3. Expense Option Button (Desktop view / existing) */}
+          {/* 3. Expense Option Button */}
           <button
             type="button"
             onClick={() => setExpenseCardOpen((prev) => !prev)}
             className={cn(
-              'hidden md:flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition-all cursor-pointer shadow-sm',
+              'flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition-all cursor-pointer shadow-sm',
               expenseCardOpen
                 ? 'neu-pressed text-[var(--color-primary)] font-black border border-[var(--color-primary)]/30'
                 : 'neu-btn text-[var(--color-text-primary)] hover:scale-[1.02]'
@@ -551,7 +644,7 @@ export function FinanceView({ task }: FinanceViewProps) {
             <span>Expense</span>
           </button>
 
-          {/* 4. Marked Category Section — Neumorphism UI */}
+          {/* 4. Category Filter */}
           <div className="flex items-center gap-1.5 neu-card rounded-2xl p-1.5 shadow-sm border border-[var(--color-border-light)]/50">
             <Filter className="ml-2 h-3.5 w-3.5 text-[var(--color-primary)]" />
             <select
@@ -579,19 +672,30 @@ export function FinanceView({ task }: FinanceViewProps) {
           </div>
 
           {/* 5. Add Entry Button */}
-          <button
-            onClick={handleOpenAdd}
-            className="flex items-center gap-1.5 rounded-xl neu-btn-primary px-4 py-2 text-xs font-bold text-white transition-all shadow-md hover:scale-[1.02]"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Add Entry</span>
-          </button>
+          {canAddEntry ? (
+            <button
+              onClick={handleOpenAdd}
+              className="flex items-center gap-1.5 rounded-xl neu-btn-primary px-4 py-2 text-xs font-bold text-white transition-all shadow-md hover:scale-[1.02]"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Add Entry</span>
+            </button>
+          ) : (
+            <button
+              onClick={handleOpenAdd}
+              className="flex items-center gap-1.5 rounded-xl neu-btn px-4 py-2 text-xs font-bold text-[var(--color-text-secondary)] opacity-60 cursor-not-allowed transition-all shadow-sm"
+              title="Finance entry access is locked by administrator"
+            >
+              <Lock className="h-4 w-4 text-[var(--color-text-secondary)]" />
+              <span>Add Entry</span>
+            </button>
+          )}
 
-          {/* Export Button (Desktop view / existing) */}
+          {/* Export Button */}
           <button
             type="button"
             onClick={() => setExportModalOpen(true)}
-            className="hidden md:flex items-center gap-1.5 rounded-xl neu-btn px-4 py-2 text-xs font-bold text-[var(--color-text-primary)] transition-all shadow-md hover:scale-[1.02] cursor-pointer"
+            className="flex items-center gap-1.5 rounded-xl neu-btn px-4 py-2 text-xs font-bold text-[var(--color-text-primary)] transition-all shadow-md hover:scale-[1.02] cursor-pointer"
             title="Export Finance Data"
           >
             <Download className="h-4 w-4 text-[var(--color-primary)]" />
@@ -657,82 +761,231 @@ export function FinanceView({ task }: FinanceViewProps) {
             </button>
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-2xl border border-[var(--color-border-light)]/40">
-            <table className="w-full text-left text-xs font-medium border-collapse min-w-[700px]">
-              <thead>
-                <tr className="bg-[var(--color-surface-secondary)]/50 text-[var(--color-text-tertiary)] uppercase tracking-wider font-extrabold text-[11px] border-b border-[var(--color-border-light)]/60">
-                  <th className="py-3.5 px-4 w-14 text-center">S.No</th>
-                  <th className="py-3.5 px-4">Date</th>
-                  <th className="py-3.5 px-4">Item</th>
-                  <th className="py-3.5 px-4">Category</th>
-                  <th className="py-3.5 px-4">Description</th>
-                  <th className="py-3.5 px-4">Person</th>
-                  <th className="py-3.5 px-4 text-right">Amount</th>
-                  <th className="py-3.5 px-4 w-24 text-center">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--color-border-light)]/30 text-[var(--color-text-primary)]">
-                {entries.map((entry, idx) => (
-                  <tr key={entry.id} className="transition-colors hover:bg-[var(--color-primary)]/5">
-                    <td className="py-3.5 px-4 text-center font-extrabold text-[var(--color-text-tertiary)]">
-                      {idx + 1}
-                    </td>
-                    <td className="py-3.5 px-4 font-bold whitespace-nowrap">
-                      {formatDateString(entry.date)}
-                    </td>
-                    <td className="py-3.5 px-4 font-extrabold text-sm text-[var(--color-text-primary)]">
-                      {entry.item}
-                    </td>
-                    <td className="py-3.5 px-4 whitespace-nowrap">
-                      <span className="inline-block rounded-lg neu-pressed px-2.5 py-1 text-[11px] font-extrabold text-[var(--color-primary)]">
-                        {entry.category}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 max-w-xs truncate text-[var(--color-text-secondary)] font-medium">
-                      {entry.description || '--'}
-                    </td>
-                    <td className="py-3.5 px-4 font-bold text-[var(--color-text-primary)]">
-                      {entry.person}
-                    </td>
-                    <td className="py-3.5 px-4 text-right font-black text-sm text-[var(--color-primary)] whitespace-nowrap">
-                      {formatCurrency(Number(entry.amount))}
-                    </td>
-                    <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                      {(!entry.created_by || entry.created_by === user?.id || isAdmin) ? (
-                        <div className="flex items-center justify-center gap-1.5">
-                          {/* Edit Button: Green */}
+          <>
+            {/* Desktop View Table (hidden md:block / strictly unchanged) */}
+            <div className="hidden md:block overflow-x-auto rounded-2xl border border-[var(--color-border-light)]/40">
+              <table className="w-full text-left text-xs font-medium border-collapse min-w-[700px]">
+                <thead>
+                  <tr className="bg-[var(--color-surface-secondary)]/50 text-[var(--color-text-tertiary)] uppercase tracking-wider font-extrabold text-[11px] border-b border-[var(--color-border-light)]/60">
+                    <th className="py-3.5 px-4 w-14 text-center">S.No</th>
+                    <th className="py-3.5 px-4">Date</th>
+                    <th className="py-3.5 px-4">Item</th>
+                    <th className="py-3.5 px-4">Category</th>
+                    <th className="py-3.5 px-4">Description</th>
+                    <th className="py-3.5 px-4">Person</th>
+                    <th className="py-3.5 px-4 text-right">Amount</th>
+                    <th className="py-3.5 px-4 w-24 text-center">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--color-border-light)]/30 text-[var(--color-text-primary)]">
+                  {entries.map((entry, idx) => (
+                    <tr key={entry.id} className="transition-colors hover:bg-[var(--color-primary)]/5">
+                      <td className="py-3.5 px-4 text-center font-extrabold text-[var(--color-text-tertiary)]">
+                        {idx + 1}
+                      </td>
+                      <td className="py-3.5 px-4 font-bold whitespace-nowrap">
+                        {formatDateString(entry.date)}
+                      </td>
+                      <td className="py-3.5 px-4 font-extrabold text-sm text-[var(--color-text-primary)]">
+                        {entry.item}
+                      </td>
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <span className="inline-block rounded-lg neu-pressed px-2.5 py-1 text-[11px] font-extrabold text-[var(--color-primary)]">
+                          {entry.category}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 max-w-xs truncate text-[var(--color-text-secondary)] font-medium">
+                        {entry.description || '--'}
+                      </td>
+                      <td className="py-3.5 px-4 font-bold text-[var(--color-text-primary)]">
+                        {entry.person}
+                      </td>
+                      <td className="py-3.5 px-4 text-right font-black text-sm text-[var(--color-primary)] whitespace-nowrap">
+                        {formatCurrency(Number(entry.amount))}
+                      </td>
+                      <td className="py-2.5 px-3.5 text-center whitespace-nowrap">
+                        {(!entry.created_by || entry.created_by === user?.id || isAdmin) ? (
+                          <div className="flex items-center justify-center gap-1.5">
+                            {/* Edit Button: Green */}
+                            <button
+                              onClick={() => handleOpenEdit(entry)}
+                              className="rounded-lg p-1.5 neu-btn text-green-600 hover:text-green-700 hover:bg-green-500/10 transition-colors"
+                              aria-label="Edit entry"
+                              title="Edit entry"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+
+                            {/* Delete Button: Red */}
+                            <button
+                              onClick={() => setDeletingEntry(entry)}
+                              className="rounded-lg p-1.5 neu-btn text-red-500 hover:text-red-600 hover:bg-red-500/10 transition-colors"
+                              aria-label="Delete entry"
+                              title="Delete entry"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-[10px] font-extrabold text-[var(--color-text-tertiary)] uppercase tracking-wider">
+                            View Only
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile View Cards List (< md / Order: 1. Date (DD/MM), 2. Item, 3. Amount, 4. Person) */}
+            <div className="block md:hidden space-y-2.5 max-h-[60vh] overflow-y-auto pr-0.5">
+              {entries.map((entry) => (
+                <div
+                  key={entry.id}
+                  className="rounded-2xl neu-card p-3 space-y-1.5 border border-[var(--color-border-light)]/40 text-xs shadow-sm hover:border-[var(--color-primary)]/30 transition-all"
+                >
+                  {/* 1. Date (DD/MM) & Action Buttons */}
+                  <div className="flex items-center justify-between text-[11px] font-extrabold text-[var(--color-text-secondary)]">
+                    <span className="inline-block rounded-md neu-pressed px-2 py-0.5 text-[10px] text-[var(--color-primary)] font-mono">
+                      {formatMobileDateString(entry.date)}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      {/* View Button */}
+                      <button
+                        onClick={() => setViewingEntry(entry)}
+                        className="rounded-lg p-1 neu-btn text-blue-500 hover:text-blue-600 hover:bg-blue-500/10 transition-colors"
+                        title="View entry details"
+                      >
+                        <Eye className="h-3 w-3" />
+                      </button>
+
+                      {(!entry.created_by || entry.created_by === user?.id || isAdmin) && (
+                        <>
                           <button
                             onClick={() => handleOpenEdit(entry)}
-                            className="rounded-lg p-1.5 neu-btn text-green-600 hover:text-green-700 hover:bg-green-500/10 transition-colors"
-                            aria-label="Edit entry"
+                            className="rounded-lg p-1 neu-btn text-green-600 hover:text-green-700 hover:bg-green-500/10 transition-colors"
                             title="Edit entry"
                           >
-                            <Pencil className="h-3.5 w-3.5" />
+                            <Pencil className="h-3 w-3" />
                           </button>
-
-                          {/* Delete Button: Red */}
                           <button
                             onClick={() => setDeletingEntry(entry)}
-                            className="rounded-lg p-1.5 neu-btn text-red-500 hover:text-red-600 hover:bg-red-500/10 transition-colors"
-                            aria-label="Delete entry"
+                            className="rounded-lg p-1 neu-btn text-red-500 hover:text-red-600 hover:bg-red-500/10 transition-colors"
                             title="Delete entry"
                           >
-                            <Trash2 className="h-3.5 w-3.5" />
+                            <Trash2 className="h-3 w-3" />
                           </button>
-                        </div>
-                      ) : (
-                        <span className="text-[10px] font-extrabold text-[var(--color-text-tertiary)] uppercase tracking-wider">
-                          View Only
-                        </span>
+                        </>
                       )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    </div>
+                  </div>
+
+                  {/* 2. Item */}
+                  <div className="font-black text-sm text-[var(--color-text-primary)] tracking-tight">
+                    {entry.item}
+                  </div>
+
+                  {/* 3. Amount */}
+                  <div className="text-sm font-black text-[var(--color-primary)]">
+                    {formatCurrency(Number(entry.amount))}
+                  </div>
+
+                  {/* 4. Person */}
+                  <div className="flex items-center justify-between text-[11px] font-bold text-[var(--color-text-secondary)] pt-1 border-t border-[var(--color-border-light)]/30">
+                    <span>{entry.person}</span>
+                    {entry.category && (
+                      <span className="text-[10px] text-[var(--color-text-tertiary)] font-semibold">
+                        {entry.category}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
+
+      {/* View Finance Entry Details Read-Only Modal */}
+      {viewingEntry && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="relative w-full max-w-md rounded-3xl neu-modal p-6 shadow-2xl space-y-4">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-[var(--color-border-light)]/40 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl neu-pressed text-blue-500">
+                  <Eye className="h-4.5 w-4.5 text-blue-500" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-[var(--color-text-primary)]">Finance Details</h3>
+                  <p className="text-[11px] font-semibold text-[var(--color-text-secondary)]">Read-only entry view</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setViewingEntry(null)}
+                className="p-1.5 rounded-full neu-circle text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] cursor-pointer"
+                aria-label="Close modal"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Details Fields */}
+            <div className="space-y-2.5 text-xs font-bold text-[var(--color-text-primary)]">
+              {/* Date */}
+              <div className="p-3 rounded-2xl neu-pressed flex items-center justify-between">
+                <span className="text-[var(--color-text-secondary)] uppercase tracking-wider text-[10px] font-extrabold">Date</span>
+                <span className="text-xs font-bold text-[var(--color-text-primary)]">{formatDateString(viewingEntry.date)}</span>
+              </div>
+
+              {/* Item */}
+              <div className="p-3 rounded-2xl neu-pressed flex items-center justify-between">
+                <span className="text-[var(--color-text-secondary)] uppercase tracking-wider text-[10px] font-extrabold">Item</span>
+                <span className="text-xs font-black text-[var(--color-primary)] truncate max-w-[200px]">{viewingEntry.item}</span>
+              </div>
+
+              {/* Category */}
+              <div className="p-3 rounded-2xl neu-pressed flex items-center justify-between">
+                <span className="text-[var(--color-text-secondary)] uppercase tracking-wider text-[10px] font-extrabold">Category</span>
+                <span className="inline-block rounded-lg neu-flat px-2.5 py-0.5 text-[11px] font-extrabold text-[var(--color-primary)]">
+                  {viewingEntry.category || 'Software'}
+                </span>
+              </div>
+
+              {/* Description */}
+              <div className="p-3 rounded-2xl neu-pressed space-y-1">
+                <span className="text-[var(--color-text-secondary)] uppercase tracking-wider text-[10px] font-extrabold block">Description</span>
+                <p className="text-xs font-semibold text-[var(--color-text-primary)] whitespace-pre-wrap leading-relaxed">
+                  {viewingEntry.description?.trim() || 'No description provided.'}
+                </p>
+              </div>
+
+              {/* Person */}
+              <div className="p-3 rounded-2xl neu-pressed flex items-center justify-between">
+                <span className="text-[var(--color-text-secondary)] uppercase tracking-wider text-[10px] font-extrabold">Person</span>
+                <span className="text-xs font-bold text-[var(--color-text-primary)]">{viewingEntry.person}</span>
+              </div>
+
+              {/* Amount */}
+              <div className="p-3.5 rounded-2xl neu-pressed border border-[var(--color-primary)]/30 bg-[var(--color-primary)]/5 flex items-center justify-between">
+                <span className="text-xs font-black uppercase tracking-wider text-[var(--color-text-primary)]">Total Amount</span>
+                <span className="text-base font-black text-[var(--color-primary)]">{formatCurrency(Number(viewingEntry.amount))}</span>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end pt-2 border-t border-[var(--color-border-light)]/40">
+              <button
+                onClick={() => setViewingEntry(null)}
+                className="rounded-xl neu-btn px-5 py-2 text-xs font-bold text-[var(--color-text-primary)] cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add / Edit Entry Modal */}
       {(addModalOpen || editingEntry) && (

@@ -11,10 +11,12 @@ import {
   revokeTaskAccess,
   getTaskAccessCountsMap,
   getAdminUsers,
+  getUserFinanceAccessMap,
+  setUserFinanceAccess,
 } from '@/services/adminService';
 import type { AdminTaskItem, TaskAccessItem, AdminUserItem } from '@/services/adminService';
 import { formatDate } from '@/utils';
-import { CheckSquare, Plus, Search, Trash2, Pencil, Loader2, X, HardDrive, Users, UserPlus, UserMinus, ShieldCheck } from 'lucide-react';
+import { CheckSquare, Plus, Search, Trash2, Pencil, Loader2, X, HardDrive, Users, UserPlus, UserMinus, ShieldCheck, Lock, Unlock } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function AdminTasks() {
@@ -52,6 +54,50 @@ export default function AdminTasks() {
     queryFn: () => (accessModalTask ? getTaskAccessList(accessModalTask.id) : Promise.resolve([])),
     enabled: !!accessModalTask,
   });
+
+  const { data: financeAccessMap = {} } = useQuery({
+    queryKey: ['userFinanceAccessMap'],
+    queryFn: getUserFinanceAccessMap,
+  });
+
+  const setFinanceAccessMutation = useMutation({
+    mutationFn: ({ targetUserId, accessStatus }: { targetUserId: string; accessStatus: 'unlocked' | 'locked' }) =>
+      setUserFinanceAccess(targetUserId, accessStatus),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['userFinanceAccessMap'] });
+      queryClient.invalidateQueries({ queryKey: ['userFinancePermission'] });
+      toast.success(
+        variables.accessStatus === 'locked'
+          ? 'Finance entry access locked for user'
+          : 'Finance entry access unlocked for user'
+      );
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Failed to update finance access.');
+    },
+  });
+
+  const handleToggleFinanceAccess = (targetUserId: string, targetUserEmail?: string) => {
+    const targetUser = adminUsers.find((u) => u.id === targetUserId);
+    const isTargetAdmin =
+      targetUserId === user?.id ||
+      targetUser?.role === 'admin' ||
+      targetUser?.email?.toLowerCase() === 'admin@dm.com' ||
+      targetUserEmail?.toLowerCase() === 'admin@dm.com';
+
+    const currentStatus = financeAccessMap[targetUserId] || 'unlocked';
+    const nextStatus = currentStatus === 'locked' ? 'unlocked' : 'locked';
+
+    if (nextStatus === 'locked' && isTargetAdmin) {
+      toast.error('Administrator access cannot be locked.');
+      return;
+    }
+
+    setFinanceAccessMutation.mutate({
+      targetUserId,
+      accessStatus: nextStatus,
+    });
+  };
 
   const createMutation = useMutation({
     mutationFn: (name: string) => createAdminTask(user!.id, name),
@@ -541,6 +587,55 @@ export default function AdminTasks() {
                     {assignError}
                   </p>
                 )}
+
+                {selectedUserId && (
+                  <div className="flex items-center justify-between p-3 neu-pressed rounded-2xl text-xs font-bold mt-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[var(--color-text-secondary)]">Finance Entry Access:</span>
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide ${
+                          financeAccessMap[selectedUserId] === 'locked'
+                            ? 'bg-red-500/10 text-red-500 border border-red-500/20'
+                            : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                        }`}
+                      >
+                        {financeAccessMap[selectedUserId] === 'locked' ? (
+                          <>
+                            <Lock className="h-3 w-3" />
+                            <span>Locked</span>
+                          </>
+                        ) : (
+                          <>
+                            <Unlock className="h-3 w-3" />
+                            <span>Unlocked</span>
+                          </>
+                        )}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleFinanceAccess(selectedUserId)}
+                      disabled={setFinanceAccessMutation.isPending}
+                      className={`flex items-center gap-1 px-3 py-1.5 rounded-xl neu-btn text-[11px] font-bold cursor-pointer ${
+                        financeAccessMap[selectedUserId] === 'locked'
+                          ? 'text-emerald-500 hover:bg-emerald-500/10'
+                          : 'text-[var(--color-text-secondary)] hover:text-red-500 hover:bg-red-500/10'
+                      }`}
+                    >
+                      {financeAccessMap[selectedUserId] === 'locked' ? (
+                        <>
+                          <Unlock className="h-3.5 w-3.5" />
+                          <span>Unlock Entry</span>
+                        </>
+                      ) : (
+                        <>
+                          <Lock className="h-3.5 w-3.5" />
+                          <span>Lock Entry</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-end pt-1">
@@ -579,41 +674,80 @@ export default function AdminTasks() {
                 </div>
               ) : (
                 <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-                  {accessList.map((item: TaskAccessItem) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center justify-between gap-3 p-3 rounded-2xl neu-card hover:bg-[var(--color-primary)]/5 transition-all"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <Users className="h-4 w-4 text-[var(--color-primary)] shrink-0" />
-                          <span className="text-xs font-extrabold text-[var(--color-text-primary)] truncate">
-                            {item.user_name}
-                          </span>
-                        </div>
-                        <p className="text-[10px] font-mono text-[var(--color-text-tertiary)] truncate mt-0.5">
-                          ID: {item.user_id}
-                        </p>
-                      </div>
-
-                      <button
-                        onClick={() => {
-                          if (confirm(`Revoke task access for user "${item.user_name}" (${item.user_id})?`)) {
-                            revokeMutation.mutate({
-                              taskId: accessModalTask.id,
-                              targetUserId: item.user_id,
-                            });
-                          }
-                        }}
-                        disabled={revokeMutation.isPending}
-                        className="flex items-center gap-1 px-3 py-1.5 rounded-xl neu-btn text-[11px] font-bold text-[var(--color-danger)] hover:bg-red-500/10 transition-all disabled:opacity-50 cursor-pointer shrink-0"
-                        title="Revoke Task Access"
+                  {accessList.map((item: TaskAccessItem) => {
+                    const isLocked = financeAccessMap[item.user_id] === 'locked';
+                    return (
+                      <div
+                        key={item.id}
+                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-2xl neu-card hover:bg-[var(--color-primary)]/5 transition-all"
                       >
-                        <UserMinus className="h-3.5 w-3.5" />
-                        <span>Revoke</span>
-                      </button>
-                    </div>
-                  ))}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <Users className="h-4 w-4 text-[var(--color-primary)] shrink-0" />
+                            <span className="text-xs font-extrabold text-[var(--color-text-primary)] truncate">
+                              {item.user_name}
+                            </span>
+                            <span
+                              className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide ${
+                                isLocked
+                                  ? 'bg-red-500/10 text-red-500 border border-red-500/20'
+                                  : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                              }`}
+                            >
+                              {isLocked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+                              <span>{isLocked ? 'Locked' : 'Unlocked'}</span>
+                            </span>
+                          </div>
+                          <p className="text-[10px] font-mono text-[var(--color-text-tertiary)] truncate mt-0.5">
+                            ID: {item.user_id}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleFinanceAccess(item.user_id, item.user_email)}
+                            disabled={setFinanceAccessMutation.isPending}
+                            className={`flex items-center gap-1 px-3 py-1.5 rounded-xl neu-btn text-[11px] font-bold transition-all disabled:opacity-50 cursor-pointer ${
+                              isLocked
+                                ? 'text-emerald-500 hover:bg-emerald-500/10'
+                                : 'text-[var(--color-text-secondary)] hover:text-red-500 hover:bg-red-500/10'
+                            }`}
+                            title={isLocked ? 'Unlock Finance Entry access' : 'Lock Finance Entry access'}
+                          >
+                            {isLocked ? (
+                              <>
+                                <Unlock className="h-3.5 w-3.5" />
+                                <span>Unlock Entry</span>
+                              </>
+                            ) : (
+                              <>
+                                <Lock className="h-3.5 w-3.5" />
+                                <span>Lock Entry</span>
+                              </>
+                            )}
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              if (confirm(`Revoke task access for user "${item.user_name}" (${item.user_id})?`)) {
+                                revokeMutation.mutate({
+                                  taskId: accessModalTask.id,
+                                  targetUserId: item.user_id,
+                                });
+                              }
+                            }}
+                            disabled={revokeMutation.isPending}
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-xl neu-btn text-[11px] font-bold text-[var(--color-danger)] hover:bg-red-500/10 transition-all disabled:opacity-50 cursor-pointer"
+                            title="Revoke Task Access"
+                          >
+                            <UserMinus className="h-3.5 w-3.5" />
+                            <span>Revoke</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

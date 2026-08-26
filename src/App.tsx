@@ -83,7 +83,7 @@ export default function App() {
                   <Route path="folders" element={<Navigate to="/tasks" replace />} />
                   <Route path="folders/:folderId" element={<Navigate to="/tasks" replace />} />
                   <Route path="recent" element={<RecentPage />} />
-                  <Route path="starred" element={<StarredPage />} />
+                  <Route path="starred" element={<Navigate to="/home" replace />} />
                   <Route path="shared" element={<SharedPage />} />
                   <Route path="trash" element={<TrashPage />} />
                   <Route path="profile" element={<ProfilePage />} />

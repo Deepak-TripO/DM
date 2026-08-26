@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Home, FolderOpen, Clock, Star, Share2, Menu, X } from 'lucide-react';
+import { Home, FolderOpen, Clock, Share2, Menu, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 
@@ -7,7 +7,6 @@ const mobileNavItems = [
   { to: '/', icon: Home, label: 'Home' },
   { to: '/files', icon: FolderOpen, label: 'Files' },
   { to: '/recent', icon: Clock, label: 'Recent' },
-  { to: '/starred', icon: Star, label: 'Starred' },
   { to: '/shared', icon: Share2, label: 'Shared' },
 ];
 

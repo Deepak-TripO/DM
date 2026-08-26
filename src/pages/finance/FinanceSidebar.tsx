@@ -3,7 +3,6 @@ import { cn } from '@/lib/utils';
 import {
   Home,
   Clock,
-  Star,
   Share2,
   Trash2,
   FolderOpen,
@@ -17,7 +16,6 @@ interface FinanceSidebarProps {
 const financeNavItems = [
   { to: '/tasks', icon: Home, label: 'Home', color: '#4D94E8', bg: '#EAF4FF' },
   { to: '/recent', icon: Clock, label: 'Recent', color: '#E59A32', bg: '#FFF4E5' },
-  { to: '/starred', icon: Star, label: 'Starred', color: '#8A63D2', bg: '#F3EDFF' },
   { to: '/shared', icon: Share2, label: 'Shared', color: '#159A8A', bg: '#E8F8F5' },
   { to: '/trash', icon: Trash2, label: 'Trash', color: '#D95C68', bg: '#FDECEE' },
   { to: '/files', icon: FolderOpen, label: 'My Files', color: '#18AFAF', bg: '#E8FAFA' },
