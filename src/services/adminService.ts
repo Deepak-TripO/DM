@@ -21,6 +21,7 @@ export interface AdminUserItem {
   is_custom: boolean;
   file_count: number;
   email?: string;
+  role?: string;
 }
 
 export interface AdminFileItem {
