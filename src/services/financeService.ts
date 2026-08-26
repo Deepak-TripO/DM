@@ -45,7 +45,7 @@ export const DEFAULT_CATEGORY_ITEMS: Record<string, string[]> = {
   Workshop: ['Workshop Expense'],
 };
 
-export const INITIAL_FINANCE_ENTRIES: Omit<FinanceEntry, 'id'>[] = [
+export const INITIAL_FINANCE_ENTRIES: Omit<FinanceEntry, 'id' | 'task_id'>[] = [
   { date: '2026-03-02', item: 'Domain name', category: 'Software', description: 'Domain name for hosting', person: 'Elumugam', amount: 650 },
   { date: '2026-03-02', item: 'VPS (KVM 1)', category: 'Software', description: 'Server for hosting', person: 'Jana', amount: 567 },
   { date: '2026-03-08', item: 'Claude', category: 'Software', description: 'Coding assistant AI tool', person: 'Elumugam, Jana, Deepak', amount: 2000 },
@@ -272,16 +272,6 @@ async function ensureSupabaseSeeded(existingSupabaseEntries: any[]) {
   }
 }
 
-function saveMemoryEntries() {
-  try {
-    localStorage.setItem(ENTRIES_STORAGE_KEY, JSON.stringify(memoryFinanceEntries));
-  } catch {}
-}
-
-function isUUID(val: string): boolean {
-  return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(val);
-}
-
 export async function getFinanceEntries(
   taskId: string,
   search?: string,
@@ -455,8 +445,7 @@ export async function createFinanceEntry(
     if (error) {
       if (
         error.code === '42501' ||
-        (error as any).status === 403 ||
-        error.status === 403 ||
+        (error as any)?.status === 403 ||
         error.message?.includes('policy') ||
         error.message?.includes('permission')
       ) {
