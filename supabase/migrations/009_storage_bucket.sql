@@ -9,6 +9,7 @@ VALUES ('avatars', 'avatars', true, 10485760, ARRAY['image/jpeg', 'image/png', '
 ON CONFLICT (id) DO NOTHING;
 
 -- Storage RLS Policies for files bucket
+DROP POLICY IF EXISTS "Allow authenticated users to upload to their path." ON storage.objects;
 CREATE POLICY "Allow authenticated users to upload to their path."
     ON storage.objects FOR INSERT
     TO authenticated
@@ -18,6 +19,7 @@ CREATE POLICY "Allow authenticated users to upload to their path."
         AND (storage.foldername(name))[2] = auth.uid()::text
     );
 
+DROP POLICY IF EXISTS "Allow users to read their own files." ON storage.objects;
 CREATE POLICY "Allow users to read their own files."
     ON storage.objects FOR SELECT
     TO authenticated
@@ -27,6 +29,7 @@ CREATE POLICY "Allow users to read their own files."
         AND (storage.foldername(name))[2] = auth.uid()::text
     );
 
+DROP POLICY IF EXISTS "Allow users to delete their own files." ON storage.objects;
 CREATE POLICY "Allow users to delete their own files."
     ON storage.objects FOR DELETE
     TO authenticated
@@ -37,11 +40,13 @@ CREATE POLICY "Allow users to delete their own files."
     );
 
 -- Storage RLS Policies for avatars bucket
+DROP POLICY IF EXISTS "Public read avatars." ON storage.objects;
 CREATE POLICY "Public read avatars."
     ON storage.objects FOR SELECT
     TO public
     USING (bucket_id = 'avatars');
 
+DROP POLICY IF EXISTS "Users update own avatar." ON storage.objects;
 CREATE POLICY "Users update own avatar."
     ON storage.objects FOR INSERT
     TO authenticated
@@ -50,6 +55,7 @@ CREATE POLICY "Users update own avatar."
         AND (storage.foldername(name))[1] = auth.uid()::text
     );
 
+DROP POLICY IF EXISTS "Users delete own avatar." ON storage.objects;
 CREATE POLICY "Users delete own avatar."
     ON storage.objects FOR DELETE
     TO authenticated
