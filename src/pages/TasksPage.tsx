@@ -37,7 +37,7 @@ export default function TasksPage() {
     enabled: !!taskId,
   });
 
-  const isFinanceTask = !!selectedTask && selectedTask.name.trim().toLowerCase() === 'finance';
+  const isFinanceTask = !!selectedTask && (selectedTask.name.trim().toLowerCase() === 'finance' || selectedTask.id === 'finance');
 
   const { data: taskFiles = [], isLoading: loadingFiles } = useQuery({
     queryKey: ['taskFiles', taskId],

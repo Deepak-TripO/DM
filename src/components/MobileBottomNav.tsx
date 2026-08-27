@@ -61,7 +61,7 @@ export function MobileBottomNav() {
   const isPathActive = (path: string) => {
     const p = location.pathname;
     if (path === '/home') {
-      return p === '/home' || p === '/' || p === '/tasks' || p === '/tasks/';
+      return p === '/home' || p === '/';
     }
     if (path === '/files') {
       return p.startsWith('/files') || p.startsWith('/folders');
