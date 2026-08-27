@@ -201,7 +201,7 @@ export async function getFinanceEntries(
       .order('date', { ascending: false });
 
     if (taskId && isUUID(taskId)) {
-      query = query.or(`task_id.eq.${taskId},task_id.is.null,task_id.eq.finance`);
+      query = query.or(`task_id.eq.${taskId},task_id.is.null`);
     }
 
     if (categoryFilter && categoryFilter !== 'All') {
@@ -254,7 +254,7 @@ function filterMemoryEntries(
 
   if (taskId && isUUID(taskId)) {
     list = list.filter(
-      (e) => !e.task_id || e.task_id === taskId || e.task_id === 'finance'
+      (e) => !e.task_id || e.task_id === taskId
     );
   }
 
