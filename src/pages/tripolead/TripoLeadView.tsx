@@ -10,6 +10,7 @@ import {
   restoreTripoLeadEntry,
   permanentDeleteTripoLeadEntry,
   type TripoLeadEntry,
+  type TripoLeadStatus,
 } from '@/services/tripoleadService';
 import {
   getTaskFiles,
@@ -28,6 +29,7 @@ import { FilePreviewModal } from '@/features/files/preview/FilePreviewModal';
 import { UploadDialog } from '@/features/files/UploadDialog';
 import { TripoLeadSidebar, type TripoLeadTab } from './TripoLeadSidebar';
 import { TripoLeadEntryModal } from './TripoLeadEntryModal';
+import { TripoLeadUpdateModal } from './TripoLeadUpdateModal';
 import { formatBytes, formatRelativeTime, formatDate } from '@/utils';
 import {
   Search,
@@ -37,11 +39,10 @@ import {
   ExternalLink,
   RotateCcw,
   Building2,
-  MapPin,
-  Navigation,
   Clock,
   FolderOpen,
-  CheckSquare,
+  Calendar,
+  FileText,
 } from 'lucide-react';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { toast } from 'sonner';
@@ -56,16 +57,17 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
   const [activeTab, setActiveTab] = useState<TripoLeadTab>('home');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  
-  // Entry modal states
-  const [entryModalOpen, setEntryModalOpen] = useState(false);
-  const [editingEntry, setEditingEntry] = useState<TripoLeadEntry | null>(null);
 
-  // File modal & upload states
+  // Modals
+  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [updateModalOpen, setUpdateModalOpen] = useState(false);
+  const [activeEntry, setActiveEntry] = useState<TripoLeadEntry | null>(null);
+
+  // File preview & upload
   const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
 
-  // Queries for TripO Lead entries & files
+  // Queries for entries & files
   const { data: entries = [], isLoading: loadingEntries } = useQuery({
     queryKey: ['tripoLeadEntries', task.id, searchQuery],
     queryFn: () => getTripoLeadEntries(task.id, searchQuery),
@@ -81,12 +83,12 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
     queryFn: () => getTripoLeadTrashEntries(task.id),
   });
 
-  const { data: files = [], isLoading: loadingFiles } = useQuery({
+  const { data: files = [] } = useQuery({
     queryKey: ['tripoLeadFiles', task.id],
     queryFn: () => getTaskFiles(task.id),
   });
 
-  const { data: trashFiles = [], isLoading: loadingTrashFiles } = useQuery({
+  const { data: trashFiles = [] } = useQuery({
     queryKey: ['tripoLeadTrashFiles', task.id],
     queryFn: () => getTaskTrashFiles(task.id),
   });
@@ -98,20 +100,20 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tripoLeadEntries', task.id] });
       queryClient.invalidateQueries({ queryKey: ['tripoLeadRecentEntries', task.id] });
-      setEntryModalOpen(false);
+      setAddModalOpen(false);
       toast.success('TripO Lead entry created');
     },
   });
 
   const updateEntryMutation = useMutation({
-    mutationFn: (data: { hotel_name: string; district: string; area: string; location_link?: string }) =>
-      updateTripoLeadEntry(task.id, editingEntry!.id, data),
+    mutationFn: (data: { status: TripoLeadStatus; approach_date?: string; short_notes?: string }) =>
+      updateTripoLeadEntry(task.id, activeEntry!.id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tripoLeadEntries', task.id] });
       queryClient.invalidateQueries({ queryKey: ['tripoLeadRecentEntries', task.id] });
-      setEntryModalOpen(false);
-      setEditingEntry(null);
-      toast.success('TripO Lead entry updated');
+      setUpdateModalOpen(false);
+      setActiveEntry(null);
+      toast.success('TripO Lead entry updated successfully');
     },
   });
 
@@ -160,31 +162,9 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
     },
   });
 
-  const softDeleteFileMutation = useMutation({
-    mutationFn: (fileId: string) => softDeleteFile(fileId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tripoLeadFiles', task.id] });
-      queryClient.invalidateQueries({ queryKey: ['tripoLeadTrashFiles', task.id] });
-      toast.success('File moved to trash');
-    },
-  });
-
-  const handleSaveEntry = (data: { hotel_name: string; district: string; area: string; location_link?: string }) => {
-    if (editingEntry) {
-      updateEntryMutation.mutate(data);
-    } else {
-      addEntryMutation.mutate(data);
-    }
-  };
-
-  const handleOpenAddEntry = () => {
-    setEditingEntry(null);
-    setEntryModalOpen(true);
-  };
-
-  const handleOpenEditEntry = (entry: TripoLeadEntry) => {
-    setEditingEntry(entry);
-    setEntryModalOpen(true);
+  const handleOpenUpdateModal = (entry: TripoLeadEntry) => {
+    setActiveEntry(entry);
+    setUpdateModalOpen(true);
   };
 
   return (
@@ -213,7 +193,7 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search TripO Lead entries by Hotel Name, District, Area..."
+                    placeholder="Search TripO Lead entries by Hotel Name, District, Area, Status..."
                     className="w-full rounded-xl neu-pressed pl-10 pr-4 py-3 text-xs font-bold text-[var(--color-text-primary)] focus:outline-none"
                   />
                   {searchQuery && (
@@ -227,7 +207,7 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
                 </div>
 
                 <button
-                  onClick={handleOpenAddEntry}
+                  onClick={() => setAddModalOpen(true)}
                   className="neu-btn-primary px-6 py-3 rounded-xl text-xs font-extrabold text-white flex items-center justify-center gap-2 shadow-md hover:scale-[1.02] cursor-pointer shrink-0 transition-transform"
                 >
                   <Plus className="h-4 w-4" />
@@ -235,11 +215,11 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
                 </button>
               </div>
 
-              {/* TripO Lead Entries Display */}
+              {/* TripO Lead Entries Listing */}
               {loadingEntries ? (
                 <div className="space-y-3">
                   {Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i} className="h-16 rounded-2xl neu-card animate-pulse" />
+                    <div key={i} className="h-20 rounded-2xl neu-card animate-pulse" />
                   ))}
                 </div>
               ) : entries.length === 0 ? (
@@ -253,73 +233,108 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
                   }
                 />
               ) : (
-                <div className="rounded-2xl neu-card p-2 space-y-1">
-                  {/* Table Header */}
-                  <div className="flex items-center gap-3 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-[var(--color-text-tertiary)] border-b border-[var(--color-border-light)]/40">
-                    <span className="flex-1">Hotel Name</span>
-                    <span className="w-28 md:w-36 hidden sm:block">District</span>
-                    <span className="w-28 md:w-36 hidden md:block">Area</span>
-                    <span className="w-28 hidden lg:block">Location</span>
-                    <span className="w-24 text-right">Action</span>
-                  </div>
+                <div className="space-y-3">
+                  {entries.map((entry) => {
+                    const hasUpdateInfo = !!(entry.status || entry.approach_date || entry.short_notes);
 
-                  {/* Entry Rows */}
-                  {entries.map((entry) => (
-                    <div
-                      key={entry.id}
-                      className="flex items-center gap-3 rounded-xl px-4 py-3.5 transition-all neu-pressed hover:bg-[var(--color-surface-secondary)]/50"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="truncate text-xs md:text-sm font-extrabold text-[var(--color-text-primary)]">
-                          {entry.hotel_name}
-                        </p>
-                        <div className="flex sm:hidden items-center gap-2 text-[10px] font-semibold text-[var(--color-text-tertiary)] mt-0.5">
-                          <span>{entry.district}</span> &middot; <span>{entry.area}</span>
+                    return (
+                      <div
+                        key={entry.id}
+                        className="rounded-2xl neu-pressed p-4 md:p-5 space-y-3 transition-all hover:bg-[var(--color-surface-secondary)]/50"
+                      >
+                        {/* Header Row: Hotel Name, District, Area, Status badge, Update & Delete buttons */}
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-[var(--color-border-light)]/20 pb-3">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2.5 flex-wrap">
+                              <h4 className="text-sm md:text-base font-extrabold text-[var(--color-text-primary)]">
+                                {entry.hotel_name}
+                              </h4>
+                              {/* Status Badge (ONLY shown after update!) */}
+                              {entry.status && (
+                                <span
+                                  className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-black border ${
+                                    entry.status === 'Pending'
+                                      ? 'bg-red-500/10 text-red-500 border-red-500/30'
+                                      : entry.status === 'No Response'
+                                      ? 'bg-amber-500/10 text-amber-500 border-amber-500/30'
+                                      : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
+                                  }`}
+                                >
+                                  <span
+                                    className={`h-1.5 w-1.5 rounded-full ${
+                                      entry.status === 'Pending'
+                                        ? 'bg-red-500'
+                                        : entry.status === 'No Response'
+                                        ? 'bg-amber-500'
+                                        : 'bg-emerald-500'
+                                    }`}
+                                  />
+                                  {entry.status}
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-3 text-xs font-bold text-[var(--color-text-secondary)] flex-wrap">
+                              <span>District: <strong className="text-[var(--color-text-primary)]">{entry.district}</strong></span>
+                              &middot;
+                              <span>Area: <strong className="text-[var(--color-text-primary)]">{entry.area}</strong></span>
+                              {entry.location_link && (
+                                <>
+                                  &middot;
+                                  <a
+                                    href={entry.location_link}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-500 hover:underline flex items-center gap-1 font-bold"
+                                  >
+                                    Map <ExternalLink className="h-3 w-3" />
+                                  </a>
+                                </>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Action Controls: Update & Delete */}
+                          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                            <button
+                              onClick={() => handleOpenUpdateModal(entry)}
+                              className="neu-btn-primary px-3.5 py-1.5 rounded-xl text-xs font-extrabold text-white flex items-center gap-1.5 shadow-sm hover:scale-[1.02] cursor-pointer"
+                            >
+                              <Edit2 className="h-3.5 w-3.5" />
+                              Update
+                            </button>
+
+                            <button
+                              onClick={() => softDeleteEntryMutation.mutate(entry.id)}
+                              className="h-8 w-8 neu-circle text-red-500 hover:scale-105 cursor-pointer flex items-center justify-center"
+                              title="Delete Entry"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
                         </div>
-                      </div>
 
-                      <div className="w-28 md:w-36 hidden sm:block truncate text-xs font-bold text-[var(--color-text-secondary)]">
-                        {entry.district}
-                      </div>
+                        {/* Extended Update Info: Approach Date & Short Notes (ONLY shown after update!) */}
+                        {hasUpdateInfo && (
+                          <div className="pt-1 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs font-semibold text-[var(--color-text-secondary)] bg-[var(--neu-bg)]/40 p-3 rounded-xl border border-[var(--color-border-light)]/30">
+                            {entry.approach_date && (
+                              <div className="flex items-center gap-1.5">
+                                <Calendar className="h-3.5 w-3.5 text-purple-500" />
+                                <span>Approach Date: <strong className="text-[var(--color-text-primary)]">{formatDate(entry.approach_date)}</strong></span>
+                              </div>
+                            )}
 
-                      <div className="w-28 md:w-36 hidden md:block truncate text-xs font-bold text-[var(--color-text-tertiary)]">
-                        {entry.area}
-                      </div>
-
-                      <div className="w-28 hidden lg:block truncate text-xs font-bold">
-                        {entry.location_link ? (
-                          <a
-                            href={entry.location_link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-500 hover:underline flex items-center gap-1"
-                          >
-                            Map <ExternalLink className="h-3 w-3" />
-                          </a>
-                        ) : (
-                          <span className="text-[var(--color-text-tertiary)]">&mdash;</span>
+                            {entry.short_notes && (
+                              <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                                <FileText className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                                <span className="truncate">Notes: <strong className="text-[var(--color-text-primary)]">{entry.short_notes}</strong></span>
+                              </div>
+                            )}
+                          </div>
                         )}
                       </div>
-
-                      {/* Action buttons: Update & Delete */}
-                      <div className="flex items-center justify-end gap-2 w-24">
-                        <button
-                          onClick={() => handleOpenEditEntry(entry)}
-                          className="h-8 w-8 neu-circle text-blue-500 hover:scale-105 cursor-pointer flex items-center justify-center"
-                          title="Update Entry"
-                        >
-                          <Edit2 className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={() => softDeleteEntryMutation.mutate(entry.id)}
-                          className="h-8 w-8 neu-circle text-red-500 hover:scale-105 cursor-pointer flex items-center justify-center"
-                          title="Delete Entry"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -350,12 +365,19 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
                   {recentEntries.map((entry) => (
                     <div key={entry.id} className="flex items-center justify-between rounded-xl px-4 py-3.5 neu-pressed">
                       <div>
-                        <p className="text-xs font-extrabold text-[var(--color-text-primary)]">{entry.hotel_name}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs font-extrabold text-[var(--color-text-primary)]">{entry.hotel_name}</p>
+                          {entry.status && (
+                            <span className="text-[10px] font-extrabold text-blue-500 px-2 py-0.5 rounded-full neu-pressed">
+                              {entry.status}
+                            </span>
+                          )}
+                        </div>
                         <p className="text-[10px] font-semibold text-[var(--color-text-tertiary)] mt-0.5">
                           {entry.district} &middot; {entry.area} &middot; {formatRelativeTime(entry.updated_at)}
                         </p>
                       </div>
-                      <button onClick={() => handleOpenEditEntry(entry)} className="h-8 w-8 neu-circle text-blue-500">
+                      <button onClick={() => handleOpenUpdateModal(entry)} className="h-8 w-8 neu-circle text-blue-500">
                         <Edit2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
@@ -462,16 +484,24 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
         </main>
       </div>
 
-      {/* Modals */}
+      {/* Add Entry Modal */}
       <TripoLeadEntryModal
-        open={entryModalOpen}
+        open={addModalOpen}
+        onClose={() => setAddModalOpen(false)}
+        onSave={(data) => addEntryMutation.mutate(data)}
+        isSubmitting={addEntryMutation.isPending}
+      />
+
+      {/* Update Entry Modal */}
+      <TripoLeadUpdateModal
+        open={updateModalOpen}
         onClose={() => {
-          setEntryModalOpen(false);
-          setEditingEntry(null);
+          setUpdateModalOpen(false);
+          setActiveEntry(null);
         }}
-        onSave={handleSaveEntry}
-        initialData={editingEntry}
-        isSubmitting={addEntryMutation.isPending || updateEntryMutation.isPending}
+        onSave={(data) => updateEntryMutation.mutate(data)}
+        entry={activeEntry}
+        isSubmitting={updateEntryMutation.isPending}
       />
 
       {previewFile && <FilePreviewModal file={previewFile} onClose={() => setPreviewFile(null)} />}

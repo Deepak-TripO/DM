@@ -1,5 +1,7 @@
 import { supabase } from '@/lib/supabase/client';
 
+export type TripoLeadStatus = 'Pending' | 'No Response' | 'Complete';
+
 export interface TripoLeadEntry {
   id: string;
   task_id: string;
@@ -7,10 +9,54 @@ export interface TripoLeadEntry {
   district: string;
   area: string;
   location_link?: string | null;
+  status?: TripoLeadStatus | null;
+  approach_date?: string | null;
+  short_notes?: string | null;
   deleted_at?: string | null;
   created_at: string;
   updated_at: string;
 }
+
+export const TAMIL_NADU_DISTRICTS = [
+  'Ariyalur',
+  'Chengalpattu',
+  'Chennai',
+  'Coimbatore',
+  'Cuddalore',
+  'Dharmapuri',
+  'Dindigul',
+  'Erode',
+  'Kallakurichi',
+  'Kanchipuram',
+  'Kanyakumari',
+  'Karur',
+  'Krishnagiri',
+  'Madurai',
+  'Mayiladuthurai',
+  'Nagapattinam',
+  'Namakkal',
+  'Nilgiris',
+  'Perambalur',
+  'Pudukkottai',
+  'Ramanathapuram',
+  'Ranipet',
+  'Salem',
+  'Sivagangai',
+  'Tenkasi',
+  'Thanjavur',
+  'Theni',
+  'Thoothukudi (Tuticorin)',
+  'Tiruchirappalli (Trichy)',
+  'Tirunelveli',
+  'Tirupathur',
+  'Tiruppur',
+  'Tiruvallur',
+  'Tiruvannamalai',
+  'Tiruvarur',
+  'Vellore',
+  'Viluppuram',
+  'Virudhunagar',
+];
 
 const LOCAL_STORAGE_PREFIX = 'dm_tripolead_entries_';
 
@@ -43,7 +89,7 @@ export async function getTripoLeadEntries(
 
     if (search && search.trim()) {
       const s = `%${search.trim()}%`;
-      query = query.or(`hotel_name.ilike.${s},district.ilike.${s},area.ilike.${s}`);
+      query = query.or(`hotel_name.ilike.${s},district.ilike.${s},area.ilike.${s},status.ilike.${s}`);
     }
 
     const { data, error } = await query;
@@ -61,7 +107,9 @@ export async function getTripoLeadEntries(
         e.hotel_name.toLowerCase().includes(q) ||
         e.district.toLowerCase().includes(q) ||
         e.area.toLowerCase().includes(q) ||
-        (e.location_link && e.location_link.toLowerCase().includes(q))
+        (e.location_link && e.location_link.toLowerCase().includes(q)) ||
+        (e.status && e.status.toLowerCase().includes(q)) ||
+        (e.short_notes && e.short_notes.toLowerCase().includes(q))
     );
   }
   return local;
@@ -123,6 +171,9 @@ export async function addTripoLeadEntry(
     district: entry.district.trim(),
     area: entry.area.trim(),
     location_link: entry.location_link?.trim() || null,
+    status: null,
+    approach_date: null,
+    short_notes: null,
     deleted_at: null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
@@ -159,20 +210,27 @@ export async function updateTripoLeadEntry(
   taskId: string,
   entryId: string,
   updates: {
-    hotel_name: string;
-    district: string;
-    area: string;
+    hotel_name?: string;
+    district?: string;
+    area?: string;
     location_link?: string;
+    status?: TripoLeadStatus | null;
+    approach_date?: string | null;
+    short_notes?: string | null;
   }
 ): Promise<void> {
   const now = new Date().toISOString();
-  const cleanUpdates = {
-    hotel_name: updates.hotel_name.trim(),
-    district: updates.district.trim(),
-    area: updates.area.trim(),
-    location_link: updates.location_link?.trim() || null,
+  const cleanUpdates: Record<string, any> = {
     updated_at: now,
   };
+
+  if (updates.hotel_name !== undefined) cleanUpdates.hotel_name = updates.hotel_name.trim();
+  if (updates.district !== undefined) cleanUpdates.district = updates.district.trim();
+  if (updates.area !== undefined) cleanUpdates.area = updates.area.trim();
+  if (updates.location_link !== undefined) cleanUpdates.location_link = updates.location_link?.trim() || null;
+  if (updates.status !== undefined) cleanUpdates.status = updates.status;
+  if (updates.approach_date !== undefined) cleanUpdates.approach_date = updates.approach_date || null;
+  if (updates.short_notes !== undefined) cleanUpdates.short_notes = updates.short_notes?.trim() || null;
 
   try {
     const { error } = await supabase

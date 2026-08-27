@@ -8,11 +8,18 @@ CREATE TABLE IF NOT EXISTS public.tripolead_entries (
     district TEXT NOT NULL,
     area TEXT NOT NULL,
     location_link TEXT,
+    status TEXT DEFAULT NULL,
+    approach_date DATE DEFAULT NULL,
+    short_notes TEXT DEFAULT NULL,
     deleted_at TIMESTAMPTZ DEFAULT NULL,
     created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE public.tripolead_entries ADD COLUMN IF NOT EXISTS status TEXT DEFAULT NULL;
+ALTER TABLE public.tripolead_entries ADD COLUMN IF NOT EXISTS approach_date DATE DEFAULT NULL;
+ALTER TABLE public.tripolead_entries ADD COLUMN IF NOT EXISTS short_notes TEXT DEFAULT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_tripolead_entries_task_id ON public.tripolead_entries(task_id);
 CREATE INDEX IF NOT EXISTS idx_tripolead_entries_deleted_at ON public.tripolead_entries(deleted_at);

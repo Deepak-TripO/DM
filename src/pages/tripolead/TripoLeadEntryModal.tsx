@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X, Building2, MapPin, Navigation, ExternalLink } from 'lucide-react';
-import type { TripoLeadEntry } from '@/services/tripoleadService';
+import { TAMIL_NADU_DISTRICTS, type TripoLeadEntry } from '@/services/tripoleadService';
 
 interface TripoLeadEntryModalProps {
   open: boolean;
@@ -18,19 +18,19 @@ export function TripoLeadEntryModal({
   isSubmitting = false,
 }: TripoLeadEntryModalProps) {
   const [hotelName, setHotelName] = useState('');
-  const [district, setDistrict] = useState('');
+  const [district, setDistrict] = useState(TAMIL_NADU_DISTRICTS[0]);
   const [area, setArea] = useState('');
   const [locationLink, setLocationLink] = useState('');
 
   useEffect(() => {
     if (initialData) {
       setHotelName(initialData.hotel_name || '');
-      setDistrict(initialData.district || '');
+      setDistrict(initialData.district || TAMIL_NADU_DISTRICTS[0]);
       setArea(initialData.area || '');
       setLocationLink(initialData.location_link || '');
     } else {
       setHotelName('');
-      setDistrict('');
+      setDistrict(TAMIL_NADU_DISTRICTS[0]);
       setArea('');
       setLocationLink('');
     }
@@ -40,7 +40,7 @@ export function TripoLeadEntryModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!hotelName.trim() || !district.trim() || !area.trim()) return;
+    if (!hotelName.trim() || !district || !area.trim()) return;
 
     onSave({
       hotel_name: hotelName.trim(),
@@ -60,10 +60,10 @@ export function TripoLeadEntryModal({
         <div className="flex items-center justify-between border-b border-[var(--color-border-light)]/40 pb-4">
           <div>
             <h2 className="text-base md:text-lg font-black text-[var(--color-text-primary)]">
-              {isEditing ? 'Update TripO Lead Entry' : 'Add New TripO Lead Entry'}
+              {isEditing ? 'Edit TripO Lead Entry' : 'Add New TripO Lead Entry'}
             </h2>
             <p className="text-xs font-semibold text-[var(--color-text-secondary)] mt-0.5">
-              Enter hotel details, district, area, and location link
+              Enter hotel details, select Tamil Nadu district, area, and location link
             </p>
           </div>
           <button
@@ -98,16 +98,20 @@ export function TripoLeadEntryModal({
             <div className="space-y-1.5">
               <label className="text-xs font-extrabold text-[var(--color-text-primary)] uppercase tracking-wider flex items-center gap-2">
                 <MapPin className="h-3.5 w-3.5 text-purple-500" />
-                District <span className="text-red-500">*</span>
+                District (Tamil Nadu) <span className="text-red-500">*</span>
               </label>
-              <input
-                type="text"
+              <select
                 required
                 value={district}
                 onChange={(e) => setDistrict(e.target.value)}
-                placeholder="e.g. Central District"
-                className="w-full rounded-xl neu-pressed px-4 py-3 text-xs font-bold text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-              />
+                className="w-full rounded-xl neu-pressed px-4 py-3 text-xs font-bold text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-purple-500/40 bg-[var(--neu-bg)] cursor-pointer"
+              >
+                {TAMIL_NADU_DISTRICTS.map((d) => (
+                  <option key={d} value={d} className="bg-[var(--neu-bg)] text-[var(--color-text-primary)] font-bold">
+                    {d}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="space-y-1.5">
@@ -155,7 +159,7 @@ export function TripoLeadEntryModal({
               disabled={isSubmitting || !hotelName.trim() || !district.trim() || !area.trim()}
               className="neu-btn-primary px-6 py-2.5 rounded-xl text-xs font-extrabold text-white shadow-md hover:scale-[1.02] cursor-pointer disabled:opacity-50"
             >
-              {isSubmitting ? 'Saving...' : isEditing ? 'Update Entry' : 'Save Entry'}
+              {isSubmitting ? 'Saving...' : isEditing ? 'Save Changes' : 'Save Entry'}
             </button>
           </div>
         </form>
