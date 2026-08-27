@@ -219,7 +219,10 @@ CREATE POLICY "Admins can view admin_users table."
     ON public.admin_users FOR SELECT
     USING (auth.uid() = user_id);
 
-CREATE OR REPLACE FUNCTION public.is_admin(uid UUID)
+DROP FUNCTION IF EXISTS public.is_admin(UUID) CASCADE;
+DROP FUNCTION IF EXISTS public.is_admin() CASCADE;
+
+CREATE OR REPLACE FUNCTION public.is_admin(uid UUID DEFAULT auth.uid())
 RETURNS BOOLEAN AS $$
 BEGIN
     RETURN EXISTS (SELECT 1 FROM public.admin_users WHERE user_id = uid);
@@ -318,6 +321,7 @@ VALUES ('avatars', 'avatars', true, 10485760, ARRAY['image/jpeg', 'image/png', '
 ON CONFLICT (id) DO NOTHING;
 
 -- 11. RPC FUNCTIONS
+DROP FUNCTION IF EXISTS public.update_storage_used(UUID, BIGINT) CASCADE;
 CREATE OR REPLACE FUNCTION public.update_storage_used(
     target_user_id UUID,
     delta BIGINT
@@ -331,6 +335,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+DROP FUNCTION IF EXISTS public.verify_share_password(TEXT, TEXT) CASCADE;
 CREATE OR REPLACE FUNCTION public.verify_share_password(
     share_token TEXT,
     password TEXT
@@ -357,6 +362,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+DROP FUNCTION IF EXISTS public.get_admin_stats() CASCADE;
 CREATE OR REPLACE FUNCTION public.get_admin_stats()
 RETURNS JSONB AS $$
 DECLARE
