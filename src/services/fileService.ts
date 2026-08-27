@@ -253,6 +253,9 @@ export async function saveExportedFileToShared(
       const { data: updated } = await supabase
         .from('files')
         .update({
+          storage_path: storagePath,
+          mime_type: mimeType,
+          extension: ext,
           size_bytes: blob.size,
           updated_at: new Date().toISOString(),
         })
@@ -390,12 +393,26 @@ export async function permanentDeleteFile(userId: string, file: FileItem): Promi
 }
 
 export async function getSignedUrl(storagePath: string, expiresIn = 3600): Promise<string> {
-  const { data, error } = await supabase.storage
-    .from('files')
-    .createSignedUrl(storagePath, expiresIn);
+  try {
+    const { data, error } = await supabase.storage
+      .from('files')
+      .createSignedUrl(storagePath, expiresIn);
 
-  if (error) throw error;
-  return data.signedUrl;
+    if (error || !data?.signedUrl) {
+      const { data: pubData } = supabase.storage
+        .from('files')
+        .getPublicUrl(storagePath);
+      if (pubData?.publicUrl) return pubData.publicUrl;
+      if (error) throw error;
+    }
+    return data.signedUrl;
+  } catch (err) {
+    const { data: pubData } = supabase.storage
+      .from('files')
+      .getPublicUrl(storagePath);
+    if (pubData?.publicUrl) return pubData.publicUrl;
+    throw err;
+  }
 }
 
 export async function downloadFile(storagePath: string): Promise<Blob> {
