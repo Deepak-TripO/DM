@@ -382,6 +382,53 @@ export async function getTrashFiles(userId: string): Promise<FileItem[]> {
   return (data || []) as FileItem[];
 }
 
+export async function getTaskFiles(
+  taskId: string,
+  options?: {
+    sortField?: string;
+    sortDirection?: 'asc' | 'desc';
+    search?: string;
+    category?: string;
+  }
+): Promise<FileItem[]> {
+  let query = supabase
+    .from('files')
+    .select('*')
+    .eq('folder_id', taskId)
+    .is('deleted_at', null);
+
+  if (options?.search) {
+    query = query.ilike('name', `%${options.search}%`);
+  }
+
+  if (options?.category) {
+    const cat = options.category.toLowerCase();
+    const extensionMap: Record<string, string[]> = {
+      files: ['pdf', 'jpg', 'jpeg', 'docx', 'doc', 'txt'],
+      file: ['pdf', 'jpg', 'jpeg', 'docx', 'doc', 'txt'],
+      image: ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'],
+      images: ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'],
+      video: ['mp4', 'webm', 'mov', 'avi', 'mkv'],
+      videos: ['mp4', 'webm', 'mov', 'avi', 'mkv'],
+      audio: ['mp3', 'wav', 'ogg', 'm4a', 'flac'],
+      document: ['doc', 'docx', 'odt', 'txt', 'rtf'],
+      pdf: ['pdf'],
+    };
+    const exts = extensionMap[cat];
+    if (exts) {
+      query = query.in('extension', exts);
+    }
+  }
+
+  const sortField = options?.sortField || 'created_at';
+  const sortDirection = options?.sortDirection === 'asc';
+  query = query.order(sortField, { ascending: sortDirection });
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data || []) as FileItem[];
+}
+
 export async function getTaskRecentFiles(taskId: string, limit = 50): Promise<FileItem[]> {
   const { data, error } = await supabase
     .from('files')
