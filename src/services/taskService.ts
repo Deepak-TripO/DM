@@ -10,37 +10,8 @@ export interface TaskItem {
   status?: 'active' | 'inactive';
 }
 
-const DEFAULT_TASK_NAMES = ['TripO Lead', 'Freelance Lead', 'Finance'];
-
-export async function ensureDefaultTasks(userId: string): Promise<void> {
-  try {
-    const { data: existing } = await supabase
-      .from('folders')
-      .select('name')
-      .is('deleted_at', null);
-
-    const existingNames = new Set((existing || []).map((f: any) => f.name.trim().toLowerCase()));
-
-    for (const name of DEFAULT_TASK_NAMES) {
-      if (!existingNames.has(name.toLowerCase())) {
-        await supabase.from('folders').insert({
-          id: crypto.randomUUID(),
-          name,
-          owner_id: userId,
-        });
-      }
-    }
-  } catch (err) {
-    console.warn('ensureDefaultTasks notice:', err);
-  }
-}
-
 export async function getActiveTasks(): Promise<TaskItem[]> {
   const { data: { user } } = await supabase.auth.getUser();
-
-  if (user) {
-    await ensureDefaultTasks(user.id);
-  }
 
   const { data, error } = await supabase
     .from('folders')

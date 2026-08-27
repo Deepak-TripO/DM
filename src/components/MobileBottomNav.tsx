@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 
 const navItemsConfig = [
   {
-    to: '/tasks',
+    to: '/home',
     label: 'Home',
     icon: Home,
     color: '#3B82F6', // Solid Blue
@@ -60,8 +60,8 @@ export function MobileBottomNav() {
 
   const isPathActive = (path: string) => {
     const p = location.pathname;
-    if (path === '/tasks') {
-      return p === '/tasks' || p === '/tasks/' || p === '/home' || p === '/';
+    if (path === '/home') {
+      return p === '/home' || p === '/' || p.startsWith('/tasks');
     }
     if (path === '/files') {
       return p.startsWith('/files') || p.startsWith('/folders');

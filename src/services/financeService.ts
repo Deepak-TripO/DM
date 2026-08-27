@@ -189,38 +189,11 @@ function isUUID(val: string): boolean {
   return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(val);
 }
 
-async function isFinanceTaskById(taskId: string): Promise<boolean> {
-  if (!taskId || taskId === 'finance') return true;
-  if (!isUUID(taskId)) return false;
-
-  try {
-    const { data } = await supabase
-      .from('folders')
-      .select('name')
-      .eq('id', taskId)
-      .maybeSingle();
-
-    if (data && data.name.trim().toLowerCase() === 'finance') {
-      return true;
-    }
-  } catch {}
-
-  return false;
-}
-
 export async function getFinanceEntries(
   taskId: string,
   search?: string,
   categoryFilter?: string
 ): Promise<FinanceEntry[]> {
-  // STRICT DATA ISOLATION: Return 0 records for non-Finance tasks
-  if (taskId) {
-    const isFinance = await isFinanceTaskById(taskId);
-    if (!isFinance) {
-      return [];
-    }
-  }
-
   try {
     let query = supabase
       .from('finance_entries')

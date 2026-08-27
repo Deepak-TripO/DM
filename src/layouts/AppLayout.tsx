@@ -8,15 +8,17 @@ export interface AppLayoutContext {
   sidebarOpen: boolean;
   toggleSidebar: () => void;
   hasSidebar: boolean;
+  setHideSidebarOverride?: (hide: boolean) => void;
 }
 
 export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [hideSidebarOverride, setHideSidebarOverride] = useState(false);
   const location = useLocation();
 
   // The Select Task page ("/tasks") must NOT display the sidebar
   const isSelectTaskPage = location.pathname === '/tasks' || location.pathname === '/tasks/';
-  const hasSidebar = !isSelectTaskPage;
+  const hasSidebar = !isSelectTaskPage && !hideSidebarOverride;
 
   const toggleSidebar = () => {
     setSidebarOpen((prev) => !prev);
@@ -32,8 +34,8 @@ export function AppLayout() {
           hasSidebar && sidebarOpen ? 'md:ml-64' : 'ml-0'
         )}
       >
-        <main className={cn('flex-1 min-w-0', isSelectTaskPage ? 'pb-0' : 'pb-20 md:pb-0')}>
-          <Outlet context={{ sidebarOpen: hasSidebar && sidebarOpen, toggleSidebar, hasSidebar }} />
+        <main className={cn('flex-1 min-w-0', !hasSidebar ? 'pb-0' : 'pb-20 md:pb-0')}>
+          <Outlet context={{ sidebarOpen: hasSidebar && sidebarOpen, toggleSidebar, hasSidebar, setHideSidebarOverride }} />
         </main>
       </div>
 
