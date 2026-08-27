@@ -12,7 +12,8 @@ CREATE POLICY "Admins can view admin_users table."
     ON public.admin_users FOR SELECT
     USING (auth.uid() = user_id);
 
-CREATE OR REPLACE FUNCTION public.is_admin(uid UUID)
+DROP FUNCTION IF EXISTS public.is_admin;
+CREATE OR REPLACE FUNCTION public.is_admin(uid UUID DEFAULT auth.uid())
 RETURNS BOOLEAN AS $$
 BEGIN
     RETURN EXISTS (SELECT 1 FROM public.admin_users WHERE user_id = uid);
