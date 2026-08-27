@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getFinanceEntries,
@@ -56,6 +56,7 @@ export function FinanceView({ task }: FinanceViewProps) {
   const { isAdmin } = useAdmin();
   const { canAddEntry } = useFinanceAccess();
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -80,6 +81,8 @@ export function FinanceView({ task }: FinanceViewProps) {
   const { data: categories = ['Software', 'Document', 'ID Card', 'Seal', 'PAN'] } = useQuery({
     queryKey: ['financeCategories'],
     queryFn: getFinanceCategories,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   // Form State
@@ -99,6 +102,8 @@ export function FinanceView({ task }: FinanceViewProps) {
     queryKey: ['financeItems', formData.category],
     queryFn: () => getFinanceItems(formData.category),
     enabled: !!formData.category,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   // Auto-set default item when items load or category changes
@@ -178,10 +183,17 @@ export function FinanceView({ task }: FinanceViewProps) {
   const taskId = task?.id || 'finance';
 
   // Query Finance entries from Supabase
-  const { data: entries = [], isLoading } = useQuery({
+  const { data: entries = [], isLoading, refetch } = useQuery({
     queryKey: ['financeEntries', taskId, searchQuery, selectedCategory],
     queryFn: () => getFinanceEntries(taskId, searchQuery, selectedCategory),
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
+
+  // Automatically refetch latest Finance records whenever location changes (e.g. user returns to Home)
+  useEffect(() => {
+    refetch();
+  }, [location.pathname, taskId, refetch]);
 
   const [expenseCardOpen, setExpenseCardOpen] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
