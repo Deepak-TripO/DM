@@ -398,21 +398,16 @@ export async function getSignedUrl(storagePath: string, expiresIn = 3600): Promi
       .from('files')
       .createSignedUrl(storagePath, expiresIn);
 
-    if (error || !data?.signedUrl) {
-      const { data: pubData } = supabase.storage
-        .from('files')
-        .getPublicUrl(storagePath);
-      if (pubData?.publicUrl) return pubData.publicUrl;
-      if (error) throw error;
+    if (!error && data?.signedUrl) {
+      return data.signedUrl;
     }
-    return data.signedUrl;
-  } catch (err) {
-    const { data: pubData } = supabase.storage
-      .from('files')
-      .getPublicUrl(storagePath);
-    if (pubData?.publicUrl) return pubData.publicUrl;
-    throw err;
-  }
+  } catch {}
+
+  const { data: pubData } = supabase.storage
+    .from('files')
+    .getPublicUrl(storagePath);
+
+  return pubData?.publicUrl || '';
 }
 
 export async function downloadFile(storagePath: string): Promise<Blob> {
