@@ -407,11 +407,7 @@ export async function getSignedUrl(storagePath: string, expiresIn = 3600): Promi
     }
   } catch {}
 
-  const { data: pubData } = supabase.storage
-    .from('files')
-    .getPublicUrl(storagePath);
-
-  return pubData?.publicUrl || '';
+  return '';
 }
 
 export async function downloadFile(storagePath: string): Promise<Blob> {

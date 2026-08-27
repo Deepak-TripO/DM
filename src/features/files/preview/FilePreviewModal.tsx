@@ -40,8 +40,7 @@ export function FilePreviewModal({ file, onClose, allowDownload = true }: FilePr
         if (signedUrl) {
           setUrl(signedUrl);
         } else {
-          const { data } = supabase.storage.from('files').getPublicUrl(file.storage_path);
-          if (data?.publicUrl) setUrl(data.publicUrl);
+          setImgError(true);
         }
 
         // Load text content for text files
@@ -53,10 +52,7 @@ export function FilePreviewModal({ file, onClose, allowDownload = true }: FilePr
           } catch {}
         }
       } catch {
-        const { data } = supabase.storage.from('files').getPublicUrl(file.storage_path);
-        if (data?.publicUrl) {
-          setUrl(data.publicUrl);
-        }
+        setImgError(true);
       } finally {
         setLoading(false);
       }
