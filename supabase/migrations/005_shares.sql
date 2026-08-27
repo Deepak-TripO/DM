@@ -19,11 +19,13 @@ CREATE INDEX IF NOT EXISTS idx_shares_owner ON public.shares(owner_id);
 
 ALTER TABLE public.shares ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Owners can manage shares." ON public.shares;
 CREATE POLICY "Owners can manage shares."
     ON public.shares FOR ALL
     USING (auth.uid() = owner_id)
     WITH CHECK (auth.uid() = owner_id);
 
+DROP POLICY IF EXISTS "Public can read active shares by token." ON public.shares;
 CREATE POLICY "Public can read active shares by token."
     ON public.shares FOR SELECT
     USING (
@@ -53,10 +55,12 @@ CREATE TABLE IF NOT EXISTS public.share_access_logs (
 
 ALTER TABLE public.share_access_logs ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Anyone can insert access log." ON public.share_access_logs;
 CREATE POLICY "Anyone can insert access log."
     ON public.share_access_logs FOR INSERT
     WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Share owner can view access logs." ON public.share_access_logs;
 CREATE POLICY "Share owner can view access logs."
     ON public.share_access_logs FOR SELECT
     USING (

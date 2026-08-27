@@ -24,6 +24,7 @@ CREATE INDEX IF NOT EXISTS idx_files_starred ON public.files(is_starred);
 
 ALTER TABLE public.files ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can manage own files." ON public.files;
 CREATE POLICY "Users can manage own files."
     ON public.files FOR ALL
     USING (auth.uid() = owner_id)

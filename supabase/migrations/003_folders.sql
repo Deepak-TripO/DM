@@ -16,6 +16,7 @@ CREATE INDEX IF NOT EXISTS idx_folders_deleted_at ON public.folders(deleted_at);
 
 ALTER TABLE public.folders ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can manage own folders." ON public.folders;
 CREATE POLICY "Users can manage own folders."
     ON public.folders FOR ALL
     USING (auth.uid() = owner_id)
