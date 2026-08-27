@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/client';
+import { getLocalUserTripoLeadAccessMap } from '@/services/adminService';
 
 export type TripoLeadStatus = 'Pending' | 'No Response' | 'Complete';
 

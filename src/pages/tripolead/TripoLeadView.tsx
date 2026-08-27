@@ -76,7 +76,7 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
   });
 
   const isUserAdmin = user?.role === 'admin' || user?.email?.toLowerCase() === 'admin@dm.com';
-  const isEntryLocked = !isUserAdmin && user?.id && tripoLeadAccessMap[user.id] === 'locked';
+  const isEntryLocked = Boolean(!isUserAdmin && user?.id && tripoLeadAccessMap[user.id] === 'locked');
 
   // Queries for entries & files
   const { data: entries = [], isLoading: loadingEntries } = useQuery({
