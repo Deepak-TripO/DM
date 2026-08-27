@@ -14,14 +14,17 @@ CREATE INDEX IF NOT EXISTS idx_activity_created ON public.activity_logs(created_
 
 ALTER TABLE public.activity_logs ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own activity logs." ON public.activity_logs;
 CREATE POLICY "Users can view own activity logs."
     ON public.activity_logs FOR SELECT
     USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own activity logs." ON public.activity_logs;
 CREATE POLICY "Users can insert own activity logs."
     ON public.activity_logs FOR INSERT
     WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Admins can view all activity logs." ON public.activity_logs;
 CREATE POLICY "Admins can view all activity logs."
     ON public.activity_logs FOR SELECT
     USING (
