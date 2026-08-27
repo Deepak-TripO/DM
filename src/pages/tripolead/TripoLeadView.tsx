@@ -12,6 +12,7 @@ import {
   type TripoLeadEntry,
   type TripoLeadStatus,
 } from '@/services/tripoleadService';
+import { getUserTripoLeadAccessMap } from '@/services/adminService';
 import {
   getTaskFiles,
   getTaskTrashFiles,
@@ -43,6 +44,7 @@ import {
   FolderOpen,
   Calendar,
   FileText,
+  Lock,
 } from 'lucide-react';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { toast } from 'sonner';
@@ -66,6 +68,15 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
   // File preview & upload
   const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
+
+  // User Lock Permission Query
+  const { data: tripoLeadAccessMap = {} } = useQuery({
+    queryKey: ['userTripoLeadAccessMap'],
+    queryFn: getUserTripoLeadAccessMap,
+  });
+
+  const isUserAdmin = user?.role === 'admin' || user?.email?.toLowerCase() === 'admin@dm.com';
+  const isEntryLocked = !isUserAdmin && user?.id && tripoLeadAccessMap[user.id] === 'locked';
 
   // Queries for entries & files
   const { data: entries = [], isLoading: loadingEntries } = useQuery({
@@ -96,12 +107,15 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
   // Entry Mutations
   const addEntryMutation = useMutation({
     mutationFn: (data: { hotel_name: string; district: string; area: string; location_link?: string }) =>
-      addTripoLeadEntry(task.id, data),
+      addTripoLeadEntry(task.id, data, user?.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tripoLeadEntries', task.id] });
       queryClient.invalidateQueries({ queryKey: ['tripoLeadRecentEntries', task.id] });
       setAddModalOpen(false);
       toast.success('TripO Lead entry created');
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Failed to create entry');
     },
   });
 
@@ -207,11 +221,24 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
                 </div>
 
                 <button
-                  onClick={() => setAddModalOpen(true)}
-                  className="neu-btn-primary px-6 py-3 rounded-xl text-xs font-extrabold text-white flex items-center justify-center gap-2 shadow-md hover:scale-[1.02] cursor-pointer shrink-0 transition-transform"
+                  onClick={() => {
+                    if (isEntryLocked) {
+                      toast.error('Access Denied: Your TripO Lead Entry permission is locked by Administrator.');
+                      return;
+                    }
+                    setAddModalOpen(true);
+                  }}
+                  disabled={isEntryLocked}
+                  title={isEntryLocked ? 'Entry access locked by Administrator' : 'Create new TripO Lead Entry'}
+                  className={`px-6 py-3 rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 shadow-md shrink-0 transition-transform ${
+                    isEntryLocked
+                      ? 'neu-pressed text-[var(--color-text-tertiary)] opacity-60 cursor-not-allowed'
+                      : 'neu-btn-primary text-white hover:scale-[1.02] cursor-pointer'
+                  }`}
                 >
-                  <Plus className="h-4 w-4" />
-                  Entry
+                  {isEntryLocked ? <Lock className="h-4 w-4 text-red-500" /> : <Plus className="h-4 w-4" />}
+                  <span>Entry</span>
+                  {isEntryLocked && <span className="text-[10px] font-bold text-red-500 uppercase tracking-wider">(Locked)</span>}
                 </button>
               </div>
 

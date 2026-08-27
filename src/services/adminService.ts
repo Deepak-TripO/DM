@@ -679,10 +679,12 @@ export const deleteAdminTask = deleteAdminFolder;
 // 10. User Finance Entry Access Management
 export interface UserPermissionItem {
   user_id: string;
-  finance_entry_access: 'unlocked' | 'locked';
+  finance_entry_access?: 'unlocked' | 'locked';
+  tripolead_entry_access?: 'unlocked' | 'locked';
 }
 
 const USER_PERMISSIONS_KEY = 'dm_user_permissions';
+const USER_TRIPOLEAD_PERMISSIONS_KEY = 'dm_user_tripolead_permissions';
 
 export function getLocalUserFinanceAccessMap(): Record<string, 'unlocked' | 'locked'> {
   try {
@@ -750,5 +752,75 @@ export async function setUserFinanceAccess(
     }
   } catch (err) {
     console.warn('Supabase user_permissions catch notice:', err);
+  }
+}
+
+/* TRIPO LEAD ACCESS CONTROL */
+
+export function getLocalUserTripoLeadAccessMap(): Record<string, 'unlocked' | 'locked'> {
+  try {
+    const stored = localStorage.getItem(USER_TRIPOLEAD_PERMISSIONS_KEY);
+    return stored ? JSON.parse(stored) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function saveLocalUserTripoLeadAccess(targetUserId: string, accessStatus: 'unlocked' | 'locked') {
+  try {
+    const current = getLocalUserTripoLeadAccessMap();
+    current[targetUserId] = accessStatus;
+    localStorage.setItem(USER_TRIPOLEAD_PERMISSIONS_KEY, JSON.stringify(current));
+  } catch {
+    // ignore
+  }
+}
+
+export async function getUserTripoLeadAccessMap(): Promise<Record<string, 'unlocked' | 'locked'>> {
+  const localMap = getLocalUserTripoLeadAccessMap();
+  try {
+    const { data, error } = await supabase
+      .from('user_permissions')
+      .select('user_id, tripolead_entry_access');
+
+    if (error || !data) {
+      return localMap;
+    }
+
+    const map: Record<string, 'unlocked' | 'locked'> = {};
+    data.forEach((row: any) => {
+      if (row.user_id) {
+        map[row.user_id] = row.tripolead_entry_access === 'locked' ? 'locked' : 'unlocked';
+      }
+    });
+    return { ...localMap, ...map };
+  } catch {
+    return localMap;
+  }
+}
+
+export async function setUserTripoLeadAccess(
+  targetUserId: string,
+  accessStatus: 'unlocked' | 'locked'
+): Promise<void> {
+  saveLocalUserTripoLeadAccess(targetUserId, accessStatus);
+
+  try {
+    const { error } = await supabase
+      .from('user_permissions')
+      .upsert(
+        {
+          user_id: targetUserId,
+          tripolead_entry_access: accessStatus,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'user_id' }
+      );
+
+    if (error) {
+      console.warn('Supabase tripolead user_permissions notice:', error.message);
+    }
+  } catch (err) {
+    console.warn('Supabase tripolead user_permissions catch notice:', err);
   }
 }

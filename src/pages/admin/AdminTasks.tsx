@@ -13,6 +13,8 @@ import {
   getAdminUsers,
   getUserFinanceAccessMap,
   setUserFinanceAccess,
+  getUserTripoLeadAccessMap,
+  setUserTripoLeadAccess,
 } from '@/services/adminService';
 import type { AdminTaskItem, TaskAccessItem, AdminUserItem } from '@/services/adminService';
 import { formatDate } from '@/utils';
@@ -60,6 +62,11 @@ export default function AdminTasks() {
     queryFn: getUserFinanceAccessMap,
   });
 
+  const { data: tripoLeadAccessMap = {} } = useQuery({
+    queryKey: ['userTripoLeadAccessMap'],
+    queryFn: getUserTripoLeadAccessMap,
+  });
+
   const setFinanceAccessMutation = useMutation({
     mutationFn: ({ targetUserId, accessStatus }: { targetUserId: string; accessStatus: 'unlocked' | 'locked' }) =>
       setUserFinanceAccess(targetUserId, accessStatus),
@@ -74,6 +81,23 @@ export default function AdminTasks() {
     },
     onError: (err: any) => {
       toast.error(err?.message || 'Failed to update finance access.');
+    },
+  });
+
+  const setTripoLeadAccessMutation = useMutation({
+    mutationFn: ({ targetUserId, accessStatus }: { targetUserId: string; accessStatus: 'unlocked' | 'locked' }) =>
+      setUserTripoLeadAccess(targetUserId, accessStatus),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['userTripoLeadAccessMap'] });
+      queryClient.invalidateQueries({ queryKey: ['userTripoLeadPermission'] });
+      toast.success(
+        variables.accessStatus === 'locked'
+          ? 'TripO Lead entry access locked for user'
+          : 'TripO Lead entry access unlocked for user'
+      );
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Failed to update TripO Lead access.');
     },
   });
 
@@ -94,6 +118,28 @@ export default function AdminTasks() {
     }
 
     setFinanceAccessMutation.mutate({
+      targetUserId,
+      accessStatus: nextStatus,
+    });
+  };
+
+  const handleToggleTripoLeadAccess = (targetUserId: string, targetUserEmail?: string) => {
+    const targetUser = adminUsers.find((u) => u.id === targetUserId);
+    const isTargetAdmin =
+      targetUserId === user?.id ||
+      targetUser?.role === 'admin' ||
+      targetUser?.email?.toLowerCase() === 'admin@dm.com' ||
+      targetUserEmail?.toLowerCase() === 'admin@dm.com';
+
+    const currentStatus = tripoLeadAccessMap[targetUserId] || 'unlocked';
+    const nextStatus = currentStatus === 'locked' ? 'unlocked' : 'locked';
+
+    if (nextStatus === 'locked' && isTargetAdmin) {
+      toast.error('Administrator access cannot be locked.');
+      return;
+    }
+
+    setTripoLeadAccessMutation.mutate({
       targetUserId,
       accessStatus: nextStatus,
     });
@@ -591,49 +637,101 @@ export default function AdminTasks() {
                 {selectedUserId && (
                   <div className="flex items-center justify-between p-3 neu-pressed rounded-2xl text-xs font-bold mt-2">
                     <div className="flex items-center gap-2">
-                      <span className="text-[var(--color-text-secondary)]">Finance Entry Access:</span>
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide ${
+                      <span className="text-[var(--color-text-secondary)]">
+                        {accessModalTask && accessModalTask.name.trim().toLowerCase().replace(/\s+/g, '').includes('tripolead')
+                          ? 'TripO Lead Entry Access:'
+                          : 'Finance Entry Access:'}
+                      </span>
+                      {accessModalTask && accessModalTask.name.trim().toLowerCase().replace(/\s+/g, '').includes('tripolead') ? (
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide ${
+                            tripoLeadAccessMap[selectedUserId] === 'locked'
+                              ? 'bg-red-500/10 text-red-500 border border-red-500/20'
+                              : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                          }`}
+                        >
+                          {tripoLeadAccessMap[selectedUserId] === 'locked' ? (
+                            <>
+                              <Lock className="h-3 w-3" />
+                              <span>Locked</span>
+                            </>
+                          ) : (
+                            <>
+                              <Unlock className="h-3 w-3" />
+                              <span>Unlocked</span>
+                            </>
+                          )}
+                        </span>
+                      ) : (
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide ${
+                            financeAccessMap[selectedUserId] === 'locked'
+                              ? 'bg-red-500/10 text-red-500 border border-red-500/20'
+                              : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                          }`}
+                        >
+                          {financeAccessMap[selectedUserId] === 'locked' ? (
+                            <>
+                              <Lock className="h-3 w-3" />
+                              <span>Locked</span>
+                            </>
+                          ) : (
+                            <>
+                              <Unlock className="h-3 w-3" />
+                              <span>Unlocked</span>
+                            </>
+                          )}
+                        </span>
+                      )}
+                    </div>
+
+                    {accessModalTask && accessModalTask.name.trim().toLowerCase().replace(/\s+/g, '').includes('tripolead') ? (
+                      <button
+                        type="button"
+                        onClick={() => handleToggleTripoLeadAccess(selectedUserId)}
+                        disabled={setTripoLeadAccessMutation.isPending}
+                        className={`flex items-center gap-1 px-3 py-1.5 rounded-xl neu-btn text-[11px] font-bold cursor-pointer ${
+                          tripoLeadAccessMap[selectedUserId] === 'locked'
+                            ? 'text-emerald-500 hover:bg-emerald-500/10'
+                            : 'text-[var(--color-text-secondary)] hover:text-red-500 hover:bg-red-500/10'
+                        }`}
+                      >
+                        {tripoLeadAccessMap[selectedUserId] === 'locked' ? (
+                          <>
+                            <Unlock className="h-3.5 w-3.5" />
+                            <span>Unlock Entry</span>
+                          </>
+                        ) : (
+                          <>
+                            <Lock className="h-3.5 w-3.5" />
+                            <span>Lock Entry</span>
+                          </>
+                        )}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleToggleFinanceAccess(selectedUserId)}
+                        disabled={setFinanceAccessMutation.isPending}
+                        className={`flex items-center gap-1 px-3 py-1.5 rounded-xl neu-btn text-[11px] font-bold cursor-pointer ${
                           financeAccessMap[selectedUserId] === 'locked'
-                            ? 'bg-red-500/10 text-red-500 border border-red-500/20'
-                            : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                            ? 'text-emerald-500 hover:bg-emerald-500/10'
+                            : 'text-[var(--color-text-secondary)] hover:text-red-500 hover:bg-red-500/10'
                         }`}
                       >
                         {financeAccessMap[selectedUserId] === 'locked' ? (
                           <>
-                            <Lock className="h-3 w-3" />
-                            <span>Locked</span>
+                            <Unlock className="h-3.5 w-3.5" />
+                            <span>Unlock Entry</span>
                           </>
                         ) : (
                           <>
-                            <Unlock className="h-3 w-3" />
-                            <span>Unlocked</span>
+                            <Lock className="h-3.5 w-3.5" />
+                            <span>Lock Entry</span>
                           </>
                         )}
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleToggleFinanceAccess(selectedUserId)}
-                      disabled={setFinanceAccessMutation.isPending}
-                      className={`flex items-center gap-1 px-3 py-1.5 rounded-xl neu-btn text-[11px] font-bold cursor-pointer ${
-                        financeAccessMap[selectedUserId] === 'locked'
-                          ? 'text-emerald-500 hover:bg-emerald-500/10'
-                          : 'text-[var(--color-text-secondary)] hover:text-red-500 hover:bg-red-500/10'
-                      }`}
-                    >
-                      {financeAccessMap[selectedUserId] === 'locked' ? (
-                        <>
-                          <Unlock className="h-3.5 w-3.5" />
-                          <span>Unlock Entry</span>
-                        </>
-                      ) : (
-                        <>
-                          <Lock className="h-3.5 w-3.5" />
-                          <span>Lock Entry</span>
-                        </>
-                      )}
-                    </button>
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -675,7 +773,10 @@ export default function AdminTasks() {
               ) : (
                 <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                   {accessList.map((item: TaskAccessItem) => {
-                    const isLocked = financeAccessMap[item.user_id] === 'locked';
+                    const isTripoLead = accessModalTask && accessModalTask.name.trim().toLowerCase().replace(/\s+/g, '').includes('tripolead');
+                    const isLocked = isTripoLead
+                      ? tripoLeadAccessMap[item.user_id] === 'locked'
+                      : financeAccessMap[item.user_id] === 'locked';
                     return (
                       <div
                         key={item.id}
@@ -706,14 +807,18 @@ export default function AdminTasks() {
                         <div className="flex items-center gap-2 shrink-0">
                           <button
                             type="button"
-                            onClick={() => handleToggleFinanceAccess(item.user_id, item.user_email)}
-                            disabled={setFinanceAccessMutation.isPending}
+                            onClick={() =>
+                              isTripoLead
+                                ? handleToggleTripoLeadAccess(item.user_id, item.user_email)
+                                : handleToggleFinanceAccess(item.user_id, item.user_email)
+                            }
+                            disabled={isTripoLead ? setTripoLeadAccessMutation.isPending : setFinanceAccessMutation.isPending}
                             className={`flex items-center gap-1 px-3 py-1.5 rounded-xl neu-btn text-[11px] font-bold transition-all disabled:opacity-50 cursor-pointer ${
                               isLocked
                                 ? 'text-emerald-500 hover:bg-emerald-500/10'
                                 : 'text-[var(--color-text-secondary)] hover:text-red-500 hover:bg-red-500/10'
                             }`}
-                            title={isLocked ? 'Unlock Finance Entry access' : 'Lock Finance Entry access'}
+                            title={isLocked ? 'Unlock Entry access' : 'Lock Entry access'}
                           >
                             {isLocked ? (
                               <>

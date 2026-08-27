@@ -180,8 +180,16 @@ export async function addTripoLeadEntry(
     district: string;
     area: string;
     location_link?: string;
-  }
+  },
+  userId?: string
 ): Promise<TripoLeadEntry> {
+  if (userId) {
+    const lockMap = getLocalUserTripoLeadAccessMap();
+    if (lockMap[userId] === 'locked') {
+      throw new Error('Access Denied: Your TripO Lead Entry permission is locked by Administrator.');
+    }
+  }
+
   const newEntry: TripoLeadEntry = {
     id: crypto.randomUUID(),
     task_id: taskId,
