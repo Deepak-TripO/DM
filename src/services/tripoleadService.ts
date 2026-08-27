@@ -89,12 +89,26 @@ export async function getTripoLeadEntries(
 
     if (search && search.trim()) {
       const s = `%${search.trim()}%`;
-      query = query.or(`hotel_name.ilike.${s},district.ilike.${s},area.ilike.${s},status.ilike.${s}`);
+      query = query.or(`hotel_name.ilike.${s},district.ilike.${s},area.ilike.${s}`);
     }
 
     const { data, error } = await query;
     if (!error && data) {
-      return data as TripoLeadEntry[];
+      // Merge with local storage status updates
+      const localMap = new Map(getLocalEntries(taskId).map((e) => [e.id, e]));
+      const merged = (data as TripoLeadEntry[]).map((dbEntry) => {
+        const localEntry = localMap.get(dbEntry.id);
+        if (localEntry) {
+          return {
+            ...dbEntry,
+            status: localEntry.status ?? dbEntry.status,
+            approach_date: localEntry.approach_date ?? dbEntry.approach_date,
+            short_notes: localEntry.short_notes ?? dbEntry.short_notes,
+          };
+        }
+        return dbEntry;
+      });
+      return merged;
     }
   } catch {}
 
@@ -126,7 +140,11 @@ export async function getTripoLeadRecentEntries(taskId: string, limit = 50): Pro
       .limit(limit);
 
     if (!error && data) {
-      return data as TripoLeadEntry[];
+      const localMap = new Map(getLocalEntries(taskId).map((e) => [e.id, e]));
+      return (data as TripoLeadEntry[]).map((dbEntry) => {
+        const localEntry = localMap.get(dbEntry.id);
+        return localEntry ? { ...dbEntry, ...localEntry } : dbEntry;
+      });
     }
   } catch {}
 
@@ -179,6 +197,10 @@ export async function addTripoLeadEntry(
     updated_at: new Date().toISOString(),
   };
 
+  // Always save local first
+  const local = getLocalEntries(taskId);
+  saveLocalEntries(taskId, [newEntry, ...local]);
+
   try {
     const { data, error } = await supabase
       .from('tripolead_entries')
@@ -194,15 +216,10 @@ export async function addTripoLeadEntry(
       .single();
 
     if (!error && data) {
-      const local = getLocalEntries(taskId);
-      saveLocalEntries(taskId, [data as TripoLeadEntry, ...local]);
       return data as TripoLeadEntry;
     }
   } catch {}
 
-  const local = getLocalEntries(taskId);
-  const updated = [newEntry, ...local];
-  saveLocalEntries(taskId, updated);
   return newEntry;
 }
 
@@ -232,89 +249,74 @@ export async function updateTripoLeadEntry(
   if (updates.approach_date !== undefined) cleanUpdates.approach_date = updates.approach_date || null;
   if (updates.short_notes !== undefined) cleanUpdates.short_notes = updates.short_notes?.trim() || null;
 
+  // Always save to local storage immediately
+  const local = getLocalEntries(taskId).map((e) =>
+    e.id === entryId ? { ...e, ...cleanUpdates } : e
+  );
+  saveLocalEntries(taskId, local);
+
   try {
     const { error } = await supabase
       .from('tripolead_entries')
       .update(cleanUpdates)
       .eq('id', entryId);
 
-    if (!error) {
-      const local = getLocalEntries(taskId).map((e) =>
-        e.id === entryId ? { ...e, ...cleanUpdates } : e
-      );
-      saveLocalEntries(taskId, local);
-      return;
+    if (error) {
+      // Fallback: update base columns if status/approach_date/short_notes don't exist yet on remote table
+      const baseUpdates: Record<string, any> = { updated_at: now };
+      if (updates.hotel_name !== undefined) baseUpdates.hotel_name = updates.hotel_name.trim();
+      if (updates.district !== undefined) baseUpdates.district = updates.district.trim();
+      if (updates.area !== undefined) baseUpdates.area = updates.area.trim();
+      if (updates.location_link !== undefined) baseUpdates.location_link = updates.location_link?.trim() || null;
+
+      await supabase
+        .from('tripolead_entries')
+        .update(baseUpdates)
+        .eq('id', entryId);
     }
   } catch {}
-
-  const local = getLocalEntries(taskId).map((e) =>
-    e.id === entryId ? { ...e, ...cleanUpdates } : e
-  );
-  saveLocalEntries(taskId, local);
 }
 
 export async function softDeleteTripoLeadEntry(taskId: string, entryId: string): Promise<void> {
   const now = new Date().toISOString();
 
-  try {
-    const { error } = await supabase
-      .from('tripolead_entries')
-      .update({ deleted_at: now, updated_at: now })
-      .eq('id', entryId);
-
-    if (!error) {
-      const local = getLocalEntries(taskId).map((e) =>
-        e.id === entryId ? { ...e, deleted_at: now, updated_at: now } : e
-      );
-      saveLocalEntries(taskId, local);
-      return;
-    }
-  } catch {}
-
   const local = getLocalEntries(taskId).map((e) =>
     e.id === entryId ? { ...e, deleted_at: now, updated_at: now } : e
   );
   saveLocalEntries(taskId, local);
+
+  try {
+    await supabase
+      .from('tripolead_entries')
+      .update({ deleted_at: now, updated_at: now })
+      .eq('id', entryId);
+  } catch {}
 }
 
 export async function restoreTripoLeadEntry(taskId: string, entryId: string): Promise<void> {
   const now = new Date().toISOString();
 
-  try {
-    const { error } = await supabase
-      .from('tripolead_entries')
-      .update({ deleted_at: null, updated_at: now })
-      .eq('id', entryId);
-
-    if (!error) {
-      const local = getLocalEntries(taskId).map((e) =>
-        e.id === entryId ? { ...e, deleted_at: null, updated_at: now } : e
-      );
-      saveLocalEntries(taskId, local);
-      return;
-    }
-  } catch {}
-
   const local = getLocalEntries(taskId).map((e) =>
     e.id === entryId ? { ...e, deleted_at: null, updated_at: now } : e
   );
   saveLocalEntries(taskId, local);
+
+  try {
+    await supabase
+      .from('tripolead_entries')
+      .update({ deleted_at: null, updated_at: now })
+      .eq('id', entryId);
+  } catch {}
 }
 
 export async function permanentDeleteTripoLeadEntry(taskId: string, entryId: string): Promise<void> {
+  const local = getLocalEntries(taskId).filter((e) => e.id !== entryId);
+  saveLocalEntries(taskId, local);
+
   try {
-    const { error } = await supabase
+    await supabase
       .from('tripolead_entries')
       .delete()
       .eq('id', entryId);
-
-    if (!error) {
-      const local = getLocalEntries(taskId).filter((e) => e.id !== entryId);
-      saveLocalEntries(taskId, local);
-      return;
-    }
   } catch {}
-
-  const local = getLocalEntries(taskId).filter((e) => e.id !== entryId);
-  saveLocalEntries(taskId, local);
 }
