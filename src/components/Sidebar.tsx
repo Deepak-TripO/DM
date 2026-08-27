@@ -29,7 +29,7 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
 
   const isItemActive = (itemTo: string) => {
     const path = location.pathname;
-    if (itemTo === '/tasks' || itemTo === '/home') {
+    if (itemTo === '/tasks') {
       return path === '/tasks' || path === '/tasks/' || path === '/home' || path === '/';
     }
     if (itemTo === '/files') {

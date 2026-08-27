@@ -185,6 +185,10 @@ function saveMemoryEntries() {
   } catch {}
 }
 
+function isUUID(val: string): boolean {
+  return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(val);
+}
+
 async function isFinanceTaskById(taskId: string): Promise<boolean> {
   if (!taskId || taskId === 'finance') return true;
   if (!isUUID(taskId)) return false;
@@ -210,9 +214,11 @@ export async function getFinanceEntries(
   categoryFilter?: string
 ): Promise<FinanceEntry[]> {
   // STRICT DATA ISOLATION: Return 0 records for non-Finance tasks
-  const isFinance = await isFinanceTaskById(taskId);
-  if (!isFinance) {
-    return [];
+  if (taskId) {
+    const isFinance = await isFinanceTaskById(taskId);
+    if (!isFinance) {
+      return [];
+    }
   }
 
   try {
