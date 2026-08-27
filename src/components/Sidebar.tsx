@@ -16,7 +16,7 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { to: '/home', icon: Home, label: 'Home', color: '#4D94E8', bg: '#EAF4FF' },
+  { to: '/tasks', icon: Home, label: 'Home', color: '#4D94E8', bg: '#EAF4FF' },
   { to: '/recent', icon: Clock, label: 'Recent', color: '#E59A32', bg: '#FFF4E5' },
   { to: '/shared', icon: Share2, label: 'Shared', color: '#159A8A', bg: '#E8F8F5' },
   { to: '/trash', icon: Trash2, label: 'Trash', color: '#D95C68', bg: '#FDECEE' },
@@ -29,8 +29,8 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
 
   const isItemActive = (itemTo: string) => {
     const path = location.pathname;
-    if (itemTo === '/home') {
-      return path === '/home' || path === '/';
+    if (itemTo === '/tasks' || itemTo === '/home') {
+      return path === '/tasks' || path === '/tasks/' || path === '/home' || path === '/';
     }
     if (itemTo === '/files') {
       return path.startsWith('/files') || path.startsWith('/folders');
