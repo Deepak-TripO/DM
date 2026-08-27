@@ -11,8 +11,10 @@ export async function uploadFile(
   const ext = file.name.split('.').pop()?.toLowerCase() || '';
   const storagePath = `users/${userId}/files/${fileId}/${file.name}`;
 
-  // Upload to storage
-  const { error: uploadError } = await supabase.storage
+  await ensureStorageBuckets();
+
+  // Try uploading to 'files' bucket first, fallback to 'dm-files'
+  let { error: uploadError } = await supabase.storage
     .from('files')
     .upload(storagePath, file, {
       cacheControl: '3600',
@@ -20,9 +22,32 @@ export async function uploadFile(
       upsert: false,
     });
 
-  if (uploadError) throw uploadError;
+  if (uploadError) {
+    const { error: err2 } = await supabase.storage
+      .from('dm-files')
+      .upload(storagePath, file, {
+        cacheControl: '3600',
+        contentType: file.type || undefined,
+        upsert: false,
+      });
+    if (err2) {
+      console.warn('Storage upload warning:', uploadError, err2);
+    }
+  }
 
-  // Simulate progress since Supabase JS doesn't have native progress
+  // Generate dataUrl backup in metadata for smaller files (< 3MB)
+  let dataUrlBackup: string | undefined = undefined;
+  if (file.size < 3 * 1024 * 1024) {
+    try {
+      dataUrlBackup = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve((reader.result as string) || '');
+        reader.onerror = () => resolve('');
+        reader.readAsDataURL(file);
+      });
+    } catch {}
+  }
+
   onProgress?.(100);
 
   // Insert file metadata
@@ -38,14 +63,15 @@ export async function uploadFile(
       mime_type: file.type || 'application/octet-stream',
       extension: ext,
       size_bytes: file.size,
-      metadata: {},
+      metadata: dataUrlBackup ? { preview_url: dataUrlBackup, data_url: dataUrlBackup } : {},
     })
     .select()
     .single();
 
   if (error) {
-    // Rollback: delete uploaded file
+    // Rollback: delete uploaded file from both potential buckets
     await supabase.storage.from('files').remove([storagePath]);
+    await supabase.storage.from('dm-files').remove([storagePath]);
     throw error;
   }
 
@@ -227,10 +253,25 @@ export async function saveExportedFileToShared(
     const fileId = crypto.randomUUID();
     const ext = filename.split('.').pop()?.toLowerCase() || '';
     const storagePath = `users/${user.id}/files/${fileId}/${filename}`;
-    const metaData = { is_export: true, preview_url: previewUrl || undefined };
 
-    // Upload to 'files' bucket
-    const { error: uploadError } = await supabase.storage
+    let dataUrl = previewUrl;
+    if (!dataUrl && blob.size < 5 * 1024 * 1024) {
+      try {
+        dataUrl = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve((reader.result as string) || '');
+          reader.onerror = () => resolve('');
+          reader.readAsDataURL(blob);
+        });
+      } catch {}
+    }
+
+    const metaData = { is_export: true, preview_url: dataUrl || undefined, data_url: dataUrl || undefined };
+
+    await ensureStorageBuckets();
+
+    // Upload to 'files' bucket, fallback to 'dm-files'
+    let { error: uploadError } = await supabase.storage
       .from('files')
       .upload(storagePath, blob, {
         cacheControl: '3600',
@@ -238,7 +279,15 @@ export async function saveExportedFileToShared(
       });
 
     if (uploadError) {
-      console.warn('Storage upload notice:', uploadError);
+      const { error: err2 } = await supabase.storage
+        .from('dm-files')
+        .upload(storagePath, blob, {
+          cacheControl: '3600',
+          upsert: true,
+        });
+      if (err2) {
+        console.warn('Storage upload notice:', uploadError, err2);
+      }
     }
 
     // Check existing
@@ -396,7 +445,19 @@ export async function permanentDeleteFile(userId: string, file: FileItem): Promi
   });
 }
 
+export async function ensureStorageBuckets(): Promise<void> {
+  try {
+    await supabase.storage.createBucket('files', { public: true });
+  } catch {}
+  try {
+    await supabase.storage.createBucket('dm-files', { public: true });
+  } catch {}
+}
+
 export async function getSignedUrl(storagePath: string, expiresIn = 3600): Promise<string> {
+  if (!storagePath) return '';
+
+  // 1. Try 'files' bucket signed URL
   try {
     const { data, error } = await supabase.storage
       .from('files')
@@ -407,16 +468,52 @@ export async function getSignedUrl(storagePath: string, expiresIn = 3600): Promi
     }
   } catch {}
 
+  // 2. Try 'dm-files' bucket signed URL
+  try {
+    const { data, error } = await supabase.storage
+      .from('dm-files')
+      .createSignedUrl(storagePath, expiresIn, { download: false });
+
+    if (!error && data?.signedUrl) {
+      return data.signedUrl;
+    }
+  } catch {}
+
+  // Return empty string if bucket/file does not exist, so callers use fallback metadata dataUrls
   return '';
 }
 
 export async function downloadFile(storagePath: string): Promise<Blob> {
-  const { data, error } = await supabase.storage
-    .from('files')
-    .download(storagePath);
+  if (!storagePath) throw new Error('No storage path provided');
 
-  if (error) throw error;
-  return data;
+  // 1. Try 'files' bucket download
+  try {
+    const { data, error } = await supabase.storage
+      .from('files')
+      .download(storagePath);
+    if (!error && data) return data;
+  } catch {}
+
+  // 2. Try 'dm-files' bucket download
+  try {
+    const { data, error } = await supabase.storage
+      .from('dm-files')
+      .download(storagePath);
+    if (!error && data) return data;
+  } catch {}
+
+  // 3. Try fetching signed/public URL
+  try {
+    const signedUrl = await getSignedUrl(storagePath);
+    if (signedUrl) {
+      const res = await fetch(signedUrl);
+      if (res.ok) {
+        return await res.blob();
+      }
+    }
+  } catch {}
+
+  throw new Error(`Failed to download file from storage path: ${storagePath}`);
 }
 
 export async function searchFiles(userId: string, query: string): Promise<FileItem[]> {

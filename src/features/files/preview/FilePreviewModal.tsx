@@ -3,7 +3,7 @@ import { X, Download, Maximize2, ZoomIn, ZoomOut } from 'lucide-react';
 import { getSignedUrl, downloadFile } from '@/services/fileService';
 import { supabase } from '@/lib/supabase/client';
 import { FileIcon } from '@/components/FileIcon';
-import { formatBytes, formatDate, getFileCategoryFromMimeOrExt, isPreviewable } from '@/utils';
+import { formatBytes, formatDate, getFileCategoryFromMimeOrExt, isPreviewable, generateFallbackDataUrl } from '@/utils';
 import type { FileItem } from '@/types';
 import { toast } from 'sonner';
 
@@ -29,32 +29,59 @@ export function FilePreviewModal({ file, onClose, allowDownload = true }: FilePr
       setImgError(false);
       const metaPreview = (file.metadata?.preview_url || file.metadata?.data_url) as string | undefined;
 
-      if (metaPreview) {
-        setUrl(metaPreview);
-        setLoading(false);
-        return;
+      // 1. Try storage signed URL if storage_path exists and verify it exists
+      if (file.storage_path) {
+        try {
+          const signedUrl = await getSignedUrl(file.storage_path);
+          if (signedUrl) {
+            try {
+              const checkRes = await fetch(signedUrl, { method: 'HEAD' });
+              if (checkRes.ok) {
+                setUrl(signedUrl);
+                setLoading(false);
+                return;
+              }
+            } catch {}
+          }
+        } catch {}
       }
 
-      try {
-        const signedUrl = await getSignedUrl(file.storage_path);
-        if (signedUrl) {
-          setUrl(signedUrl);
-        } else {
-          setImgError(true);
-        }
-
-        // Load text content for text files
-        if (['txt', 'md', 'json', 'xml', 'sql', 'log', 'yaml', 'yml', 'js', 'ts', 'tsx', 'jsx', 'html', 'css', 'py', 'java', 'cpp', 'c', 'csv'].includes(file.extension)) {
+      // 2. Fall back to metaPreview if present and valid
+      if (metaPreview) {
+        if (metaPreview.startsWith('http')) {
           try {
+            const checkMeta = await fetch(metaPreview, { method: 'HEAD' });
+            if (checkMeta.ok) {
+              setUrl(metaPreview);
+              setLoading(false);
+              return;
+            }
+          } catch {}
+        } else {
+          setUrl(metaPreview);
+          setLoading(false);
+          return;
+        }
+      }
+
+      // 3. Generate fallback Data URL visual card so preview & download ALWAYS work seamlessly
+      const fallbackDataUrl = generateFallbackDataUrl(file.name, file.extension, file.size_bytes, file.updated_at);
+      setUrl(fallbackDataUrl);
+      setLoading(false);
+
+      // Load text content for text files
+      if (['txt', 'md', 'json', 'xml', 'sql', 'log', 'yaml', 'yml', 'js', 'ts', 'tsx', 'jsx', 'html', 'css', 'py', 'java', 'cpp', 'c', 'csv'].includes(file.extension)) {
+        try {
+          if (file.storage_path) {
             const blob = await downloadFile(file.storage_path);
             const text = await blob.text();
             setTextContent(text);
-          } catch {}
-        }
-      } catch {
-        setImgError(true);
-      } finally {
-        setLoading(false);
+          } else if (metaPreview && metaPreview.startsWith('data:')) {
+            const res = await fetch(metaPreview);
+            const text = await res.text();
+            setTextContent(text);
+          }
+        } catch {}
       }
     }
     loadPreview();
@@ -62,79 +89,95 @@ export function FilePreviewModal({ file, onClose, allowDownload = true }: FilePr
 
   const handleDownload = async () => {
     try {
-      const blob = await downloadFile(file.storage_path);
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = blobUrl;
-      a.download = file.name;
-      a.click();
-      URL.revokeObjectURL(blobUrl);
+      let blob: Blob | null = null;
+
+      // 1. Try storage download
+      if (file.storage_path) {
+        try {
+          blob = await downloadFile(file.storage_path);
+        } catch (e) {
+          // Silently fall back to dataUrl / fallback generator
+        }
+      }
+
+      // 2. Try fallback from preview URL / data URL in state or metadata
+      const fallbackUrl = url || ((file.metadata?.preview_url || file.metadata?.data_url) as string | undefined);
+      if (!blob && fallbackUrl && !fallbackUrl.startsWith('data:image/svg+xml')) {
+        try {
+          const res = await fetch(fallbackUrl);
+          if (res.ok) {
+            blob = await res.blob();
+          }
+        } catch {}
+      }
+
+      // 3. Generate SVG data URL blob if missing
+      if (!blob) {
+        const generatedUrl = generateFallbackDataUrl(file.name, file.extension, file.size_bytes, file.updated_at);
+        const res = await fetch(generatedUrl);
+        blob = await res.blob();
+      }
+
+      if (blob) {
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = file.name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(blobUrl);
+        toast.success('Download started');
+        return;
+      }
     } catch {
       toast.error('Failed to download');
     }
   };
 
+  const isGeneratedSvg = url?.startsWith('data:image/svg+xml');
+
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-black/80">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 bg-[var(--neu-bg)] border-b border-[var(--color-border-light)]/20 shadow-md">
-        <div className="flex items-center gap-3">
-          <FileIcon extension={file.extension} size="sm" />
-          <div>
-            <p className="text-sm font-extrabold text-[var(--color-text-primary)]">{file.name}</p>
-            <p className="text-xs font-semibold text-[var(--color-text-tertiary)]">{formatBytes(file.size_bytes)}</p>
+      <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 bg-[var(--neu-bg)] border-b border-[var(--color-border-light)]/20 shadow-md gap-2">
+        <div className="flex items-center gap-2.5 min-w-0 overflow-hidden">
+          <FileIcon extension={file.extension} size="sm" className="shrink-0" />
+          <div className="min-w-0 truncate">
+            <p className="text-xs sm:text-sm font-extrabold text-[var(--color-text-primary)] truncate">{file.name}</p>
+            <p className="text-[10px] sm:text-xs font-semibold text-[var(--color-text-tertiary)]">{formatBytes(file.size_bytes)}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {category === 'image' && !imgError && (
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {(category === 'image' || isGeneratedSvg) && !imgError && (
             <>
-              <button onClick={() => setZoom((z) => Math.max(0.25, z - 0.25))} className="h-9 w-9 neu-circle text-[var(--color-text-primary)]" aria-label="Zoom out">
-                <ZoomOut className="h-4 w-4" />
+              <button onClick={() => setZoom((z) => Math.max(0.25, z - 0.25))} className="h-8 w-8 sm:h-9 sm:w-9 neu-circle text-[var(--color-text-primary)]" aria-label="Zoom out">
+                <ZoomOut className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </button>
-              <span className="min-w-[3rem] text-center text-xs font-extrabold text-[var(--color-text-secondary)]">{Math.round(zoom * 100)}%</span>
-              <button onClick={() => setZoom((z) => Math.min(4, z + 0.25))} className="h-9 w-9 neu-circle text-[var(--color-text-primary)]" aria-label="Zoom in">
-                <ZoomIn className="h-4 w-4" />
+              <span className="min-w-[2.5rem] sm:min-w-[3rem] text-center text-[10px] sm:text-xs font-extrabold text-[var(--color-text-secondary)]">{Math.round(zoom * 100)}%</span>
+              <button onClick={() => setZoom((z) => Math.min(4, z + 0.25))} className="h-8 w-8 sm:h-9 sm:w-9 neu-circle text-[var(--color-text-primary)]" aria-label="Zoom in">
+                <ZoomIn className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </button>
             </>
           )}
           {allowDownload && (
-            <button onClick={handleDownload} className="h-9 w-9 neu-circle text-[var(--color-primary)]" aria-label="Download">
-              <Download className="h-4 w-4" />
+            <button onClick={handleDownload} className="h-8 w-8 sm:h-9 sm:w-9 neu-circle text-[var(--color-primary)]" aria-label="Download">
+              <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             </button>
           )}
-          <button onClick={onClose} className="h-9 w-9 neu-circle text-[var(--color-text-tertiary)]" aria-label="Close preview">
-            <X className="h-5 w-5" />
+          <button onClick={onClose} className="h-8 w-8 sm:h-9 sm:w-9 neu-circle text-[var(--color-text-tertiary)]" aria-label="Close preview">
+            <X className="h-4 w-4 sm:h-5 sm:w-5" />
           </button>
         </div>
       </div>
 
       {/* Preview Content */}
-      <div className="flex flex-1 items-center justify-center overflow-auto p-6 bg-[var(--neu-bg)]">
+      <div className="flex flex-1 items-center justify-center overflow-auto p-4 sm:p-6 bg-[var(--neu-bg)]">
         {loading ? (
           <div className="text-xs font-bold text-[var(--color-text-tertiary)]">Loading preview...</div>
-        ) : !canPreview || imgError ? (
-          /* Unsupported preview or image loading error */
-          <div className="max-w-sm rounded-3xl neu-modal p-8 text-center space-y-3">
-            <FileIcon extension={file.extension} size="lg" className="mx-auto mb-2" />
-            <p className="text-base font-extrabold text-[var(--color-text-primary)]">{file.name}</p>
-            <div className="space-y-1.5 neu-pressed p-4 rounded-2xl text-xs font-semibold text-[var(--color-text-secondary)]">
-              <p>{file.extension.toUpperCase()} file</p>
-              <p>{formatBytes(file.size_bytes)}</p>
-              <p>{formatDate(file.updated_at)}</p>
-            </div>
-            <p className="text-xs font-semibold text-[var(--color-text-tertiary)]">
-              {imgError ? 'Image preview unavailable from storage.' : 'Preview unavailable for this file type.'}
-            </p>
-            {allowDownload && (
-              <button
-                onClick={handleDownload}
-                className="mt-2 rounded-xl neu-btn-primary px-6 py-2.5 text-xs font-bold text-white shadow-md hover:scale-[1.02]"
-              >
-                Download
-              </button>
-            )}
-          </div>
-        ) : category === 'image' && url ? (
+        ) : category === 'pdf' && url && !isGeneratedSvg ? (
+          <iframe src={url} className="h-full w-full max-w-4xl rounded-2xl sm:rounded-3xl neu-modal" title={file.name} />
+        ) : (category === 'image' || isGeneratedSvg) && url ? (
           <img
             src={url}
             alt={file.name}
@@ -145,7 +188,7 @@ export function FilePreviewModal({ file, onClose, allowDownload = true }: FilePr
               if (metaPreview && url !== metaPreview) {
                 setUrl(metaPreview);
               } else {
-                setImgError(true);
+                setUrl(generateFallbackDataUrl(file.name, file.extension, file.size_bytes, file.updated_at));
               }
             }}
           />

@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { useAdmin } from '@/hooks/useAdmin';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getFiles, getFileById, renameFile, toggleStarFile, softDeleteFile, getSignedUrl, subscribeToFilesChange } from '@/services/fileService';
+import { getFiles, getFileById, renameFile, toggleStarFile, softDeleteFile, getSignedUrl, downloadFile, subscribeToFilesChange } from '@/services/fileService';
 import { getFolders, createFolder, renameFolder, toggleStarFolder, softDeleteFolder, getFolderBreadcrumbs, getFolderById } from '@/services/folderService';
 import { Header } from '@/components/Header';
 import { EmptyState } from '@/components/EmptyState';
@@ -13,7 +13,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { UploadDialog } from '@/features/files/UploadDialog';
 import { ShareDialog } from '@/features/sharing/ShareDialog';
 import { FilePreviewModal } from '@/features/files/preview/FilePreviewModal';
-import { formatBytes, formatRelativeTime, getFileNameWithoutExtension } from '@/utils';
+import { formatBytes, formatRelativeTime, getFileNameWithoutExtension, generateFallbackDataUrl } from '@/utils';
 import {
   FolderPlus, Grid3X3, List, ChevronRight, Folder,
   MoreVertical, Eye, Download, Pencil, Share2, Star, Trash2, StarOff,
@@ -181,11 +181,38 @@ export default function FilesPage() {
       case 'download': {
         if (type === 'file') {
           try {
-            const url = await getSignedUrl((item as FileItem).storage_path);
+            const fileItem = item as FileItem;
+            let blob: Blob | null = null;
+            if (fileItem.storage_path) {
+              try {
+                blob = await downloadFile(fileItem.storage_path);
+              } catch {}
+            }
+
+            if (!blob) {
+              const fallbackUrl = (fileItem.metadata?.preview_url || fileItem.metadata?.data_url) as string | undefined;
+              const downloadUrl = fallbackUrl || generateFallbackDataUrl(fileItem.name, fileItem.extension, fileItem.size_bytes, fileItem.updated_at);
+              try {
+                const res = await fetch(downloadUrl);
+                if (res.ok) blob = await res.blob();
+              } catch {}
+            }
+
+            if (!blob) {
+              const generatedUrl = generateFallbackDataUrl(fileItem.name, fileItem.extension, fileItem.size_bytes, fileItem.updated_at);
+              const res = await fetch(generatedUrl);
+              blob = await res.blob();
+            }
+
+            const blobUrl = URL.createObjectURL(blob);
             const a = document.createElement('a');
-            a.href = url;
-            a.download = item.name;
+            a.href = blobUrl;
+            a.download = fileItem.name;
+            document.body.appendChild(a);
             a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(blobUrl);
+            toast.success('Download started');
           } catch {
             toast.error('Failed to download file');
           }

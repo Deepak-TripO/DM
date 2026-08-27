@@ -164,3 +164,39 @@ export function debounce<T extends (...args: unknown[]) => unknown>(fn: T, ms: n
     timer = setTimeout(() => fn(...args), ms);
   };
 }
+
+function escapeXml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+export function generateFallbackDataUrl(name: string, ext = 'file', sizeBytes = 0, updatedAt?: string): string {
+  const safeTitle = escapeXml(name || 'Document');
+  const safeExt = escapeXml((ext || 'FILE').toUpperCase());
+  const formattedSize = formatBytes(sizeBytes || 0);
+  const formattedDate = updatedAt ? formatDate(updatedAt) : '';
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">
+    <rect width="800" height="600" fill="#0f172a"/>
+    <defs>
+      <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#6366f1" stop-opacity="0.25"/>
+        <stop offset="100%" stop-color="#3b82f6" stop-opacity="0.25"/>
+      </linearGradient>
+    </defs>
+    <rect width="800" height="600" fill="url(#g)"/>
+    <rect x="220" y="100" width="360" height="400" rx="24" fill="#1e293b" stroke="#334155" stroke-width="2"/>
+    <rect x="260" y="140" width="280" height="180" rx="16" fill="#0f172a" stroke="#1e293b"/>
+    <circle cx="400" cy="230" r="44" fill="#3b82f6" fill-opacity="0.2"/>
+    <path d="M380 230 L395 245 L420 215" stroke="#60a5fa" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <text x="400" y="360" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="800" fill="#f8fafc" text-anchor="middle">${safeTitle}</text>
+    <text x="400" y="400" font-family="system-ui, -apple-system, sans-serif" font-size="14" font-weight="700" fill="#94a3b8" text-anchor="middle">${safeExt} · ${formattedSize}</text>
+    <text x="400" y="430" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="600" fill="#64748b" text-anchor="middle">${formattedDate}</text>
+  </svg>`;
+
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
