@@ -385,3 +385,112 @@ BEGIN
     );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 12. TASK ACCESS
+CREATE TABLE IF NOT EXISTS public.task_access (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    task_id UUID NOT NULL REFERENCES public.folders(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    granted_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT unique_task_user_access UNIQUE (task_id, user_id)
+);
+
+ALTER TABLE public.task_access ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Admins can manage task_access" ON public.task_access;
+CREATE POLICY "Admins can manage task_access"
+    ON public.task_access FOR ALL
+    TO authenticated
+    USING (public.is_admin(auth.uid()))
+    WITH CHECK (public.is_admin(auth.uid()));
+
+DROP POLICY IF EXISTS "Users can view own task_access" ON public.task_access;
+CREATE POLICY "Users can view own task_access"
+    ON public.task_access FOR SELECT
+    TO authenticated
+    USING (auth.uid() = user_id OR public.is_admin(auth.uid()));
+
+-- 13. USER PERMISSIONS (Finance & TripO Lead Entry Locks)
+CREATE TABLE IF NOT EXISTS public.user_permissions (
+    user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    finance_entry_access TEXT NOT NULL DEFAULT 'unlocked',
+    tripolead_entry_access TEXT NOT NULL DEFAULT 'unlocked',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.user_permissions ADD COLUMN IF NOT EXISTS finance_entry_access TEXT NOT NULL DEFAULT 'unlocked';
+ALTER TABLE public.user_permissions ADD COLUMN IF NOT EXISTS tripolead_entry_access TEXT NOT NULL DEFAULT 'unlocked';
+
+ALTER TABLE public.user_permissions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Authenticated users can view user_permissions." ON public.user_permissions;
+CREATE POLICY "Authenticated users can view user_permissions."
+    ON public.user_permissions FOR SELECT
+    TO authenticated
+    USING (true);
+
+DROP POLICY IF EXISTS "Admins can manage user_permissions." ON public.user_permissions;
+CREATE POLICY "Admins can manage user_permissions."
+    ON public.user_permissions FOR ALL
+    TO authenticated
+    USING (auth.uid() = user_id OR public.is_admin(auth.uid()))
+    WITH CHECK (auth.uid() = user_id OR public.is_admin(auth.uid()));
+
+-- 14. TRIPO LEAD ENTRIES
+CREATE TABLE IF NOT EXISTS public.tripolead_entries (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    task_id UUID NOT NULL REFERENCES public.folders(id) ON DELETE CASCADE,
+    hotel_name TEXT NOT NULL,
+    district TEXT NOT NULL,
+    area TEXT NOT NULL,
+    location_link TEXT,
+    status TEXT,
+    approach_date DATE,
+    short_notes TEXT,
+    deleted_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.tripolead_entries ADD COLUMN IF NOT EXISTS status TEXT;
+ALTER TABLE public.tripolead_entries ADD COLUMN IF NOT EXISTS approach_date DATE;
+ALTER TABLE public.tripolead_entries ADD COLUMN IF NOT EXISTS short_notes TEXT;
+
+CREATE INDEX IF NOT EXISTS idx_tripolead_entries_task_id ON public.tripolead_entries(task_id);
+CREATE INDEX IF NOT EXISTS idx_tripolead_entries_deleted_at ON public.tripolead_entries(deleted_at);
+
+ALTER TABLE public.tripolead_entries ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view tripolead entries" ON public.tripolead_entries;
+CREATE POLICY "Users can view tripolead entries"
+    ON public.tripolead_entries FOR SELECT
+    TO authenticated
+    USING (true);
+
+DROP POLICY IF EXISTS "Allowed users can insert tripolead entries" ON public.tripolead_entries;
+CREATE POLICY "Allowed users can insert tripolead entries"
+    ON public.tripolead_entries FOR INSERT
+    TO authenticated
+    WITH CHECK (
+        public.is_admin(auth.uid()) OR (
+            NOT EXISTS (
+                SELECT 1 FROM public.user_permissions
+                WHERE user_id = auth.uid() AND tripolead_entry_access = 'locked'
+            )
+        )
+    );
+
+DROP POLICY IF EXISTS "Users can update tripolead entries" ON public.tripolead_entries;
+CREATE POLICY "Users can update tripolead entries"
+    ON public.tripolead_entries FOR UPDATE
+    TO authenticated
+    USING (true);
+
+DROP POLICY IF EXISTS "Users can delete tripolead entries" ON public.tripolead_entries;
+CREATE POLICY "Users can delete tripolead entries"
+    ON public.tripolead_entries FOR DELETE
+    TO authenticated
+    USING (true);
