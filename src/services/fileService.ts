@@ -118,6 +118,18 @@ export async function getFiles(
   return (data || []) as FileItem[];
 }
 
+export async function getFileById(fileId: string): Promise<FileItem | null> {
+  const { data, error } = await supabase
+    .from('files')
+    .select('*')
+    .eq('id', fileId)
+    .is('deleted_at', null)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return data as FileItem;
+}
+
 export async function getRecentFiles(userId: string, limit = 50): Promise<FileItem[]> {
   const { data, error } = await supabase
     .from('files')

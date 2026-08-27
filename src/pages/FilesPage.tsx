@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { useAdmin } from '@/hooks/useAdmin';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getFiles, renameFile, toggleStarFile, softDeleteFile, getSignedUrl, subscribeToFilesChange } from '@/services/fileService';
+import { getFiles, getFileById, renameFile, toggleStarFile, softDeleteFile, getSignedUrl, subscribeToFilesChange } from '@/services/fileService';
 import { getFolders, createFolder, renameFolder, toggleStarFolder, softDeleteFolder, getFolderBreadcrumbs, getFolderById } from '@/services/folderService';
 import { Header } from '@/components/Header';
 import { EmptyState } from '@/components/EmptyState';
@@ -100,7 +100,15 @@ export default function FilesPage() {
     enabled: !!folderId,
   });
 
-  const previewFile = previewFileId ? files.find((f) => f.id === previewFileId) : null;
+  const previewFileFromList = previewFileId ? files.find((f) => f.id === previewFileId) : null;
+
+  const { data: fetchedPreviewFile } = useQuery({
+    queryKey: ['file', previewFileId],
+    queryFn: () => getFileById(previewFileId!),
+    enabled: !!previewFileId && !previewFileFromList,
+  });
+
+  const previewFile = previewFileFromList || fetchedPreviewFile || null;
 
   useEffect(() => {
     const unsubscribe = subscribeToFilesChange(() => {
