@@ -33,10 +33,11 @@ export function TripoLeadSidebar({ isOpen, onClose, activeTab, onTabChange }: Tr
             <button
               onClick={onClose}
               className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity focus:outline-none"
-              aria-label="Close sidebar"
+              aria-label="Toggle navigation"
+              title="Close sidebar"
             >
-              <span className="text-xl font-black tracking-tight text-[var(--color-text-primary)]">
-                TripO Lead
+              <span className="text-2xl font-black tracking-tight text-[var(--color-text-primary)]">
+                DM
               </span>
             </button>
           </div>
@@ -71,9 +72,16 @@ export function TripoLeadSidebar({ isOpen, onClose, activeTab, onTabChange }: Tr
       {/* Desktop Fixed Left Sidebar (screens >= lg) */}
       <aside className="hidden lg:flex fixed left-0 top-0 bottom-0 z-30 h-screen w-64 flex-col neu-flat bg-[var(--neu-bg)] p-5 border-r border-[var(--color-border-light)]/40 shadow-md">
         <div className="flex h-[var(--header-height)] items-center justify-between border-b border-[var(--color-border-light)]/40 pb-4 mb-4">
-          <span className="text-xl font-black tracking-tight text-[var(--color-text-primary)]">
-            TripO Lead
-          </span>
+          <button
+            onClick={onClose}
+            className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity focus:outline-none"
+            aria-label="Toggle navigation"
+            title="Collapse sidebar"
+          >
+            <span className="text-2xl font-black tracking-tight text-[var(--color-text-primary)]">
+              DM
+            </span>
+          </button>
         </div>
 
         <nav className="flex-1 space-y-2.5 overflow-y-auto pr-1">
