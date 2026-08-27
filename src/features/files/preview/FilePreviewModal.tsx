@@ -19,6 +19,13 @@ export function FilePreviewModal({ file, onClose, allowDownload = true }: FilePr
   const [zoom, setZoom] = useState(1);
   const [textContent, setTextContent] = useState<string | null>(null);
   const [imgError, setImgError] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const category = getFileCategoryFromMimeOrExt(file.mime_type, file.extension);
   const canPreview = isPreviewable(file.extension, file.mime_type);
@@ -175,83 +182,210 @@ export function FilePreviewModal({ file, onClose, allowDownload = true }: FilePr
       <div className="flex flex-1 items-center justify-center overflow-auto p-4 sm:p-6 bg-[var(--neu-bg)]">
         {loading ? (
           <div className="text-xs font-bold text-[var(--color-text-tertiary)]">Loading preview...</div>
-        ) : category === 'pdf' && url && !isGeneratedSvg ? (
-          <iframe src={url} className="h-full w-full max-w-4xl rounded-2xl sm:rounded-3xl neu-modal" title={file.name} />
-        ) : (category === 'image' || isGeneratedSvg) && url ? (
-          <img
-            src={url}
-            alt={file.name}
-            className="max-h-full max-w-full object-contain rounded-2xl neu-card transition-transform"
-            style={{ transform: `scale(${zoom})` }}
-            onError={() => {
-              const metaPreview = (file.metadata?.preview_url || file.metadata?.data_url) as string | undefined;
-              if (metaPreview && url !== metaPreview) {
-                setUrl(metaPreview);
-              } else {
-                setUrl(generateFallbackDataUrl(file.name, file.extension, file.size_bytes, file.updated_at));
-              }
-            }}
-          />
-        ) : category === 'pdf' && url ? (
-          <iframe src={url} className="h-full w-full max-w-4xl rounded-3xl neu-modal" title={file.name} />
-        ) : category === 'video' && url ? (
-          <video
-            src={url}
-            controls
-            muted
-            className="max-h-full max-w-full rounded-3xl neu-card"
-            controlsList="nodownload"
-          >
-            Your browser does not support video playback.
-          </video>
-        ) : category === 'audio' && url ? (
-          <div className="w-full max-w-md rounded-3xl neu-modal p-6">
-            <div className="mb-4 flex items-center gap-3">
-              <FileIcon extension={file.extension} size="lg" />
-              <div>
-                <p className="font-extrabold text-[var(--color-text-primary)]">{file.name}</p>
-                <p className="text-xs font-semibold text-[var(--color-text-secondary)]">{formatBytes(file.size_bytes)}</p>
-              </div>
-            </div>
-            <audio src={url} controls className="w-full" controlsList="nodownload">
-              Your browser does not support audio playback.
-            </audio>
-          </div>
-        ) : ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(file.extension.toLowerCase()) && url && url.startsWith('http') ? (
-          <iframe
-            src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`}
-            className="h-full w-full max-w-4xl rounded-3xl neu-modal border-0"
-            title={file.name}
-          />
-        ) : file.extension === 'csv' && textContent ? (
-          <div className="max-h-full max-w-4xl overflow-auto rounded-3xl neu-modal p-4">
-            <CsvTable content={textContent} />
-          </div>
-        ) : textContent !== null ? (
-          <div className="max-h-full w-full max-w-4xl overflow-auto rounded-3xl neu-pressed p-6">
-            <pre className="whitespace-pre-wrap font-mono text-xs font-semibold text-[var(--color-text-primary)]">
-              {textContent}
-            </pre>
-          </div>
-        ) : (
-          <div className="max-w-sm rounded-3xl neu-modal p-8 text-center space-y-3">
-            <FileIcon extension={file.extension} size="lg" className="mx-auto mb-2" />
-            <p className="text-base font-extrabold text-[var(--color-text-primary)]">{file.name}</p>
-            <div className="space-y-1.5 neu-pressed p-4 rounded-2xl text-xs font-semibold text-[var(--color-text-secondary)]">
-              <p>{file.extension.toUpperCase()} file</p>
-              <p>{formatBytes(file.size_bytes)}</p>
-              <p>{formatDate(file.updated_at)}</p>
-            </div>
-            <p className="text-xs font-semibold text-[var(--color-text-tertiary)]">Preview unavailable for this file type.</p>
-            {allowDownload && (
-              <button
-                onClick={handleDownload}
-                className="mt-2 rounded-xl neu-btn-primary px-6 py-2.5 text-xs font-bold text-white shadow-md hover:scale-[1.02]"
+        ) : isMobile ? (
+          /* MOBILE PREVIEW VIEW — Mobile-optimized rendering */
+          <div className="flex w-full h-full items-center justify-center p-2">
+            {category === 'image' || isGeneratedSvg ? (
+              <img
+                src={url!}
+                alt={file.name}
+                className="max-h-[75vh] max-w-full object-contain rounded-2xl neu-card transition-transform"
+                style={{ transform: `scale(${zoom})` }}
+                onError={() => {
+                  const metaPreview = (file.metadata?.preview_url || file.metadata?.data_url) as string | undefined;
+                  if (metaPreview && url !== metaPreview) {
+                    setUrl(metaPreview);
+                  } else {
+                    setUrl(generateFallbackDataUrl(file.name, file.extension, file.size_bytes, file.updated_at));
+                  }
+                }}
+              />
+            ) : category === 'pdf' ? (
+              url && url.startsWith('http') ? (
+                <iframe
+                  src={`https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(url)}`}
+                  className="h-[75vh] w-full max-w-full rounded-2xl neu-modal border-0"
+                  title={file.name}
+                />
+              ) : (
+                <div className="max-w-xs rounded-2xl neu-modal p-6 text-center space-y-3">
+                  <FileIcon extension={file.extension} size="lg" className="mx-auto mb-2" />
+                  <p className="text-sm font-extrabold text-[var(--color-text-primary)] truncate">{file.name}</p>
+                  <div className="space-y-1 neu-pressed p-3 rounded-xl text-xs font-semibold text-[var(--color-text-secondary)]">
+                    <p>PDF Document</p>
+                    <p>{formatBytes(file.size_bytes)}</p>
+                    <p>{formatDate(file.updated_at)}</p>
+                  </div>
+                  {url && (
+                    <a
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block mt-2 rounded-xl neu-btn-primary px-5 py-2.5 text-xs font-bold text-white shadow-md"
+                    >
+                      Open PDF
+                    </a>
+                  )}
+                </div>
+              )
+            ) : category === 'video' && url ? (
+              <video
+                src={url}
+                controls
+                playsInline
+                className="max-h-[75vh] w-full max-w-full rounded-2xl neu-card"
+                controlsList="nodownload"
+                preload="metadata"
               >
-                Download
-              </button>
+                Your browser does not support video playback.
+              </video>
+            ) : category === 'audio' && url ? (
+              <div className="w-full max-w-sm rounded-2xl neu-modal p-6 text-center space-y-4">
+                <FileIcon extension={file.extension} size="lg" className="mx-auto" />
+                <div>
+                  <p className="text-sm font-extrabold text-[var(--color-text-primary)] truncate">{file.name}</p>
+                  <p className="text-xs font-semibold text-[var(--color-text-tertiary)]">{formatBytes(file.size_bytes)}</p>
+                </div>
+                <audio src={url} controls className="w-full" controlsList="nodownload" />
+              </div>
+            ) : ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(file.extension.toLowerCase()) && url && url.startsWith('http') ? (
+              <iframe
+                src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`}
+                className="h-[75vh] w-full max-w-full rounded-2xl neu-modal border-0"
+                title={file.name}
+              />
+            ) : file.extension === 'csv' && textContent ? (
+              <div className="max-h-[75vh] w-full max-w-full overflow-auto rounded-2xl neu-modal p-3">
+                <CsvTable content={textContent} />
+              </div>
+            ) : textContent !== null ? (
+              <div className="max-h-[75vh] w-full max-w-full overflow-auto rounded-2xl neu-pressed p-4">
+                <pre className="whitespace-pre-wrap font-mono text-xs font-semibold text-[var(--color-text-primary)]">
+                  {textContent}
+                </pre>
+              </div>
+            ) : (
+              <div className="max-w-xs rounded-2xl neu-modal p-6 text-center space-y-3">
+                <FileIcon extension={file.extension} size="lg" className="mx-auto mb-2" />
+                <p className="text-sm font-extrabold text-[var(--color-text-primary)] truncate">{file.name}</p>
+                <div className="space-y-1 neu-pressed p-3 rounded-xl text-xs font-semibold text-[var(--color-text-secondary)]">
+                  <p>{file.extension.toUpperCase()} file</p>
+                  <p>{formatBytes(file.size_bytes)}</p>
+                  <p>{formatDate(file.updated_at)}</p>
+                </div>
+                <p className="text-xs font-semibold text-[var(--color-text-tertiary)]">Preview not supported for this file type.</p>
+                {allowDownload && (
+                  <button
+                    onClick={handleDownload}
+                    className="mt-2 rounded-xl neu-btn-primary px-5 py-2.5 text-xs font-bold text-white shadow-md hover:scale-[1.02]"
+                  >
+                    Download
+                  </button>
+                )}
+              </div>
             )}
           </div>
+        ) : (
+          /* DESKTOP PREVIEW VIEW — Unchanged desktop implementation */
+          <>
+            {!canPreview || imgError ? (
+              <div className="max-w-sm rounded-3xl neu-modal p-8 text-center space-y-3">
+                <FileIcon extension={file.extension} size="lg" className="mx-auto mb-2" />
+                <p className="text-base font-extrabold text-[var(--color-text-primary)]">{file.name}</p>
+                <div className="space-y-1.5 neu-pressed p-4 rounded-2xl text-xs font-semibold text-[var(--color-text-secondary)]">
+                  <p>{file.extension.toUpperCase()} file</p>
+                  <p>{formatBytes(file.size_bytes)}</p>
+                  <p>{formatDate(file.updated_at)}</p>
+                </div>
+                <p className="text-xs font-semibold text-[var(--color-text-tertiary)]">
+                  {imgError ? 'Image preview unavailable from storage.' : 'Preview unavailable for this file type.'}
+                </p>
+                {allowDownload && (
+                  <button
+                    onClick={handleDownload}
+                    className="mt-2 rounded-xl neu-btn-primary px-6 py-2.5 text-xs font-bold text-white shadow-md hover:scale-[1.02]"
+                  >
+                    Download
+                  </button>
+                )}
+              </div>
+            ) : category === 'pdf' && url && !isGeneratedSvg ? (
+              <iframe src={url} className="h-full w-full max-w-4xl rounded-2xl sm:rounded-3xl neu-modal" title={file.name} />
+            ) : (category === 'image' || isGeneratedSvg) && url ? (
+              <img
+                src={url}
+                alt={file.name}
+                className="max-h-full max-w-full object-contain rounded-2xl neu-card transition-transform"
+                style={{ transform: `scale(${zoom})` }}
+                onError={() => {
+                  const metaPreview = (file.metadata?.preview_url || file.metadata?.data_url) as string | undefined;
+                  if (metaPreview && url !== metaPreview) {
+                    setUrl(metaPreview);
+                  } else {
+                    setUrl(generateFallbackDataUrl(file.name, file.extension, file.size_bytes, file.updated_at));
+                  }
+                }}
+              />
+            ) : category === 'pdf' && url ? (
+              <iframe src={url} className="h-full w-full max-w-4xl rounded-3xl neu-modal" title={file.name} />
+            ) : category === 'video' && url ? (
+              <video
+                src={url}
+                controls
+                muted
+                className="max-h-full max-w-full rounded-3xl neu-card"
+                controlsList="nodownload"
+              >
+                Your browser does not support video playback.
+              </video>
+            ) : category === 'audio' && url ? (
+              <div className="w-full max-w-md rounded-3xl neu-modal p-6">
+                <div className="mb-4 flex items-center gap-3">
+                  <FileIcon extension={file.extension} size="lg" />
+                  <div>
+                    <p className="font-extrabold text-[var(--color-text-primary)]">{file.name}</p>
+                    <p className="text-xs font-semibold text-[var(--color-text-secondary)]">{formatBytes(file.size_bytes)}</p>
+                  </div>
+                </div>
+                <audio src={url} controls className="w-full" controlsList="nodownload" />
+              </div>
+            ) : ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(file.extension.toLowerCase()) && url && url.startsWith('http') ? (
+              <iframe
+                src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`}
+                className="h-full w-full max-w-4xl rounded-3xl neu-modal border-0"
+                title={file.name}
+              />
+            ) : file.extension === 'csv' && textContent ? (
+              <div className="max-h-full max-w-4xl overflow-auto rounded-3xl neu-modal p-4">
+                <CsvTable content={textContent} />
+              </div>
+            ) : textContent !== null ? (
+              <div className="max-h-full w-full max-w-4xl overflow-auto rounded-3xl neu-pressed p-6">
+                <pre className="whitespace-pre-wrap font-mono text-xs font-semibold text-[var(--color-text-primary)]">
+                  {textContent}
+                </pre>
+              </div>
+            ) : (
+              <div className="max-w-sm rounded-3xl neu-modal p-8 text-center space-y-3">
+                <FileIcon extension={file.extension} size="lg" className="mx-auto mb-2" />
+                <p className="text-base font-extrabold text-[var(--color-text-primary)]">{file.name}</p>
+                <div className="space-y-1.5 neu-pressed p-4 rounded-2xl text-xs font-semibold text-[var(--color-text-secondary)]">
+                  <p>{file.extension.toUpperCase()} file</p>
+                  <p>{formatBytes(file.size_bytes)}</p>
+                  <p>{formatDate(file.updated_at)}</p>
+                </div>
+                <p className="text-xs font-semibold text-[var(--color-text-tertiary)]">Preview unavailable for this file type.</p>
+                {allowDownload && (
+                  <button
+                    onClick={handleDownload}
+                    className="mt-2 rounded-xl neu-btn-primary px-6 py-2.5 text-xs font-bold text-white shadow-md hover:scale-[1.02]"
+                  >
+                    Download
+                  </button>
+                )}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
