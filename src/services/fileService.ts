@@ -382,6 +382,31 @@ export async function getTrashFiles(userId: string): Promise<FileItem[]> {
   return (data || []) as FileItem[];
 }
 
+export async function getTaskRecentFiles(taskId: string, limit = 50): Promise<FileItem[]> {
+  const { data, error } = await supabase
+    .from('files')
+    .select('*')
+    .eq('folder_id', taskId)
+    .is('deleted_at', null)
+    .order('updated_at', { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+  return (data || []) as FileItem[];
+}
+
+export async function getTaskTrashFiles(taskId: string): Promise<FileItem[]> {
+  const { data, error } = await supabase
+    .from('files')
+    .select('*')
+    .eq('folder_id', taskId)
+    .not('deleted_at', 'is', null)
+    .order('deleted_at', { ascending: false });
+
+  if (error) throw error;
+  return (data || []) as FileItem[];
+}
+
 export async function renameFile(fileId: string, newName: string): Promise<void> {
   const { error } = await supabase
     .from('files')

@@ -10,6 +10,7 @@ import { FileCardSkeleton } from '@/components/LoadingSkeleton';
 import { FileIcon } from '@/components/FileIcon';
 import { FilePreviewModal } from '@/features/files/preview/FilePreviewModal';
 import { FinanceView } from '@/pages/finance/FinanceView';
+import { TripoLeadView } from '@/pages/tripolead/TripoLeadView';
 import { formatBytes, formatRelativeTime } from '@/utils';
 import { CheckSquare, Grid3X3, List, Eye, Download, MoreVertical, HardDrive } from 'lucide-react';
 import { getSignedUrl } from '@/services/fileService';
@@ -19,7 +20,7 @@ import { useAppLayout } from '@/layouts/AppLayout';
 export default function TasksPage() {
   const { taskId } = useParams<{ taskId?: string }>();
   const navigate = useNavigate();
-  const { sidebarOpen, toggleSidebar, hasSidebar } = useAppLayout();
+  const { sidebarOpen, toggleSidebar, hasSidebar, setHideSidebarOverride } = useAppLayout();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
 
@@ -38,11 +39,23 @@ export default function TasksPage() {
   });
 
   const isFinanceTask = !!selectedTask && selectedTask.name.trim().toLowerCase() === 'finance';
+  const isTripoLeadTask = !!selectedTask && selectedTask.name.trim().toLowerCase().replace(/\s+/g, '').includes('tripolead');
+
+  useEffect(() => {
+    if (isTripoLeadTask) {
+      setHideSidebarOverride?.(true);
+    } else {
+      setHideSidebarOverride?.(false);
+    }
+    return () => {
+      setHideSidebarOverride?.(false);
+    };
+  }, [isTripoLeadTask, setHideSidebarOverride]);
 
   const { data: taskFiles = [], isLoading: loadingFiles } = useQuery({
     queryKey: ['taskFiles', taskId],
     queryFn: () => getTaskFiles(taskId!),
-    enabled: !!taskId && !!selectedTask && !isFinanceTask,
+    enabled: !!taskId && !!selectedTask && !isFinanceTask && !isTripoLeadTask,
   });
 
   const handleDownload = async (file: FileItem) => {
@@ -58,6 +71,14 @@ export default function TasksPage() {
       toast.error('Failed to download file');
     }
   };
+
+  if (selectedTask && isFinanceTask) {
+    return <FinanceView task={selectedTask} />;
+  }
+
+  if (selectedTask && isTripoLeadTask) {
+    return <TripoLeadView task={selectedTask} />;
+  }
 
   return (
     <div className="flex flex-col min-h-screen">

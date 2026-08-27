@@ -1,6 +1,4 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { getTaskById } from '@/services/taskService';
 import { cn } from '@/lib/utils';
 import { useAdmin } from '@/hooks/useAdmin';
 import {
@@ -10,7 +8,6 @@ import {
   Share2,
   Trash2,
   ShieldCheck,
-  CheckSquare,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -29,16 +26,6 @@ const navItems = [
 export function Sidebar({ open, onToggle }: SidebarProps) {
   const { isAdmin } = useAdmin();
   const location = useLocation();
-
-  // Extract active taskId if currently on a task route
-  const taskMatch = location.pathname.match(/^\/tasks\/([^/]+)$/);
-  const currentTaskId = taskMatch?.[1];
-
-  const { data: selectedTask } = useQuery({
-    queryKey: ['task', currentTaskId],
-    queryFn: () => getTaskById(currentTaskId!),
-    enabled: !!currentTaskId,
-  });
 
   const isItemActive = (itemTo: string) => {
     const path = location.pathname;
@@ -66,17 +53,6 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
           DM
         </button>
       </div>
-
-      {/* Task Specific Active Badge */}
-      {selectedTask && (
-        <div className="mx-4 mt-3 mb-1 flex items-center gap-2.5 rounded-xl neu-pressed px-3.5 py-2.5 border border-[var(--color-border-light)]/40">
-          <CheckSquare className="h-4.5 w-4.5 shrink-0 text-[var(--color-primary)]" />
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-extrabold text-[var(--color-text-tertiary)] uppercase tracking-wider">Active Task</p>
-            <p className="truncate text-xs font-black text-[var(--color-text-primary)]">{selectedTask.name}</p>
-          </div>
-        </div>
-      )}
 
       {/* Navigation */}
       <nav className="flex-1 space-y-2.5 overflow-y-auto px-4 py-4 scrollbar-none">
