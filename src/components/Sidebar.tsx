@@ -30,7 +30,7 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
   const isItemActive = (itemTo: string) => {
     const path = location.pathname;
     if (itemTo === '/home') {
-      return path === '/home' || path === '/' || path.startsWith('/tasks');
+      return path === '/home' || path === '/' || path === '/tasks' || path === '/tasks/';
     }
     if (itemTo === '/files') {
       return path.startsWith('/files') || path.startsWith('/folders');
