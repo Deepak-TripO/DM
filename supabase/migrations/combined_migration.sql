@@ -406,17 +406,14 @@ CREATE TABLE IF NOT EXISTS public.task_access (
 ALTER TABLE public.task_access ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Admins can manage task_access" ON public.task_access;
-CREATE POLICY "Admins can manage task_access"
+DROP POLICY IF EXISTS "Users can view own task_access" ON public.task_access;
+DROP POLICY IF EXISTS "Authenticated users can manage task_access" ON public.task_access;
+
+CREATE POLICY "Authenticated users can manage task_access"
     ON public.task_access FOR ALL
     TO authenticated
-    USING (public.is_admin(auth.uid()))
-    WITH CHECK (public.is_admin(auth.uid()));
-
-DROP POLICY IF EXISTS "Users can view own task_access" ON public.task_access;
-CREATE POLICY "Users can view own task_access"
-    ON public.task_access FOR SELECT
-    TO authenticated
-    USING (auth.uid() = user_id OR public.is_admin(auth.uid()));
+    USING (true)
+    WITH CHECK (true);
 
 -- 13. USER PERMISSIONS (Finance & TripO Lead Entry Locks)
 CREATE TABLE IF NOT EXISTS public.user_permissions (
@@ -433,17 +430,14 @@ ALTER TABLE public.user_permissions ADD COLUMN IF NOT EXISTS tripolead_entry_acc
 ALTER TABLE public.user_permissions ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Authenticated users can view user_permissions." ON public.user_permissions;
-CREATE POLICY "Authenticated users can view user_permissions."
-    ON public.user_permissions FOR SELECT
-    TO authenticated
-    USING (true);
-
 DROP POLICY IF EXISTS "Admins can manage user_permissions." ON public.user_permissions;
-CREATE POLICY "Admins can manage user_permissions."
+DROP POLICY IF EXISTS "Authenticated users can manage user_permissions" ON public.user_permissions;
+
+CREATE POLICY "Authenticated users can manage user_permissions"
     ON public.user_permissions FOR ALL
     TO authenticated
-    USING (auth.uid() = user_id OR public.is_admin(auth.uid()))
-    WITH CHECK (auth.uid() = user_id OR public.is_admin(auth.uid()));
+    USING (true)
+    WITH CHECK (true);
 
 -- 14. TRIPO LEAD ENTRIES
 CREATE TABLE IF NOT EXISTS public.tripolead_entries (

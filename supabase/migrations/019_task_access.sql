@@ -16,20 +16,15 @@ CREATE INDEX IF NOT EXISTS idx_task_access_user_id ON public.task_access(user_id
 
 ALTER TABLE public.task_access ENABLE ROW LEVEL SECURITY;
 
--- Admins can view and manage all task_access records
 DROP POLICY IF EXISTS "Admins can manage task_access" ON public.task_access;
-CREATE POLICY "Admins can manage task_access"
+DROP POLICY IF EXISTS "Users can view own task_access" ON public.task_access;
+DROP POLICY IF EXISTS "Authenticated users can manage task_access" ON public.task_access;
+
+CREATE POLICY "Authenticated users can manage task_access"
     ON public.task_access FOR ALL
     TO authenticated
-    USING (public.is_admin(auth.uid()))
-    WITH CHECK (public.is_admin(auth.uid()));
-
--- Users can view their own task_access entries
-DROP POLICY IF EXISTS "Users can view own task_access" ON public.task_access;
-CREATE POLICY "Users can view own task_access"
-    ON public.task_access FOR SELECT
-    TO authenticated
-    USING (auth.uid() = user_id OR public.is_admin(auth.uid()));
+    USING (true)
+    WITH CHECK (true);
 
 -- Update RLS on folders to allow reading assigned tasks
 DROP POLICY IF EXISTS "Users can view assigned or owned folders" ON public.folders;
