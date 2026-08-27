@@ -19,7 +19,7 @@ import { useAppLayout } from '@/layouts/AppLayout';
 export default function TasksPage() {
   const { taskId } = useParams<{ taskId?: string }>();
   const navigate = useNavigate();
-  const { sidebarOpen, toggleSidebar, hasSidebar, setHideSidebarOverride } = useAppLayout();
+  const { sidebarOpen, toggleSidebar, hasSidebar } = useAppLayout();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
 
@@ -38,18 +38,6 @@ export default function TasksPage() {
   });
 
   const isFinanceTask = !!selectedTask && selectedTask.name.trim().toLowerCase() === 'finance';
-  const isTripoLeadTask = !!selectedTask && selectedTask.name.trim().toLowerCase().replace(/\s+/g, '').includes('tripolead');
-
-  useEffect(() => {
-    if (isTripoLeadTask) {
-      setHideSidebarOverride?.(true);
-    } else {
-      setHideSidebarOverride?.(false);
-    }
-    return () => {
-      setHideSidebarOverride?.(false);
-    };
-  }, [isTripoLeadTask, setHideSidebarOverride]);
 
   const { data: taskFiles = [], isLoading: loadingFiles } = useQuery({
     queryKey: ['taskFiles', taskId],
