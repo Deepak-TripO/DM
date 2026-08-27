@@ -16,6 +16,7 @@ export async function uploadFile(
     .from('files')
     .upload(storagePath, file, {
       cacheControl: '3600',
+      contentType: file.type || undefined,
       upsert: false,
     });
 
@@ -399,7 +400,7 @@ export async function getSignedUrl(storagePath: string, expiresIn = 3600): Promi
   try {
     const { data, error } = await supabase.storage
       .from('files')
-      .createSignedUrl(storagePath, expiresIn);
+      .createSignedUrl(storagePath, expiresIn, { download: false });
 
     if (!error && data?.signedUrl) {
       return data.signedUrl;

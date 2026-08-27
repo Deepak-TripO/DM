@@ -98,6 +98,18 @@ export function getFileCategory(extension: string): FileCategory {
   return CATEGORY_MAP[extension.toLowerCase()] || 'other';
 }
 
+export function getFileCategoryFromMimeOrExt(mimeType?: string, extension?: string): FileCategory {
+  const mime = (mimeType || '').toLowerCase();
+  const ext = (extension || '').toLowerCase();
+
+  if (mime.startsWith('image/')) return 'image';
+  if (mime.startsWith('video/')) return 'video';
+  if (mime.startsWith('audio/')) return 'audio';
+  if (mime === 'application/pdf') return 'pdf';
+
+  return getFileCategory(ext);
+}
+
 export function getCategoryLabel(category: FileCategory): string {
   const labels: Record<FileCategory, string> = {
     image: 'Image',
@@ -114,12 +126,17 @@ export function getCategoryLabel(category: FileCategory): string {
   return labels[category];
 }
 
-export function isPreviewable(extension: string): boolean {
+export function isPreviewable(extension: string, mimeType?: string): boolean {
+  const mime = (mimeType || '').toLowerCase();
+  if (mime.startsWith('image/') || mime.startsWith('video/') || mime.startsWith('audio/') || mime === 'application/pdf') {
+    return true;
+  }
   const previewable = new Set([
     'jpg', 'jpeg', 'png', 'webp', 'gif', 'svg',
-    'mp4', 'webm',
-    'mp3', 'wav', 'ogg', 'm4a',
+    'mp4', 'webm', 'mov', 'm4v', 'avi',
+    'mp3', 'wav', 'ogg', 'm4a', 'aac',
     'pdf',
+    'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
     'txt', 'md', 'json', 'xml', 'sql', 'log', 'yaml', 'yml',
     'js', 'ts', 'tsx', 'jsx', 'html', 'css', 'py', 'java', 'cpp', 'c',
     'csv',

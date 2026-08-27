@@ -3,7 +3,7 @@ import { X, Download, Maximize2, ZoomIn, ZoomOut } from 'lucide-react';
 import { getSignedUrl, downloadFile } from '@/services/fileService';
 import { supabase } from '@/lib/supabase/client';
 import { FileIcon } from '@/components/FileIcon';
-import { formatBytes, formatDate, getFileCategory, isPreviewable } from '@/utils';
+import { formatBytes, formatDate, getFileCategoryFromMimeOrExt, isPreviewable } from '@/utils';
 import type { FileItem } from '@/types';
 import { toast } from 'sonner';
 
@@ -20,8 +20,8 @@ export function FilePreviewModal({ file, onClose, allowDownload = true }: FilePr
   const [textContent, setTextContent] = useState<string | null>(null);
   const [imgError, setImgError] = useState(false);
 
-  const category = getFileCategory(file.extension);
-  const canPreview = isPreviewable(file.extension);
+  const category = getFileCategoryFromMimeOrExt(file.mime_type, file.extension);
+  const canPreview = isPreviewable(file.extension, file.mime_type);
 
   useEffect(() => {
     async function loadPreview() {
@@ -178,6 +178,12 @@ export function FilePreviewModal({ file, onClose, allowDownload = true }: FilePr
               Your browser does not support audio playback.
             </audio>
           </div>
+        ) : ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(file.extension.toLowerCase()) && url && url.startsWith('http') ? (
+          <iframe
+            src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`}
+            className="h-full w-full max-w-4xl rounded-3xl neu-modal border-0"
+            title={file.name}
+          />
         ) : file.extension === 'csv' && textContent ? (
           <div className="max-h-full max-w-4xl overflow-auto rounded-3xl neu-modal p-4">
             <CsvTable content={textContent} />
@@ -189,7 +195,24 @@ export function FilePreviewModal({ file, onClose, allowDownload = true }: FilePr
             </pre>
           </div>
         ) : (
-          <div className="text-xs font-bold text-[var(--color-text-tertiary)]">Unable to load preview</div>
+          <div className="max-w-sm rounded-3xl neu-modal p-8 text-center space-y-3">
+            <FileIcon extension={file.extension} size="lg" className="mx-auto mb-2" />
+            <p className="text-base font-extrabold text-[var(--color-text-primary)]">{file.name}</p>
+            <div className="space-y-1.5 neu-pressed p-4 rounded-2xl text-xs font-semibold text-[var(--color-text-secondary)]">
+              <p>{file.extension.toUpperCase()} file</p>
+              <p>{formatBytes(file.size_bytes)}</p>
+              <p>{formatDate(file.updated_at)}</p>
+            </div>
+            <p className="text-xs font-semibold text-[var(--color-text-tertiary)]">Preview unavailable for this file type.</p>
+            {allowDownload && (
+              <button
+                onClick={handleDownload}
+                className="mt-2 rounded-xl neu-btn-primary px-6 py-2.5 text-xs font-bold text-white shadow-md hover:scale-[1.02]"
+              >
+                Download
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>
