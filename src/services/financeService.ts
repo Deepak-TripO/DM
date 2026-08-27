@@ -200,8 +200,8 @@ export async function getFinanceEntries(
       .select('*')
       .order('date', { ascending: false });
 
-    if (isUUID(taskId)) {
-      query = query.eq('task_id', taskId);
+    if (taskId && isUUID(taskId)) {
+      query = query.or(`task_id.eq.${taskId},task_id.is.null,task_id.eq.finance`);
     }
 
     if (categoryFilter && categoryFilter !== 'All') {
@@ -216,7 +216,12 @@ export async function getFinanceEntries(
 
     const { data, error } = await query;
 
-    if (error || !data) {
+    if (error) {
+      console.error('Database query error in getFinanceEntries:', error);
+      return filterMemoryEntries(taskId, search, categoryFilter);
+    }
+
+    if (!data) {
       return filterMemoryEntries(taskId, search, categoryFilter);
     }
 
@@ -229,7 +234,8 @@ export async function getFinanceEntries(
       elumugam_amount: row.elumugam_amount != null ? Number(row.elumugam_amount) : null,
       deepak_amount: row.deepak_amount != null ? Number(row.deepak_amount) : null,
     })) as FinanceEntry[];
-  } catch {
+  } catch (err) {
+    console.error('Unexpected error fetching finance entries:', err);
     return filterMemoryEntries(taskId, search, categoryFilter);
   }
 }
@@ -246,8 +252,10 @@ function filterMemoryEntries(
       item: mapLegacyItemName(e.item),
     }));
 
-  if (isUUID(taskId)) {
-    list = list.filter((e) => e.task_id === taskId);
+  if (taskId && isUUID(taskId)) {
+    list = list.filter(
+      (e) => !e.task_id || e.task_id === taskId || e.task_id === 'finance'
+    );
   }
 
   if (categoryFilter && categoryFilter !== 'All') {
