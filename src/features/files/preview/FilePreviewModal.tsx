@@ -18,6 +18,7 @@ export function FilePreviewModal({ file, onClose, allowDownload = true }: FilePr
   const [loading, setLoading] = useState(true);
   const [zoom, setZoom] = useState(1);
   const [textContent, setTextContent] = useState<string | null>(null);
+  const [imgError, setImgError] = useState(false);
 
   const category = getFileCategory(file.extension);
   const canPreview = isPreviewable(file.extension);
@@ -25,6 +26,7 @@ export function FilePreviewModal({ file, onClose, allowDownload = true }: FilePr
   useEffect(() => {
     async function loadPreview() {
       setLoading(true);
+      setImgError(false);
       const metaPreview = (file.metadata?.preview_url || file.metadata?.data_url) as string | undefined;
 
       if (metaPreview) {
@@ -88,7 +90,7 @@ export function FilePreviewModal({ file, onClose, allowDownload = true }: FilePr
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {category === 'image' && (
+          {category === 'image' && !imgError && (
             <>
               <button onClick={() => setZoom((z) => Math.max(0.25, z - 0.25))} className="h-9 w-9 neu-circle text-[var(--color-text-primary)]" aria-label="Zoom out">
                 <ZoomOut className="h-4 w-4" />
@@ -114,8 +116,8 @@ export function FilePreviewModal({ file, onClose, allowDownload = true }: FilePr
       <div className="flex flex-1 items-center justify-center overflow-auto p-6 bg-[var(--neu-bg)]">
         {loading ? (
           <div className="text-xs font-bold text-[var(--color-text-tertiary)]">Loading preview...</div>
-        ) : !canPreview ? (
-          /* Unsupported preview */
+        ) : !canPreview || imgError ? (
+          /* Unsupported preview or image loading error */
           <div className="max-w-sm rounded-3xl neu-modal p-8 text-center space-y-3">
             <FileIcon extension={file.extension} size="lg" className="mx-auto mb-2" />
             <p className="text-base font-extrabold text-[var(--color-text-primary)]">{file.name}</p>
@@ -124,11 +126,13 @@ export function FilePreviewModal({ file, onClose, allowDownload = true }: FilePr
               <p>{formatBytes(file.size_bytes)}</p>
               <p>{formatDate(file.updated_at)}</p>
             </div>
-            <p className="text-xs font-semibold text-[var(--color-text-tertiary)]">Preview unavailable for this file type.</p>
+            <p className="text-xs font-semibold text-[var(--color-text-tertiary)]">
+              {imgError ? 'Image preview unavailable from storage.' : 'Preview unavailable for this file type.'}
+            </p>
             {allowDownload && (
               <button
                 onClick={handleDownload}
-                className="mt-2 rounded-xl neu-btn-primary px-6 py-2.5 text-xs font-bold text-white"
+                className="mt-2 rounded-xl neu-btn-primary px-6 py-2.5 text-xs font-bold text-white shadow-md hover:scale-[1.02]"
               >
                 Download
               </button>
@@ -140,6 +144,14 @@ export function FilePreviewModal({ file, onClose, allowDownload = true }: FilePr
             alt={file.name}
             className="max-h-full max-w-full object-contain rounded-2xl neu-card transition-transform"
             style={{ transform: `scale(${zoom})` }}
+            onError={() => {
+              const metaPreview = (file.metadata?.preview_url || file.metadata?.data_url) as string | undefined;
+              if (metaPreview && url !== metaPreview) {
+                setUrl(metaPreview);
+              } else {
+                setImgError(true);
+              }
+            }}
           />
         ) : category === 'pdf' && url ? (
           <iframe src={url} className="h-full w-full max-w-4xl rounded-3xl neu-modal" title={file.name} />
