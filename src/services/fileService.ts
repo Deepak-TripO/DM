@@ -77,7 +77,7 @@ export async function getFiles(
 ): Promise<FileItem[]> {
   let query = supabase
     .from('files')
-    .select('*, owner:profiles(*)')
+    .select('*')
     .is('deleted_at', null);
 
   if (folderId) {
@@ -148,7 +148,7 @@ export async function getRecentItems(_userId: string, limit = 50): Promise<Unifi
   // Fetch global files created by any user
   const { data: filesData } = await supabase
     .from('files')
-    .select('*, owner:profiles(full_name, email)')
+    .select('*')
     .is('deleted_at', null)
     .order('updated_at', { ascending: false })
     .limit(limit);
