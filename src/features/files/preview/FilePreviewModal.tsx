@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Download, Maximize2, ZoomIn, ZoomOut } from 'lucide-react';
 import { getSignedUrl, downloadFile } from '@/services/fileService';
+import { supabase } from '@/lib/supabase/client';
 import { FileIcon } from '@/components/FileIcon';
 import { formatBytes, formatDate, getFileCategory, isPreviewable } from '@/utils';
 import type { FileItem } from '@/types';
@@ -23,20 +24,40 @@ export function FilePreviewModal({ file, onClose, allowDownload = true }: FilePr
 
   useEffect(() => {
     async function loadPreview() {
+      setLoading(true);
+      const metaPreview = (file.metadata?.preview_url || file.metadata?.data_url) as string | undefined;
+
+      if (metaPreview) {
+        setUrl(metaPreview);
+        setLoading(false);
+        return;
+      }
+
       try {
         const signedUrl = await getSignedUrl(file.storage_path);
-        setUrl(signedUrl);
+        if (signedUrl) {
+          setUrl(signedUrl);
+        } else {
+          const { data } = supabase.storage.from('files').getPublicUrl(file.storage_path);
+          if (data?.publicUrl) setUrl(data.publicUrl);
+        }
 
         // Load text content for text files
         if (['txt', 'md', 'json', 'xml', 'sql', 'log', 'yaml', 'yml', 'js', 'ts', 'tsx', 'jsx', 'html', 'css', 'py', 'java', 'cpp', 'c', 'csv'].includes(file.extension)) {
-          const blob = await downloadFile(file.storage_path);
-          const text = await blob.text();
-          setTextContent(text);
+          try {
+            const blob = await downloadFile(file.storage_path);
+            const text = await blob.text();
+            setTextContent(text);
+          } catch {}
         }
       } catch {
-        toast.error('Failed to load preview');
+        const { data } = supabase.storage.from('files').getPublicUrl(file.storage_path);
+        if (data?.publicUrl) {
+          setUrl(data.publicUrl);
+        }
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
     loadPreview();
   }, [file]);

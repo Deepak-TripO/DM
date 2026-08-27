@@ -367,7 +367,7 @@ export const exportToJpg = async (entries: FinanceEntry[], summary: SummaryData)
     try {
       const res = await fetch(dataUrl);
       const jpgBlob = await res.blob();
-      await saveExportedFileToShared(filename, jpgBlob, 'image/jpeg');
+      await saveExportedFileToShared(filename, jpgBlob, 'image/jpeg', dataUrl);
     } catch (err) {
       console.warn('Auto-save JPG notice:', err);
     }

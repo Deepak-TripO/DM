@@ -216,7 +216,8 @@ export async function getRecentItems(_userId: string, limit = 50): Promise<Unifi
 export async function saveExportedFileToShared(
   filename: string,
   blob: Blob,
-  mimeType: string
+  mimeType: string,
+  previewUrl?: string
 ): Promise<FileItem | null> {
   try {
     const { data: { user } } = await supabase.auth.getUser();
@@ -225,6 +226,7 @@ export async function saveExportedFileToShared(
     const fileId = crypto.randomUUID();
     const ext = filename.split('.').pop()?.toLowerCase() || '';
     const storagePath = `users/${user.id}/files/${fileId}/${filename}`;
+    const metaData = { is_export: true, preview_url: previewUrl || undefined };
 
     // Upload to 'files' bucket
     const { error: uploadError } = await supabase.storage
@@ -257,6 +259,7 @@ export async function saveExportedFileToShared(
           mime_type: mimeType,
           extension: ext,
           size_bytes: blob.size,
+          metadata: metaData,
           updated_at: new Date().toISOString(),
         })
         .eq('id', existing.id)
@@ -276,7 +279,7 @@ export async function saveExportedFileToShared(
           mime_type: mimeType,
           extension: ext,
           size_bytes: blob.size,
-          metadata: { is_export: true },
+          metadata: metaData,
         })
         .select()
         .single();
