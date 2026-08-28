@@ -3,7 +3,7 @@
 
 CREATE TABLE IF NOT EXISTS public.freelancelead_entries (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    task_id UUID NOT NULL REFERENCES public.folders(id) ON DELETE CASCADE,
+    task_id UUID NOT NULL,
     hotel_name TEXT NOT NULL,
     district TEXT NOT NULL,
     area TEXT NOT NULL,
