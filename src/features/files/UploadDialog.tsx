@@ -81,8 +81,18 @@ export function UploadDialog({ open, onClose, folderId }: UploadDialogProps) {
     queryClient.invalidateQueries({ queryKey: ['files'] });
     queryClient.invalidateQueries({ queryKey: ['recentFiles'] });
     queryClient.invalidateQueries({ queryKey: ['storageQuota'] });
+    if (folderId) {
+      queryClient.invalidateQueries({ queryKey: ['tripoLeadFiles', folderId] });
+      queryClient.invalidateQueries({ queryKey: ['taskFiles', folderId] });
+    }
     toast.success(`${fileArray.length} file${fileArray.length > 1 ? 's' : ''} uploaded`);
-  }, [user, folderId, queryClient]);
+
+    // Automatically return to My Files after successful upload
+    setTimeout(() => {
+      setUploads([]);
+      onClose();
+    }, 600);
+  }, [user, folderId, queryClient, onClose]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();

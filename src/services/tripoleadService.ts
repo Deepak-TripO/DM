@@ -232,6 +232,30 @@ export async function addTripoLeadEntry(
   return newEntry;
 }
 
+export async function checkIsAdmin(userId?: string): Promise<boolean> {
+  const { data: { user } } = await supabase.auth.getUser();
+  const currentUserId = userId || user?.id;
+  if (!currentUserId) return false;
+
+  const currentEmail = user?.email?.toLowerCase();
+  if (currentEmail === 'admin@dm.com') return true;
+
+  try {
+    const { data: rpcAdmin } = await supabase.rpc('is_admin', { uid: currentUserId });
+    if (typeof rpcAdmin === 'boolean' && rpcAdmin) return true;
+
+    const { data } = await supabase
+      .from('admin_users')
+      .select('user_id')
+      .eq('user_id', currentUserId)
+      .maybeSingle();
+
+    if (data) return true;
+  } catch {}
+
+  return false;
+}
+
 export async function updateTripoLeadEntry(
   taskId: string,
   entryId: string,
@@ -243,8 +267,14 @@ export async function updateTripoLeadEntry(
     status?: TripoLeadStatus | null;
     approach_date?: string | null;
     short_notes?: string | null;
-  }
+  },
+  userId?: string
 ): Promise<void> {
+  const isAdmin = await checkIsAdmin(userId);
+  if (!isAdmin) {
+    throw new Error('Access Denied: Only Administrators can update TripO Lead entries.');
+  }
+
   const now = new Date().toISOString();
   const cleanUpdates: Record<string, any> = {
     updated_at: now,
@@ -286,7 +316,12 @@ export async function updateTripoLeadEntry(
   } catch {}
 }
 
-export async function softDeleteTripoLeadEntry(taskId: string, entryId: string): Promise<void> {
+export async function softDeleteTripoLeadEntry(taskId: string, entryId: string, userId?: string): Promise<void> {
+  const isAdmin = await checkIsAdmin(userId);
+  if (!isAdmin) {
+    throw new Error('Access Denied: Only Administrators can delete TripO Lead entries.');
+  }
+
   const now = new Date().toISOString();
 
   const local = getLocalEntries(taskId).map((e) =>
@@ -318,7 +353,12 @@ export async function restoreTripoLeadEntry(taskId: string, entryId: string): Pr
   } catch {}
 }
 
-export async function permanentDeleteTripoLeadEntry(taskId: string, entryId: string): Promise<void> {
+export async function permanentDeleteTripoLeadEntry(taskId: string, entryId: string, userId?: string): Promise<void> {
+  const isAdmin = await checkIsAdmin(userId);
+  if (!isAdmin) {
+    throw new Error('Access Denied: Only Administrators can delete TripO Lead entries.');
+  }
+
   const local = getLocalEntries(taskId).filter((e) => e.id !== entryId);
   saveLocalEntries(taskId, local);
 

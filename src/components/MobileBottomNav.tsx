@@ -1,4 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { getTaskById } from '@/services/taskService';
 import {
   Home,
   Folder,
@@ -54,9 +56,21 @@ const navItemsConfig = [
 export function MobileBottomNav() {
   const location = useLocation();
 
-  // On MOBILE VIEW: Hide bottom navigation bar on "Select Task" page (/tasks)
   const isSelectTaskPage = location.pathname === '/tasks' || location.pathname === '/tasks/';
+
+  const matchTaskPath = location.pathname.match(/^\/tasks\/([^\/]+)/);
+  const taskId = matchTaskPath ? matchTaskPath[1] : null;
+
+  const { data: currentTask } = useQuery({
+    queryKey: ['task', taskId],
+    queryFn: () => getTaskById(taskId!),
+    enabled: !!taskId && !isSelectTaskPage,
+  });
+
   if (isSelectTaskPage) return null;
+
+  const isTripoLeadTask = !!currentTask && currentTask.name.trim().toLowerCase().replace(/\s+/g, '').includes('tripolead');
+  if (isTripoLeadTask) return null;
 
   const isPathActive = (path: string) => {
     const p = location.pathname;

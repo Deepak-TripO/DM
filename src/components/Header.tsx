@@ -29,7 +29,7 @@ export function Header({ onUploadClick, onLogoClick, sidebarOpen }: HeaderProps)
       <div className="flex items-center gap-2">
         {/* Mobile: DM logo is always anchored at top-left */}
         <button
-          onClick={() => navigate('/home')}
+          onClick={onLogoClick || (() => navigate('/home'))}
           className="text-lg font-black tracking-tight text-[var(--color-text-primary)] md:hidden cursor-pointer hover:opacity-80 transition-opacity focus:outline-none"
           aria-label="DM logo"
         >
