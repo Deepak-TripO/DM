@@ -40,7 +40,10 @@ export default function TasksPage() {
   });
 
   const isFinanceTask = !!selectedTask && selectedTask.name.trim().toLowerCase() === 'finance';
-  const isTripoLeadTask = !!selectedTask && selectedTask.name.trim().toLowerCase().replace(/\s+/g, '').includes('tripolead');
+  const isTripoLeadTask = !!selectedTask && (
+    selectedTask.name.trim().toLowerCase().replace(/\s+/g, '').includes('tripolead') ||
+    selectedTask.name.trim().toLowerCase().includes('tripo')
+  );
   const isFreelanceLeadTask = !!selectedTask && (
     selectedTask.name.trim().toLowerCase().replace(/\s+/g, '').includes('freelancelead') ||
     selectedTask.name.trim().toLowerCase().includes('freelance')

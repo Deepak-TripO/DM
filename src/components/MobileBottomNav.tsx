@@ -67,7 +67,10 @@ export function MobileBottomNav() {
     enabled: !!taskId && !isSelectTaskPage,
   });
 
-  const isTripoLeadTask = !!currentTask && currentTask.name.trim().toLowerCase().replace(/\s+/g, '').includes('tripolead');
+  const isTripoLeadTask = !!currentTask && (
+    currentTask.name.trim().toLowerCase().replace(/\s+/g, '').includes('tripolead') ||
+    currentTask.name.trim().toLowerCase().includes('tripo')
+  );
   const isFreelanceLeadTask = !!currentTask && (
     currentTask.name.trim().toLowerCase().replace(/\s+/g, '').includes('freelancelead') ||
     currentTask.name.trim().toLowerCase().includes('freelance')

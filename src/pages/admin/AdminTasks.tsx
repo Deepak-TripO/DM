@@ -638,11 +638,11 @@ export default function AdminTasks() {
                   <div className="flex items-center justify-between p-3 neu-pressed rounded-2xl text-xs font-bold mt-2">
                     <div className="flex items-center gap-2">
                       <span className="text-[var(--color-text-secondary)]">
-                        {accessModalTask && accessModalTask.name.trim().toLowerCase().replace(/\s+/g, '').includes('tripolead')
+                        {accessModalTask && (accessModalTask.name.trim().toLowerCase().replace(/\s+/g, '').includes('tripolead') || accessModalTask.name.trim().toLowerCase().includes('tripo'))
                           ? 'TripO Lead Entry Access:'
                           : 'Finance Entry Access:'}
                       </span>
-                      {accessModalTask && accessModalTask.name.trim().toLowerCase().replace(/\s+/g, '').includes('tripolead') ? (
+                      {accessModalTask && (accessModalTask.name.trim().toLowerCase().replace(/\s+/g, '').includes('tripolead') || accessModalTask.name.trim().toLowerCase().includes('tripo')) ? (
                         <span
                           className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide ${
                             tripoLeadAccessMap[selectedUserId] === 'locked'
@@ -685,7 +685,7 @@ export default function AdminTasks() {
                       )}
                     </div>
 
-                    {accessModalTask && accessModalTask.name.trim().toLowerCase().replace(/\s+/g, '').includes('tripolead') ? (
+                    {accessModalTask && (accessModalTask.name.trim().toLowerCase().replace(/\s+/g, '').includes('tripolead') || accessModalTask.name.trim().toLowerCase().includes('tripo')) ? (
                       <button
                         type="button"
                         onClick={() => handleToggleTripoLeadAccess(selectedUserId)}
@@ -773,7 +773,10 @@ export default function AdminTasks() {
               ) : (
                 <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                   {accessList.map((item: TaskAccessItem) => {
-                    const isTripoLead = accessModalTask && accessModalTask.name.trim().toLowerCase().replace(/\s+/g, '').includes('tripolead');
+                    const isTripoLead = accessModalTask && (
+                      accessModalTask.name.trim().toLowerCase().replace(/\s+/g, '').includes('tripolead') ||
+                      accessModalTask.name.trim().toLowerCase().includes('tripo')
+                    );
                     const isLocked = isTripoLead
                       ? tripoLeadAccessMap[item.user_id] === 'locked'
                       : financeAccessMap[item.user_id] === 'locked';
