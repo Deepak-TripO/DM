@@ -756,8 +756,9 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
             <div className="space-y-6">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <h1 className="text-xl md:text-2xl font-black text-[var(--color-text-primary)]">TripO Lead Files</h1>
-                  <p className="text-xs font-semibold text-[var(--color-text-secondary)] mt-1">Files stored under TripO Lead</p>
+                  <h1 className="hidden md:block text-2xl font-black text-[var(--color-text-primary)]">TripO Lead Files</h1>
+                  <p className="hidden md:block text-xs font-semibold text-[var(--color-text-secondary)] mt-1">Files stored under TripO Lead</p>
+                  <h1 className="block md:hidden text-xl font-black text-[var(--color-text-primary)]">My Files</h1>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -791,9 +792,9 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
 
                   <button
                     onClick={() => setUploadOpen(true)}
-                    className="neu-btn-primary px-4 py-2.5 rounded-xl text-xs font-extrabold text-white flex items-center gap-2 cursor-pointer shadow-md shrink-0"
+                    className="neu-btn-primary px-3 py-1.5 md:px-4 md:py-2.5 rounded-lg md:rounded-xl text-xs font-extrabold text-white flex items-center gap-1.5 md:gap-2 cursor-pointer shadow-md shrink-0"
                   >
-                    <Plus className="h-4 w-4" />
+                    <Plus className="h-3.5 w-3.5 md:h-4 md:w-4" />
                     <span>Upload File</span>
                   </button>
                 </div>
@@ -889,12 +890,15 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
           {activeTab === 'starred' && (
             <div className="space-y-6">
               <div>
-                <h1 className="text-xl md:text-2xl font-black text-[var(--color-text-primary)]">
+                <h1 className="hidden md:block text-2xl font-black text-[var(--color-text-primary)]">
                   TripO Lead Starred
                 </h1>
-                <p className="text-xs font-semibold text-[var(--color-text-secondary)] mt-1">
+                <p className="hidden md:block text-xs font-semibold text-[var(--color-text-secondary)] mt-1">
                   Starred entries and files in TripO Lead
                 </p>
+                <h1 className="block md:hidden text-xl font-black text-[var(--color-text-primary)]">
+                  Starred
+                </h1>
               </div>
 
               {starredEntries.length === 0 && starredFiles.length === 0 ? (
@@ -1016,12 +1020,15 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
           {activeTab === 'recent' && (
             <div className="space-y-6">
               <div>
-                <h1 className="text-xl md:text-2xl font-black text-[var(--color-text-primary)]">
+                <h1 className="hidden md:block text-2xl font-black text-[var(--color-text-primary)]">
                   TripO Lead Recent
                 </h1>
-                <p className="text-xs font-semibold text-[var(--color-text-secondary)] mt-1">
+                <p className="hidden md:block text-xs font-semibold text-[var(--color-text-secondary)] mt-1">
                   Recently added or updated entries inside TripO Lead
                 </p>
+                <h1 className="block md:hidden text-xl font-black text-[var(--color-text-primary)]">
+                  Recent
+                </h1>
               </div>
 
               {loadingRecentEntries ? (
@@ -1070,12 +1077,15 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
           {activeTab === 'trash' && (
             <div className="space-y-6">
               <div>
-                <h1 className="text-xl md:text-2xl font-black text-[var(--color-text-primary)]">
+                <h1 className="hidden md:block text-2xl font-black text-[var(--color-text-primary)]">
                   TripO Lead Trash
                 </h1>
-                <p className="text-xs font-semibold text-[var(--color-text-secondary)] mt-1">
+                <p className="hidden md:block text-xs font-semibold text-[var(--color-text-secondary)] mt-1">
                   Deleted entries belonging exclusively to TripO Lead
                 </p>
+                <h1 className="block md:hidden text-xl font-black text-[var(--color-text-primary)]">
+                  Trash
+                </h1>
               </div>
 
               {trashEntries.length === 0 && trashFiles.length === 0 ? (
