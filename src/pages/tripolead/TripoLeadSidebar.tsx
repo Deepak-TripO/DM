@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils';
-import { Home, Clock, Trash2, FolderOpen, Star } from 'lucide-react';
+import { Home, Clock, Trash2, FolderOpen } from 'lucide-react';
 
-export type TripoLeadTab = 'home' | 'files' | 'starred' | 'recent' | 'trash';
+export type TripoLeadTab = 'home' | 'files' | 'recent' | 'trash';
 
 interface TripoLeadSidebarProps {
   isOpen: boolean;
@@ -13,7 +13,6 @@ interface TripoLeadSidebarProps {
 const navItems: { id: TripoLeadTab; label: string; icon: any; color: string; bg: string }[] = [
   { id: 'home', label: 'Home', icon: Home, color: '#4D94E8', bg: '#EAF4FF' },
   { id: 'files', label: 'My Files', icon: FolderOpen, color: '#18AFAF', bg: '#E8FAFA' },
-  { id: 'starred', label: 'Starred', icon: Star, color: '#EAB308', bg: '#FEF9C3' },
   { id: 'recent', label: 'Recent', icon: Clock, color: '#E59A32', bg: '#FFF4E5' },
   { id: 'trash', label: 'Trash', icon: Trash2, color: '#D95C68', bg: '#FDECEE' },
 ];

@@ -18,6 +18,15 @@ export interface TripoLeadEntry {
   updated_at: string;
 }
 
+export interface TripoLeadFolder {
+  id: string;
+  task_id: string;
+  name: string;
+  created_at: string;
+  updated_at: string;
+  deleted_at?: string | null;
+}
+
 export const TAMIL_NADU_DISTRICTS = [
   'Ariyalur',
   'Chengalpattu',
@@ -60,6 +69,7 @@ export const TAMIL_NADU_DISTRICTS = [
 ];
 
 const LOCAL_STORAGE_PREFIX = 'dm_tripolead_entries_';
+const FOLDERS_LOCAL_STORAGE_PREFIX = 'dm_tripolead_folders_';
 
 function getLocalEntries(taskId: string): TripoLeadEntry[] {
   try {
@@ -74,6 +84,139 @@ function saveLocalEntries(taskId: string, entries: TripoLeadEntry[]) {
   try {
     localStorage.setItem(`${LOCAL_STORAGE_PREFIX}${taskId}`, JSON.stringify(entries));
   } catch {}
+}
+
+function getLocalFolders(taskId: string): TripoLeadFolder[] {
+  try {
+    const data = localStorage.getItem(`${FOLDERS_LOCAL_STORAGE_PREFIX}${taskId}`);
+    return data ? JSON.parse(data) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalFolders(taskId: string, folders: TripoLeadFolder[]) {
+  try {
+    localStorage.setItem(`${FOLDERS_LOCAL_STORAGE_PREFIX}${taskId}`, JSON.stringify(folders));
+  } catch {}
+}
+
+export async function getTripoLeadFolders(taskId: string, search?: string): Promise<TripoLeadFolder[]> {
+  try {
+    const { data, error } = await supabase
+      .from('folders')
+      .select('*')
+      .eq('parent_id', taskId)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false });
+
+    if (!error && data) {
+      const dbFolders: TripoLeadFolder[] = data.map((d: any) => ({
+        id: d.id,
+        task_id: taskId,
+        name: d.name,
+        created_at: d.created_at,
+        updated_at: d.updated_at,
+        deleted_at: d.deleted_at,
+      }));
+
+      const dbIds = new Set(dbFolders.map((f) => f.id));
+      const localOnly = getLocalFolders(taskId).filter((f) => !dbIds.has(f.id) && !f.deleted_at);
+      const merged = [...localOnly, ...dbFolders];
+
+      if (!search || !search.trim()) return merged;
+      const s = search.trim().toLowerCase();
+      return merged.filter((f) => f.name.toLowerCase().includes(s));
+    }
+  } catch {}
+
+  const local = getLocalFolders(taskId).filter((f) => !f.deleted_at);
+  if (!search || !search.trim()) return local;
+  const s = search.trim().toLowerCase();
+  return local.filter((f) => f.name.toLowerCase().includes(s));
+}
+
+export async function createTripoLeadFolder(taskId: string, name: string, userId?: string): Promise<TripoLeadFolder> {
+  const newFolder: TripoLeadFolder = {
+    id: crypto.randomUUID(),
+    task_id: taskId,
+    name: name.trim(),
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    deleted_at: null,
+  };
+
+  const local = getLocalFolders(taskId);
+  local.unshift(newFolder);
+  saveLocalFolders(taskId, local);
+
+  try {
+    const { data, error } = await supabase
+      .from('folders')
+      .insert({
+        id: newFolder.id,
+        owner_id: userId || null,
+        parent_id: taskId,
+        name: newFolder.name,
+      })
+      .select()
+      .single();
+
+    if (!error && data) {
+      const updatedLocal = getLocalFolders(taskId).map((f) => (f.id === newFolder.id ? { ...newFolder, id: data.id } : f));
+      saveLocalFolders(taskId, updatedLocal);
+      return {
+        id: data.id,
+        task_id: taskId,
+        name: data.name,
+        created_at: data.created_at,
+        updated_at: data.updated_at,
+      };
+    }
+  } catch {}
+
+  return newFolder;
+}
+
+export async function deleteTripoLeadFolder(taskId: string, folderId: string): Promise<void> {
+  const local = getLocalFolders(taskId).filter((f) => f.id !== folderId);
+  saveLocalFolders(taskId, local);
+
+  try {
+    await supabase.from('folders').delete().eq('id', folderId);
+  } catch {}
+}
+
+/**
+ * Check if current user is Admin
+ */
+async function checkIsAdmin(userId?: string): Promise<boolean> {
+  if (!userId) return false;
+
+  // 1. Check local access override first
+  const accessMap = getLocalUserTripoLeadAccessMap();
+  if (accessMap[userId] === 'locked') {
+    return false;
+  }
+
+  // 2. Check Supabase profiles table
+  try {
+    const { data } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (data?.role === 'admin') return true;
+  } catch {}
+
+  // 3. Check RPC is_admin
+  try {
+    const { data: isAdminRpc } = await supabase.rpc('is_admin', { user_id: userId });
+    if (isAdminRpc === true) return true;
+  } catch {}
+
+  return false;
 }
 
 export async function getTripoLeadEntries(
@@ -95,67 +238,51 @@ export async function getTripoLeadEntries(
 
     const { data, error } = await query;
     if (!error && data) {
-      // Merge with local storage status updates
       const localMap = new Map(getLocalEntries(taskId).map((e) => [e.id, e]));
       const merged = (data as TripoLeadEntry[]).map((dbEntry) => {
-        const localEntry = localMap.get(dbEntry.id);
-        if (localEntry) {
-          return {
-            ...dbEntry,
-            status: localEntry.status ?? dbEntry.status,
-            approach_date: localEntry.approach_date ?? dbEntry.approach_date,
-            short_notes: localEntry.short_notes ?? dbEntry.short_notes,
-          };
+        const local = localMap.get(dbEntry.id);
+        if (local && local.updated_at > dbEntry.updated_at) {
+          return local;
         }
         return dbEntry;
       });
+
+      // Add local-only entries that don't exist in DB yet
+      const dbIds = new Set(data.map((d: any) => d.id));
+      getLocalEntries(taskId).forEach((loc) => {
+        if (!dbIds.has(loc.id) && !loc.deleted_at) {
+          merged.unshift(loc);
+        }
+      });
+
       return merged;
     }
   } catch {}
 
-  // Fallback to localStorage
-  let local = getLocalEntries(taskId).filter((e) => !e.deleted_at);
-  if (search && search.trim()) {
-    const q = search.trim().toLowerCase();
-    local = local.filter(
-      (e) =>
-        e.hotel_name.toLowerCase().includes(q) ||
-        e.district.toLowerCase().includes(q) ||
-        e.area.toLowerCase().includes(q) ||
-        (e.location_link && e.location_link.toLowerCase().includes(q)) ||
-        (e.status && e.status.toLowerCase().includes(q)) ||
-        (e.short_notes && e.short_notes.toLowerCase().includes(q))
-    );
-  }
-  return local;
+  const local = getLocalEntries(taskId).filter((e) => !e.deleted_at);
+  if (!search || !search.trim()) return local;
+  const s = search.trim().toLowerCase();
+  return local.filter(
+    (e) =>
+      e.hotel_name.toLowerCase().includes(s) ||
+      e.district.toLowerCase().includes(s) ||
+      e.area.toLowerCase().includes(s)
+  );
 }
 
-export async function getTripoLeadRecentEntries(taskId: string, limit = 50): Promise<TripoLeadEntry[]> {
-  try {
-    const { data, error } = await supabase
-      .from('tripolead_entries')
-      .select('*')
-      .eq('task_id', taskId)
-      .is('deleted_at', null)
-      .order('updated_at', { ascending: false })
-      .limit(limit);
-
-    if (!error && data) {
-      const localMap = new Map(getLocalEntries(taskId).map((e) => [e.id, e]));
-      return (data as TripoLeadEntry[]).map((dbEntry) => {
-        const localEntry = localMap.get(dbEntry.id);
-        return localEntry ? { ...dbEntry, ...localEntry } : dbEntry;
-      });
-    }
-  } catch {}
-
-  const local = getLocalEntries(taskId)
-    .filter((e) => !e.deleted_at)
-    .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
-  return local.slice(0, limit);
+export async function getTripoLeadRecentEntries(
+  taskId: string,
+  limit: number = 20
+): Promise<TripoLeadEntry[]> {
+  const all = await getTripoLeadEntries(taskId);
+  return all
+    .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+    .slice(0, limit);
 }
 
-export async function getTripoLeadTrashEntries(taskId: string): Promise<TripoLeadEntry[]> {
+export async function getTripoLeadTrashEntries(
+  taskId: string
+): Promise<TripoLeadEntry[]> {
   try {
     const { data, error } = await supabase
       .from('tripolead_entries')
@@ -169,9 +296,7 @@ export async function getTripoLeadTrashEntries(taskId: string): Promise<TripoLea
     }
   } catch {}
 
-  return getLocalEntries(taskId)
-    .filter((e) => !!e.deleted_at)
-    .sort((a, b) => new Date(b.deleted_at!).getTime() - new Date(a.deleted_at!).getTime());
+  return getLocalEntries(taskId).filter((e) => Boolean(e.deleted_at));
 }
 
 export async function addTripoLeadEntry(
@@ -184,20 +309,13 @@ export async function addTripoLeadEntry(
   },
   userId?: string
 ): Promise<TripoLeadEntry> {
-  if (userId) {
-    const lockMap = getLocalUserTripoLeadAccessMap();
-    if (lockMap[userId] === 'locked') {
-      throw new Error('Access Denied: Your TripO Lead Entry permission is locked by Administrator.');
-    }
-  }
-
   const newEntry: TripoLeadEntry = {
     id: crypto.randomUUID(),
     task_id: taskId,
-    hotel_name: entry.hotel_name.trim(),
-    district: entry.district.trim(),
-    area: entry.area.trim(),
-    location_link: entry.location_link?.trim() || null,
+    hotel_name: entry.hotel_name,
+    district: entry.district,
+    area: entry.area,
+    location_link: entry.location_link || null,
     status: null,
     approach_date: null,
     short_notes: null,
@@ -206,9 +324,9 @@ export async function addTripoLeadEntry(
     updated_at: new Date().toISOString(),
   };
 
-  // Always save local first
   const local = getLocalEntries(taskId);
-  saveLocalEntries(taskId, [newEntry, ...local]);
+  local.unshift(newEntry);
+  saveLocalEntries(taskId, local);
 
   try {
     const { data, error } = await supabase
@@ -220,40 +338,19 @@ export async function addTripoLeadEntry(
         district: newEntry.district,
         area: newEntry.area,
         location_link: newEntry.location_link,
+        created_by: userId || null,
       })
       .select()
       .single();
 
     if (!error && data) {
+      const updatedLocal = getLocalEntries(taskId).map((e) => (e.id === newEntry.id ? data : e));
+      saveLocalEntries(taskId, updatedLocal);
       return data as TripoLeadEntry;
     }
   } catch {}
 
   return newEntry;
-}
-
-export async function checkIsAdmin(userId?: string): Promise<boolean> {
-  const { data: { user } } = await supabase.auth.getUser();
-  const currentUserId = userId || user?.id;
-  if (!currentUserId) return false;
-
-  const currentEmail = user?.email?.toLowerCase();
-  if (currentEmail === 'admin@dm.com') return true;
-
-  try {
-    const { data: rpcAdmin } = await supabase.rpc('is_admin', { uid: currentUserId });
-    if (typeof rpcAdmin === 'boolean' && rpcAdmin) return true;
-
-    const { data } = await supabase
-      .from('admin_users')
-      .select('user_id')
-      .eq('user_id', currentUserId)
-      .maybeSingle();
-
-    if (data) return true;
-  } catch {}
-
-  return false;
 }
 
 export async function updateTripoLeadEntry(
@@ -276,47 +373,44 @@ export async function updateTripoLeadEntry(
   }
 
   const now = new Date().toISOString();
-  const cleanUpdates: Record<string, any> = {
-    updated_at: now,
-  };
 
-  if (updates.hotel_name !== undefined) cleanUpdates.hotel_name = updates.hotel_name.trim();
-  if (updates.district !== undefined) cleanUpdates.district = updates.district.trim();
-  if (updates.area !== undefined) cleanUpdates.area = updates.area.trim();
-  if (updates.location_link !== undefined) cleanUpdates.location_link = updates.location_link?.trim() || null;
-  if (updates.status !== undefined) cleanUpdates.status = updates.status;
-  if (updates.approach_date !== undefined) cleanUpdates.approach_date = updates.approach_date || null;
-  if (updates.short_notes !== undefined) cleanUpdates.short_notes = updates.short_notes?.trim() || null;
-
-  // Always save to local storage immediately
-  const local = getLocalEntries(taskId).map((e) =>
-    e.id === entryId ? { ...e, ...cleanUpdates } : e
-  );
-  saveLocalEntries(taskId, local);
+  const local = getLocalEntries(taskId);
+  const updatedLocal = local.map((item) => {
+    if (item.id === entryId) {
+      return {
+        ...item,
+        ...updates,
+        updated_at: now,
+      };
+    }
+    return item;
+  });
+  saveLocalEntries(taskId, updatedLocal);
 
   try {
     const { error } = await supabase
       .from('tripolead_entries')
-      .update(cleanUpdates)
+      .update({
+        ...updates,
+        updated_at: now,
+      })
       .eq('id', entryId);
 
     if (error) {
-      // Fallback: update base columns if status/approach_date/short_notes don't exist yet on remote table
-      const baseUpdates: Record<string, any> = { updated_at: now };
-      if (updates.hotel_name !== undefined) baseUpdates.hotel_name = updates.hotel_name.trim();
-      if (updates.district !== undefined) baseUpdates.district = updates.district.trim();
-      if (updates.area !== undefined) baseUpdates.area = updates.area.trim();
-      if (updates.location_link !== undefined) baseUpdates.location_link = updates.location_link?.trim() || null;
-
-      await supabase
-        .from('tripolead_entries')
-        .update(baseUpdates)
-        .eq('id', entryId);
+      throw new Error(error.message);
     }
-  } catch {}
+  } catch (err: any) {
+    if (err.message && err.message.includes('Access Denied')) {
+      throw err;
+    }
+  }
 }
 
-export async function softDeleteTripoLeadEntry(taskId: string, entryId: string, userId?: string): Promise<void> {
+export async function softDeleteTripoLeadEntry(
+  taskId: string,
+  entryId: string,
+  userId?: string
+): Promise<void> {
   const isAdmin = await checkIsAdmin(userId);
   if (!isAdmin) {
     throw new Error('Access Denied: Only Administrators can delete TripO Lead entries.');
@@ -324,17 +418,29 @@ export async function softDeleteTripoLeadEntry(taskId: string, entryId: string, 
 
   const now = new Date().toISOString();
 
-  const local = getLocalEntries(taskId).map((e) =>
-    e.id === entryId ? { ...e, deleted_at: now, updated_at: now } : e
-  );
-  saveLocalEntries(taskId, local);
+  const local = getLocalEntries(taskId);
+  const updatedLocal = local.map((item) => {
+    if (item.id === entryId) {
+      return { ...item, deleted_at: now, updated_at: now };
+    }
+    return item;
+  });
+  saveLocalEntries(taskId, updatedLocal);
 
   try {
-    await supabase
+    const { error } = await supabase
       .from('tripolead_entries')
       .update({ deleted_at: now, updated_at: now })
       .eq('id', entryId);
-  } catch {}
+
+    if (error) {
+      throw new Error(error.message);
+    }
+  } catch (err: any) {
+    if (err.message && err.message.includes('Access Denied')) {
+      throw err;
+    }
+  }
 }
 
 export async function restoreTripoLeadEntry(taskId: string, entryId: string): Promise<void> {
