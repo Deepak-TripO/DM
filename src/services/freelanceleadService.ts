@@ -9,6 +9,8 @@ export interface FreelanceLeadEntry {
   district: string;
   area: string;
   location_link?: string | null;
+  phone_number?: string | null;
+  contact_person?: string | null;
   status?: FreelanceLeadStatus | null;
   approach_date?: string | null;
   short_notes?: string | null;
@@ -89,7 +91,7 @@ export async function getFreelanceLeadEntries(
 
     if (search && search.trim()) {
       const s = `%${search.trim()}%`;
-      query = query.or(`hotel_name.ilike.${s},district.ilike.${s},area.ilike.${s}`);
+      query = query.or(`hotel_name.ilike.${s},district.ilike.${s},area.ilike.${s},phone_number.ilike.${s},contact_person.ilike.${s}`);
     }
 
     const { data, error } = await query;
@@ -124,7 +126,9 @@ export async function getFreelanceLeadEntries(
     (e) =>
       e.hotel_name.toLowerCase().includes(s) ||
       e.district.toLowerCase().includes(s) ||
-      e.area.toLowerCase().includes(s)
+      e.area.toLowerCase().includes(s) ||
+      (e.phone_number && e.phone_number.toLowerCase().includes(s)) ||
+      (e.contact_person && e.contact_person.toLowerCase().includes(s))
   );
 }
 
@@ -164,6 +168,7 @@ export async function addFreelanceLeadEntry(
     district: string;
     area: string;
     location_link?: string;
+    phone_number?: string;
   },
   userId?: string
 ): Promise<FreelanceLeadEntry> {
@@ -174,6 +179,8 @@ export async function addFreelanceLeadEntry(
     district: entry.district,
     area: entry.area,
     location_link: entry.location_link || null,
+    phone_number: entry.phone_number || null,
+    contact_person: null,
     status: null,
     approach_date: null,
     short_notes: null,
@@ -197,6 +204,7 @@ export async function addFreelanceLeadEntry(
         district: newEntry.district,
         area: newEntry.area,
         location_link: newEntry.location_link,
+        phone_number: newEntry.phone_number,
         created_by: userId || null,
       })
       .select()
@@ -220,6 +228,8 @@ export async function updateFreelanceLeadEntry(
     district?: string;
     area?: string;
     location_link?: string;
+    phone_number?: string | null;
+    contact_person?: string | null;
     status?: FreelanceLeadStatus | null;
     approach_date?: string | null;
     short_notes?: string | null;

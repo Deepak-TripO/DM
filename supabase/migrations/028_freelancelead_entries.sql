@@ -8,6 +8,8 @@ CREATE TABLE IF NOT EXISTS public.freelancelead_entries (
     district TEXT NOT NULL,
     area TEXT NOT NULL,
     location_link TEXT,
+    phone_number TEXT DEFAULT NULL,
+    contact_person TEXT DEFAULT NULL,
     status TEXT DEFAULT NULL,
     approach_date DATE DEFAULT NULL,
     short_notes TEXT DEFAULT NULL,
@@ -16,6 +18,9 @@ CREATE TABLE IF NOT EXISTS public.freelancelead_entries (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE public.freelancelead_entries ADD COLUMN IF NOT EXISTS phone_number TEXT DEFAULT NULL;
+ALTER TABLE public.freelancelead_entries ADD COLUMN IF NOT EXISTS contact_person TEXT DEFAULT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_freelancelead_entries_task_id ON public.freelancelead_entries(task_id);
 CREATE INDEX IF NOT EXISTS idx_freelancelead_entries_deleted_at ON public.freelancelead_entries(deleted_at);

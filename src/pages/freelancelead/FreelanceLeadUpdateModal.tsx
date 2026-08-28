@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { X, CheckCircle, Clock, Calendar, FileText } from 'lucide-react';
+import { X, CheckCircle, Clock, Calendar, FileText, User } from 'lucide-react';
 import type { FreelanceLeadEntry, FreelanceLeadStatus } from '@/services/freelanceleadService';
 
 interface FreelanceLeadUpdateModalProps {
   open: boolean;
   onClose: () => void;
-  onSave: (data: { status: FreelanceLeadStatus; approach_date?: string; short_notes?: string }) => void;
+  onSave: (data: { status: FreelanceLeadStatus; approach_date?: string; short_notes?: string; contact_person?: string }) => void;
   entry: FreelanceLeadEntry | null;
   isSubmitting?: boolean;
 }
@@ -20,12 +20,14 @@ export function FreelanceLeadUpdateModal({
   const [status, setStatus] = useState<FreelanceLeadStatus>('Pending');
   const [approachDate, setApproachDate] = useState('');
   const [shortNotes, setShortNotes] = useState('');
+  const [contactPerson, setContactPerson] = useState('');
 
   useEffect(() => {
     if (entry) {
       setStatus(entry.status || 'Pending');
       setApproachDate(entry.approach_date || '');
       setShortNotes(entry.short_notes || '');
+      setContactPerson(entry.contact_person || '');
     }
   }, [entry, open]);
 
@@ -37,6 +39,7 @@ export function FreelanceLeadUpdateModal({
       status,
       approach_date: approachDate ? approachDate : undefined,
       short_notes: shortNotes.trim() ? shortNotes.trim() : undefined,
+      contact_person: contactPerson.trim() ? contactPerson.trim() : undefined,
     });
   };
 
@@ -48,7 +51,7 @@ export function FreelanceLeadUpdateModal({
         <div className="flex items-center justify-between border-b border-[var(--color-border-light)]/40 pb-4">
           <div>
             <h2 className="text-base md:text-lg font-black text-[var(--color-text-primary)]">
-              Update Freelance Lead Status
+              Update Freelance Lead Details
             </h2>
             <p className="text-xs font-bold text-blue-500 mt-0.5">{entry.hotel_name}</p>
           </div>
@@ -95,6 +98,21 @@ export function FreelanceLeadUpdateModal({
             </div>
           </div>
 
+          {/* Contact Person Field */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-extrabold text-[var(--color-text-primary)] uppercase tracking-wider flex items-center gap-2">
+              <User className="h-3.5 w-3.5 text-blue-500" />
+              Contact Person
+            </label>
+            <input
+              type="text"
+              value={contactPerson}
+              onChange={(e) => setContactPerson(e.target.value)}
+              placeholder="e.g. John Doe / Manager"
+              className="w-full rounded-xl neu-pressed px-4 py-3 text-xs font-bold text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+            />
+          </div>
+
           {/* Approach Date */}
           <div className="space-y-1.5">
             <label className="text-xs font-extrabold text-[var(--color-text-primary)] uppercase tracking-wider flex items-center gap-2">
@@ -138,7 +156,7 @@ export function FreelanceLeadUpdateModal({
               disabled={isSubmitting}
               className="neu-btn-primary px-6 py-2.5 rounded-xl text-xs font-extrabold text-white shadow-md hover:scale-[1.02] cursor-pointer disabled:opacity-50"
             >
-              {isSubmitting ? 'Updating...' : 'Update Status'}
+              {isSubmitting ? 'Updating...' : 'Update Details'}
             </button>
           </div>
         </form>

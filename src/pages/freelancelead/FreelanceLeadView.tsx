@@ -51,6 +51,8 @@ import {
   Grid3X3,
   List,
   MoreVertical,
+  Phone,
+  User,
 } from 'lucide-react';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { useAdmin } from '@/hooks/useAdmin';
@@ -171,7 +173,7 @@ export function FreelanceLeadView({ task }: FreelanceLeadViewProps) {
 
   // Entry Mutations
   const addEntryMutation = useMutation({
-    mutationFn: (data: { hotel_name: string; district: string; area: string; location_link?: string }) =>
+    mutationFn: (data: { hotel_name: string; district: string; area: string; location_link?: string; phone_number?: string }) =>
       addFreelanceLeadEntry(task.id, data, user?.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['freelanceLeadEntries', task.id] });
@@ -185,7 +187,7 @@ export function FreelanceLeadView({ task }: FreelanceLeadViewProps) {
   });
 
   const editEntryMutation = useMutation({
-    mutationFn: (data: { hotel_name: string; district: string; area: string; location_link?: string }) =>
+    mutationFn: (data: { hotel_name: string; district: string; area: string; location_link?: string; phone_number?: string }) =>
       updateFreelanceLeadEntry(task.id, editingEntry!.id, data, user?.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['freelanceLeadEntries', task.id] });
@@ -200,7 +202,7 @@ export function FreelanceLeadView({ task }: FreelanceLeadViewProps) {
   });
 
   const updateEntryMutation = useMutation({
-    mutationFn: (data: { status: FreelanceLeadStatus; approach_date?: string; short_notes?: string }) =>
+    mutationFn: (data: { status: FreelanceLeadStatus; approach_date?: string; short_notes?: string; contact_person?: string }) =>
       updateFreelanceLeadEntry(task.id, activeEntry!.id, data, user?.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['freelanceLeadEntries', task.id] });
@@ -507,7 +509,7 @@ export function FreelanceLeadView({ task }: FreelanceLeadViewProps) {
               ) : (
                 <div className="space-y-3">
                   {filteredEntries.map((entry) => {
-                    const hasUpdateInfo = !!(entry.status || entry.approach_date || entry.short_notes);
+                    const hasUpdateInfo = !!(entry.status || entry.approach_date || entry.short_notes || entry.contact_person);
                     const isStarred = starredEntryIds.includes(entry.id);
 
                     return (
@@ -550,6 +552,19 @@ export function FreelanceLeadView({ task }: FreelanceLeadViewProps) {
                               <span>District: <strong className="text-[var(--color-text-primary)]">{entry.district}</strong></span>
                               &middot;
                               <span>Area: <strong className="text-[var(--color-text-primary)]">{entry.area}</strong></span>
+                              {entry.phone_number && (
+                                <>
+                                  &middot;
+                                  <a
+                                    href={`tel:${entry.phone_number}`}
+                                    className="text-emerald-500 hover:underline flex items-center gap-1 font-bold"
+                                    title="Call Phone Number"
+                                  >
+                                    <Phone className="h-3 w-3" />
+                                    {entry.phone_number}
+                                  </a>
+                                </>
+                              )}
                               {entry.location_link && (
                                 <>
                                   &middot;
@@ -691,7 +706,14 @@ export function FreelanceLeadView({ task }: FreelanceLeadViewProps) {
 
                         {/* Extended Update Info */}
                         {hasUpdateInfo && (
-                          <div className="pt-1 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-[11px] md:text-xs font-semibold text-[var(--color-text-secondary)] bg-[var(--neu-bg)]/40 p-2.5 rounded-xl border border-[var(--color-border-light)]/30">
+                          <div className="pt-1 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-[11px] md:text-xs font-semibold text-[var(--color-text-secondary)] bg-[var(--neu-bg)]/40 p-2.5 rounded-xl border border-[var(--color-border-light)]/30 flex-wrap">
+                            {entry.contact_person && (
+                              <div className="flex items-center gap-1.5">
+                                <User className="h-3.5 w-3.5 text-blue-500" />
+                                <span>Contact Person: <strong className="text-[var(--color-text-primary)]">{entry.contact_person}</strong></span>
+                              </div>
+                            )}
+
                             {entry.approach_date && (
                               <div className="flex items-center gap-1.5">
                                 <Calendar className="h-3.5 w-3.5 text-purple-500" />

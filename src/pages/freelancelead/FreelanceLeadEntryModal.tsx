@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { X, Building2, MapPin, Navigation, ExternalLink } from 'lucide-react';
+import { X, Building2, MapPin, Navigation, ExternalLink, Phone } from 'lucide-react';
 import { TAMIL_NADU_DISTRICTS, type FreelanceLeadEntry } from '@/services/freelanceleadService';
 
 interface FreelanceLeadEntryModalProps {
   open: boolean;
   onClose: () => void;
-  onSave: (data: { hotel_name: string; district: string; area: string; location_link?: string }) => void;
+  onSave: (data: { hotel_name: string; district: string; area: string; location_link?: string; phone_number?: string }) => void;
   initialData?: FreelanceLeadEntry | null;
   isSubmitting?: boolean;
 }
@@ -21,6 +21,7 @@ export function FreelanceLeadEntryModal({
   const [district, setDistrict] = useState(TAMIL_NADU_DISTRICTS[0]);
   const [area, setArea] = useState('');
   const [locationLink, setLocationLink] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
 
   useEffect(() => {
     if (initialData) {
@@ -28,11 +29,13 @@ export function FreelanceLeadEntryModal({
       setDistrict(initialData.district || TAMIL_NADU_DISTRICTS[0]);
       setArea(initialData.area || '');
       setLocationLink(initialData.location_link || '');
+      setPhoneNumber(initialData.phone_number || '');
     } else {
       setHotelName('');
       setDistrict(TAMIL_NADU_DISTRICTS[0]);
       setArea('');
       setLocationLink('');
+      setPhoneNumber('');
     }
   }, [initialData, open]);
 
@@ -47,6 +50,7 @@ export function FreelanceLeadEntryModal({
       district: district.trim(),
       area: area.trim(),
       location_link: locationLink.trim() || undefined,
+      phone_number: phoneNumber.trim() || undefined,
     });
   };
 
@@ -63,7 +67,7 @@ export function FreelanceLeadEntryModal({
               {isEditing ? 'Edit Freelance Lead Entry' : 'Add New Freelance Lead Entry'}
             </h2>
             <p className="text-xs font-semibold text-[var(--color-text-secondary)] mt-0.5">
-              Enter lead details, select Tamil Nadu district, area, and location link
+              Enter lead details, select Tamil Nadu district, area, location link, and phone number
             </p>
           </div>
           <button
@@ -130,10 +134,25 @@ export function FreelanceLeadEntryModal({
             </div>
           </div>
 
+          {/* Phone Number Field */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-extrabold text-[var(--color-text-primary)] uppercase tracking-wider flex items-center gap-2">
+              <Phone className="h-3.5 w-3.5 text-emerald-500" />
+              Phone Number
+            </label>
+            <input
+              type="tel"
+              value={phoneNumber}
+              onChange={(e) => setPhoneNumber(e.target.value)}
+              placeholder="e.g. +91 98765 43210"
+              className="w-full rounded-xl neu-pressed px-4 py-3 text-xs font-bold text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+            />
+          </div>
+
           {/* Location Link */}
           <div className="space-y-1.5">
             <label className="text-xs font-extrabold text-[var(--color-text-primary)] uppercase tracking-wider flex items-center gap-2">
-              <ExternalLink className="h-3.5 w-3.5 text-emerald-500" />
+              <ExternalLink className="h-3.5 w-3.5 text-blue-500" />
               Location Link (Google Maps / URL)
             </label>
             <input
@@ -141,7 +160,7 @@ export function FreelanceLeadEntryModal({
               value={locationLink}
               onChange={(e) => setLocationLink(e.target.value)}
               placeholder="e.g. https://maps.google.com/?q=..."
-              className="w-full rounded-xl neu-pressed px-4 py-3 text-xs font-bold text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+              className="w-full rounded-xl neu-pressed px-4 py-3 text-xs font-bold text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-blue-500/40"
             />
           </div>
 
