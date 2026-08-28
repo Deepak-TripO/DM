@@ -12,6 +12,7 @@ import { FilePreviewModal } from '@/features/files/preview/FilePreviewModal';
 import { FinanceView } from '@/pages/finance/FinanceView';
 import { TripoLeadView } from '@/pages/tripolead/TripoLeadView';
 import { FreelanceLeadView } from '@/pages/freelancelead/FreelanceLeadView';
+import { ProofView } from '@/pages/proof/ProofView';
 import { formatBytes, formatRelativeTime } from '@/utils';
 import { CheckSquare, Grid3X3, List, Eye, Download, MoreVertical, HardDrive } from 'lucide-react';
 import { getSignedUrl } from '@/services/fileService';
@@ -48,9 +49,13 @@ export default function TasksPage() {
     selectedTask.name.trim().toLowerCase().replace(/\s+/g, '').includes('freelancelead') ||
     selectedTask.name.trim().toLowerCase().includes('freelance')
   );
+  const isProofTask = !!selectedTask && (
+    selectedTask.name.trim().toLowerCase().replace(/\s+/g, '').includes('proof') ||
+    selectedTask.name.trim().toLowerCase().includes('proof')
+  );
 
   useEffect(() => {
-    if (isTripoLeadTask || isFreelanceLeadTask) {
+    if (isTripoLeadTask || isFreelanceLeadTask || isProofTask) {
       setHideSidebarOverride?.(true);
     } else {
       setHideSidebarOverride?.(false);
@@ -58,12 +63,12 @@ export default function TasksPage() {
     return () => {
       setHideSidebarOverride?.(false);
     };
-  }, [isTripoLeadTask, isFreelanceLeadTask, setHideSidebarOverride]);
+  }, [isTripoLeadTask, isFreelanceLeadTask, isProofTask, setHideSidebarOverride]);
 
   const { data: taskFiles = [], isLoading: loadingFiles } = useQuery({
     queryKey: ['taskFiles', taskId],
     queryFn: () => getTaskFiles(taskId!),
-    enabled: !!taskId && !!selectedTask && !isFinanceTask && !isTripoLeadTask && !isFreelanceLeadTask,
+    enabled: !!taskId && !!selectedTask && !isFinanceTask && !isTripoLeadTask && !isFreelanceLeadTask && !isProofTask,
   });
 
   const handleDownload = async (file: FileItem) => {
@@ -91,6 +96,11 @@ export default function TasksPage() {
   if (selectedTask && isFreelanceLeadTask) {
     return <FreelanceLeadView task={selectedTask} />;
   }
+
+  if (selectedTask && isProofTask) {
+    return <ProofView task={selectedTask} />;
+  }
+
 
   return (
     <div className="flex flex-col min-h-screen">
