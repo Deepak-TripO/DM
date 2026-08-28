@@ -16,6 +16,7 @@ export async function getActiveTasks(): Promise<TaskItem[]> {
   const { data, error } = await supabase
     .from('folders')
     .select('id, name, owner_id, created_at, updated_at')
+    .is('parent_id', null)
     .is('deleted_at', null)
     .order('name', { ascending: true });
 

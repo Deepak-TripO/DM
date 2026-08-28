@@ -473,6 +473,7 @@ export async function getAdminFolders(): Promise<AdminFolderItem[]> {
     supabase
       .from('folders')
       .select('id, name, owner_id, parent_id, created_at, updated_at, deleted_at')
+      .is('parent_id', null)
       .is('deleted_at', null)
       .order('created_at', { ascending: false }),
     fetchProfilesMap(),
