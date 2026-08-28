@@ -497,3 +497,51 @@ CREATE POLICY "Admins can delete tripolead entries"
     ON public.tripolead_entries FOR DELETE
     TO authenticated
     USING (public.is_admin(auth.uid()));
+
+-- 14. FREELANCE LEAD ENTRIES TABLE
+CREATE TABLE IF NOT EXISTS public.freelancelead_entries (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    task_id UUID NOT NULL REFERENCES public.tasks(id) ON DELETE CASCADE,
+    hotel_name TEXT NOT NULL,
+    district TEXT NOT NULL,
+    area TEXT NOT NULL,
+    location_link TEXT,
+    status TEXT DEFAULT NULL,
+    approach_date DATE DEFAULT NULL,
+    short_notes TEXT DEFAULT NULL,
+    created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    deleted_at TIMESTAMPTZ DEFAULT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_freelancelead_entries_task_id ON public.freelancelead_entries(task_id);
+CREATE INDEX IF NOT EXISTS idx_freelancelead_entries_deleted_at ON public.freelancelead_entries(deleted_at);
+
+ALTER TABLE public.freelancelead_entries ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Authenticated users can select freelancelead entries" ON public.freelancelead_entries;
+CREATE POLICY "Authenticated users can select freelancelead entries"
+    ON public.freelancelead_entries FOR SELECT
+    TO authenticated
+    USING (deleted_at IS NULL OR public.is_admin(auth.uid()));
+
+DROP POLICY IF EXISTS "Authenticated users can insert freelancelead entries" ON public.freelancelead_entries;
+CREATE POLICY "Authenticated users can insert freelancelead entries"
+    ON public.freelancelead_entries FOR INSERT
+    TO authenticated
+    WITH CHECK (auth.uid() IS NOT NULL);
+
+DROP POLICY IF EXISTS "Admins can update freelancelead entries" ON public.freelancelead_entries;
+CREATE POLICY "Admins can update freelancelead entries"
+    ON public.freelancelead_entries FOR UPDATE
+    TO authenticated
+    USING (public.is_admin(auth.uid()))
+    WITH CHECK (public.is_admin(auth.uid()));
+
+DROP POLICY IF EXISTS "Admins can delete freelancelead entries" ON public.freelancelead_entries;
+CREATE POLICY "Admins can delete freelancelead entries"
+    ON public.freelancelead_entries FOR DELETE
+    TO authenticated
+    USING (public.is_admin(auth.uid()));
+

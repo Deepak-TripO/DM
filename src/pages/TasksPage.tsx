@@ -11,6 +11,7 @@ import { FileIcon } from '@/components/FileIcon';
 import { FilePreviewModal } from '@/features/files/preview/FilePreviewModal';
 import { FinanceView } from '@/pages/finance/FinanceView';
 import { TripoLeadView } from '@/pages/tripolead/TripoLeadView';
+import { FreelanceLeadView } from '@/pages/freelancelead/FreelanceLeadView';
 import { formatBytes, formatRelativeTime } from '@/utils';
 import { CheckSquare, Grid3X3, List, Eye, Download, MoreVertical, HardDrive } from 'lucide-react';
 import { getSignedUrl } from '@/services/fileService';
@@ -40,9 +41,13 @@ export default function TasksPage() {
 
   const isFinanceTask = !!selectedTask && selectedTask.name.trim().toLowerCase() === 'finance';
   const isTripoLeadTask = !!selectedTask && selectedTask.name.trim().toLowerCase().replace(/\s+/g, '').includes('tripolead');
+  const isFreelanceLeadTask = !!selectedTask && (
+    selectedTask.name.trim().toLowerCase().replace(/\s+/g, '').includes('freelancelead') ||
+    selectedTask.name.trim().toLowerCase().includes('freelance')
+  );
 
   useEffect(() => {
-    if (isTripoLeadTask) {
+    if (isTripoLeadTask || isFreelanceLeadTask) {
       setHideSidebarOverride?.(true);
     } else {
       setHideSidebarOverride?.(false);
@@ -50,12 +55,12 @@ export default function TasksPage() {
     return () => {
       setHideSidebarOverride?.(false);
     };
-  }, [isTripoLeadTask, setHideSidebarOverride]);
+  }, [isTripoLeadTask, isFreelanceLeadTask, setHideSidebarOverride]);
 
   const { data: taskFiles = [], isLoading: loadingFiles } = useQuery({
     queryKey: ['taskFiles', taskId],
     queryFn: () => getTaskFiles(taskId!),
-    enabled: !!taskId && !!selectedTask && !isFinanceTask && !isTripoLeadTask,
+    enabled: !!taskId && !!selectedTask && !isFinanceTask && !isTripoLeadTask && !isFreelanceLeadTask,
   });
 
   const handleDownload = async (file: FileItem) => {
@@ -78,6 +83,10 @@ export default function TasksPage() {
 
   if (selectedTask && isTripoLeadTask) {
     return <TripoLeadView task={selectedTask} />;
+  }
+
+  if (selectedTask && isFreelanceLeadTask) {
+    return <FreelanceLeadView task={selectedTask} />;
   }
 
   return (
