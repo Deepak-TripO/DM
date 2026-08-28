@@ -76,7 +76,7 @@ export function MobileBottomNav() {
     currentTask.name.trim().toLowerCase().includes('freelance')
   );
 
-  if (isTripoLeadTask || isFreelanceLeadTask) return null;
+  if (isSelectTaskPage || isTripoLeadTask || isFreelanceLeadTask) return null;
 
   const isPathActive = (path: string) => {
     const p = location.pathname;
