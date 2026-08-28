@@ -71,7 +71,7 @@ export default function AdminLayout() {
               <Shield className="h-4 w-4 text-[#5B9FF3]" />
             </div>
             <div>
-              <div className="text-sm font-black tracking-tight text-[var(--color-text-primary)]">DM</div>
+              <img src="/dm-logo.png" alt="DM Logo" className="h-6 w-auto object-contain" />
               <div className="text-[10px] font-bold uppercase tracking-wider text-[#5B9FF3]">Administration</div>
             </div>
           </div>

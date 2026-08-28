@@ -41,9 +41,7 @@ export function FinanceSidebar({ isOpen, onClose }: FinanceSidebarProps) {
               aria-label="Toggle navigation"
               title="Close sidebar"
             >
-              <span className="text-2xl font-black tracking-tight text-[var(--color-text-primary)]">
-                DM
-              </span>
+              <img src="/dm-logo.png" alt="DM Logo" className="h-8 w-auto object-contain" />
             </button>
           </div>
 
@@ -93,9 +91,7 @@ export function FinanceSidebar({ isOpen, onClose }: FinanceSidebarProps) {
             aria-label="Toggle navigation"
             title="Collapse sidebar"
           >
-            <span className="text-2xl font-black tracking-tight text-[var(--color-text-primary)]">
-              DM
-            </span>
+            <img src="/dm-logo.png" alt="DM Logo" className="h-8 w-auto object-contain" />
           </button>
         </div>
 

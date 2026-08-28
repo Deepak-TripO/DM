@@ -46,11 +46,11 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
       <div className="flex h-[var(--header-height)] items-center px-5 border-b border-[var(--color-border-light)]/40">
         <button
           onClick={onToggle}
-          className="text-2xl font-black tracking-tight text-[var(--color-text-primary)] cursor-pointer hover:opacity-80 transition-opacity focus:outline-none"
+          className="cursor-pointer hover:opacity-80 transition-opacity focus:outline-none flex items-center"
           aria-label="Toggle navigation"
           title="Toggle sidebar"
         >
-          DM
+          <img src="/dm-logo.png" alt="DM Logo" className="h-8 w-auto object-contain" />
         </button>
       </div>
 

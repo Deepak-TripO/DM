@@ -30,21 +30,21 @@ export function Header({ onUploadClick, onLogoClick, sidebarOpen }: HeaderProps)
         {/* Mobile: DM logo is always anchored at top-left */}
         <button
           onClick={onLogoClick || (() => navigate('/home'))}
-          className="text-lg font-black tracking-tight text-[var(--color-text-primary)] md:hidden cursor-pointer hover:opacity-80 transition-opacity focus:outline-none"
+          className="md:hidden cursor-pointer hover:opacity-80 transition-opacity focus:outline-none flex items-center"
           aria-label="DM logo"
         >
-          DM
+          <img src="/dm-logo.png" alt="DM Logo" className="h-7 w-auto object-contain" />
         </button>
 
         {/* Desktop: DM logo visible when sidebar is toggled closed */}
         {!sidebarOpen && (
           <button
             onClick={onLogoClick}
-            className="hidden md:block text-xl font-black tracking-tight text-[var(--color-text-primary)] cursor-pointer hover:opacity-80 transition-opacity focus:outline-none"
+            className="hidden md:flex cursor-pointer hover:opacity-80 transition-opacity focus:outline-none items-center"
             aria-label="DM logo"
             title={onLogoClick ? "Toggle navigation sidebar" : "DM"}
           >
-            DM
+            <img src="/dm-logo.png" alt="DM Logo" className="h-7 w-auto object-contain" />
           </button>
         )}
       </div>

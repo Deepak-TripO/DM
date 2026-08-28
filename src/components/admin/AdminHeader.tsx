@@ -23,7 +23,7 @@ export function AdminHeader({ title }: AdminHeaderProps) {
             <Shield className="h-4 w-4 text-[var(--color-primary)]" />
           </div>
           <div>
-            <span className="text-xs font-black uppercase tracking-wider text-[var(--color-primary)]">DM</span>
+            <img src="/dm-logo.png" alt="DM Logo" className="h-5 w-auto inline-block object-contain" />
             <span className="ml-1 text-xs font-bold text-[var(--color-text-tertiary)]">Administration</span>
           </div>
         </div>

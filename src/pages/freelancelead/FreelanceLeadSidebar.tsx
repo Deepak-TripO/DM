@@ -32,9 +32,7 @@ export function FreelanceLeadSidebar({ isOpen, onClose, activeTab, onTabChange }
             aria-label="Toggle navigation"
             title="Collapse sidebar"
           >
-            <span className="text-2xl font-black tracking-tight text-[var(--color-text-primary)]">
-              DM
-            </span>
+            <img src="/dm-logo.png" alt="DM Logo" className="h-8 w-auto object-contain" />
           </button>
         </div>
 
