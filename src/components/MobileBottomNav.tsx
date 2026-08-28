@@ -67,10 +67,13 @@ export function MobileBottomNav() {
     enabled: !!taskId && !isSelectTaskPage,
   });
 
-  if (isSelectTaskPage) return null;
-
   const isTripoLeadTask = !!currentTask && currentTask.name.trim().toLowerCase().replace(/\s+/g, '').includes('tripolead');
-  if (isTripoLeadTask) return null;
+  const isFreelanceLeadTask = !!currentTask && (
+    currentTask.name.trim().toLowerCase().replace(/\s+/g, '').includes('freelancelead') ||
+    currentTask.name.trim().toLowerCase().includes('freelance')
+  );
+
+  if (isTripoLeadTask || isFreelanceLeadTask) return null;
 
   const isPathActive = (path: string) => {
     const p = location.pathname;
