@@ -518,12 +518,8 @@ export async function permanentDeleteFile(userId: string, file: FileItem): Promi
 }
 
 export async function ensureStorageBuckets(): Promise<void> {
-  try {
-    await supabase.storage.createBucket('files', { public: true });
-  } catch {}
-  try {
-    await supabase.storage.createBucket('dm-files', { public: true });
-  } catch {}
+  // Buckets 'files' and 'dm-files' are already created via database migrations.
+  // No-op to prevent redundant POST /storage/v1/bucket 400 console errors in browser.
 }
 
 export async function getSignedUrl(storagePath: string, expiresIn = 3600): Promise<string> {
