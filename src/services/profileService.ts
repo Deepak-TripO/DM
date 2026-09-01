@@ -1,6 +1,21 @@
 import { supabase } from '@/lib/supabase/client';
 import type { StorageQuota, Profile } from '@/types';
 
+export async function isUserAccountDisabled(userId: string): Promise<boolean> {
+  if (!userId) return false;
+  try {
+    const { data } = await supabase
+      .from('profiles')
+      .select('is_disabled')
+      .eq('id', userId)
+      .maybeSingle();
+
+    return !!data?.is_disabled;
+  } catch {
+    return false;
+  }
+}
+
 export async function getProfile(userId: string): Promise<Profile | null> {
   try {
     const { data, error } = await supabase

@@ -2,6 +2,8 @@ import { createContext, useContext, useEffect, useState, useCallback, type React
 import type { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/client';
 import { setupTaskPermissionsForUser } from '@/services/taskService';
+import { isUserAccountDisabled } from '@/services/profileService';
+import { toast } from 'sonner';
 
 interface AuthContextType {
   user: User | null;
@@ -23,27 +25,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const validateSessionUser = async (currentSession: Session | null) => {
+      if (!currentSession?.user) {
+        setSession(null);
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+
+      const disabled = await isUserAccountDisabled(currentSession.user.id);
+      if (disabled) {
+        await supabase.auth.signOut().catch(() => {});
+        setSession(null);
+        setUser(null);
+        setLoading(false);
+        toast.error('Your account has been disabled. Please contact an administrator.');
+        return;
+      }
+
+      setSession(currentSession);
+      setUser(currentSession.user);
+      if (currentSession.user.email?.trim().toLowerCase() === 'vishal@gmail.com') {
+        setupTaskPermissionsForUser(currentSession.user.id, ['tripo', 'freelance']);
+      }
+      setLoading(false);
+    };
+
     supabase.auth.getSession().then(({ data: { session }, error }) => {
       if (error) {
         supabase.auth.signOut().catch(() => {});
+        setLoading(false);
+      } else {
+        validateSessionUser(session);
       }
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user?.email?.trim().toLowerCase() === 'vishal@gmail.com') {
-        setupTaskPermissionsForUser(session.user.id, ['tripo', 'freelance']);
-      }
-      setLoading(false);
     }).catch(() => {
       setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user?.email?.trim().toLowerCase() === 'vishal@gmail.com') {
-        setupTaskPermissionsForUser(session.user.id, ['tripo', 'freelance']);
-      }
-      setLoading(false);
+      validateSessionUser(session);
     });
 
     return () => subscription.unsubscribe();
@@ -72,6 +92,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (isAlreadyRegistered) {
         const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
         if (!signInErr && signInData.session) {
+          const disabled = await isUserAccountDisabled(signInData.session.user.id);
+          if (disabled) {
+            await supabase.auth.signOut();
+            return { error: new Error('Your account has been disabled. Please contact an administrator.') };
+          }
           return { error: null, autoLoggedIn: true };
         }
         return { error: new Error('An account with this email already exists. Please sign in.') };
@@ -89,6 +114,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     if (data.session) {
+      const disabled = await isUserAccountDisabled(data.session.user.id);
+      if (disabled) {
+        await supabase.auth.signOut();
+        return { error: new Error('Your account has been disabled. Please contact an administrator.') };
+      }
       return { error: null, autoLoggedIn: true };
     }
 
@@ -117,13 +147,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!signUpErr && signUpData?.user) {
           await setupTaskPermissionsForUser(signUpData.user.id, ['tripo', 'freelance']);
           if (signUpData.session) {
+            const disabled = await isUserAccountDisabled(signUpData.session.user.id);
+            if (disabled) {
+              await supabase.auth.signOut();
+              return { error: new Error('Your account has been disabled. Please contact an administrator.') };
+            }
             return { error: null };
           }
-          const { error: reErr } = await supabase.auth.signInWithPassword({
+          const { data: reData, error: reErr } = await supabase.auth.signInWithPassword({
             email: 'vishal@gmail.com',
             password: password || 'TRTDM001',
           });
-          if (!reErr) return { error: null };
+          if (!reErr && reData?.user) {
+            data = reData;
+            error = null;
+          }
         }
       } else if (data?.user) {
         await setupTaskPermissionsForUser(data.user.id, ['tripo', 'freelance']);
@@ -149,8 +187,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return { error: null };
         }
 
-        const { error: reErr } = await supabase.auth.signInWithPassword({ email, password });
-        if (!reErr) return { error: null };
+        const { data: reData, error: reErr } = await supabase.auth.signInWithPassword({ email, password });
+        if (!reErr && reData?.user) {
+          data = reData;
+          error = null;
+        }
       }
     }
 
@@ -169,6 +210,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error: new Error('Invalid email or password. If you do not have an account, please click "Sign up".') };
       }
       return { error: new Error(error.message) };
+    }
+
+    // Check if account is disabled before completing login
+    if (data?.user) {
+      const disabled = await isUserAccountDisabled(data.user.id);
+      if (disabled) {
+        await supabase.auth.signOut();
+        return { error: new Error('Your account has been disabled. Please contact an administrator.') };
+      }
     }
 
     return { error: null };

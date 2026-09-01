@@ -213,12 +213,17 @@ export async function updateUserQuota(userId: string, quotaBytes: number): Promi
 
 // Toggle User Disabled Status
 export async function toggleUserStatus(userId: string, disabled: boolean): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('profiles')
     .update({ is_disabled: disabled })
-    .eq('id', userId);
+    .eq('id', userId)
+    .select('is_disabled')
+    .maybeSingle();
 
   if (error) throw error;
+  if (data && data.is_disabled !== disabled) {
+    throw new Error('Failed to update user account status in database.');
+  }
 }
 
 // Fetch User Files for Admin Modal

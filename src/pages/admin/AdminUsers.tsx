@@ -83,9 +83,9 @@ export default function AdminUsers() {
       queryClient.invalidateQueries({ queryKey: ['adminUsers'] });
       queryClient.invalidateQueries({ queryKey: ['adminOverviewStats'] });
       setActiveMenuId(null);
-      toast.success(`Account for ${u.full_name || 'User'} ${newStatus ? 'disabled' : 'enabled'}`);
-    } catch {
-      toast.error('Failed to change user account status');
+      toast.success(newStatus ? 'User account disabled successfully' : 'User account enabled successfully');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to change user account status');
     }
   };
 
