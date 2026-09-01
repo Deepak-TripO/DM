@@ -223,7 +223,13 @@ export async function toggleUserStatus(userId: string, disabled: boolean): Promi
     .eq('id', userId)
     .select('is_disabled');
 
-  if (error) throw error;
+  if (error) {
+    if (error.code === '42501' || error.message.includes('row-level security')) {
+      throw new Error('RLS Policy Error: Admin does not have insert/update permission on profiles table. Please apply migration 032_fix_profiles_admin_rls.sql.');
+    }
+    throw error;
+  }
+
   if (!data || data.length === 0) {
     const { error: insErr } = await supabase
       .from('profiles')
@@ -232,7 +238,12 @@ export async function toggleUserStatus(userId: string, disabled: boolean): Promi
         is_disabled: disabled,
         updated_at: new Date().toISOString(),
       });
-    if (insErr) throw insErr;
+    if (insErr) {
+      if (insErr.code === '42501' || insErr.message.includes('row-level security')) {
+        throw new Error('RLS Policy Error: Admin does not have insert/update permission on profiles table. Please apply migration 032_fix_profiles_admin_rls.sql.');
+      }
+      throw insErr;
+    }
   }
 }
 
@@ -244,7 +255,13 @@ export async function approveUserAccount(userId: string): Promise<void> {
     .eq('id', userId)
     .select('approval_status, is_disabled');
 
-  if (error) throw error;
+  if (error) {
+    if (error.code === '42501' || error.message.includes('row-level security')) {
+      throw new Error('RLS Policy Error: Admin does not have insert/update permission on profiles table. Please apply migration 032_fix_profiles_admin_rls.sql.');
+    }
+    throw error;
+  }
+
   if (!data || data.length === 0) {
     const { error: insErr } = await supabase
       .from('profiles')
@@ -254,7 +271,12 @@ export async function approveUserAccount(userId: string): Promise<void> {
         is_disabled: false,
         updated_at: new Date().toISOString(),
       });
-    if (insErr) throw insErr;
+    if (insErr) {
+      if (insErr.code === '42501' || insErr.message.includes('row-level security')) {
+        throw new Error('RLS Policy Error: Admin does not have insert/update permission on profiles table. Please apply migration 032_fix_profiles_admin_rls.sql.');
+      }
+      throw insErr;
+    }
   }
 }
 
