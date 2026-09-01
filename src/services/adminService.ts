@@ -221,12 +221,18 @@ export async function toggleUserStatus(userId: string, disabled: boolean): Promi
     .from('profiles')
     .update({ is_disabled: disabled })
     .eq('id', userId)
-    .select('is_disabled')
-    .maybeSingle();
+    .select('is_disabled');
 
   if (error) throw error;
-  if (data && data.is_disabled !== disabled) {
-    throw new Error('Failed to update user account status in database.');
+  if (!data || data.length === 0) {
+    const { error: insErr } = await supabase
+      .from('profiles')
+      .upsert({
+        id: userId,
+        is_disabled: disabled,
+        updated_at: new Date().toISOString(),
+      });
+    if (insErr) throw insErr;
   }
 }
 
@@ -236,12 +242,19 @@ export async function approveUserAccount(userId: string): Promise<void> {
     .from('profiles')
     .update({ approval_status: 'approved', is_disabled: false })
     .eq('id', userId)
-    .select('approval_status, is_disabled')
-    .single();
+    .select('approval_status, is_disabled');
 
   if (error) throw error;
-  if (!data || data.approval_status !== 'approved') {
-    throw new Error('Failed to update account approval status in database.');
+  if (!data || data.length === 0) {
+    const { error: insErr } = await supabase
+      .from('profiles')
+      .upsert({
+        id: userId,
+        approval_status: 'approved',
+        is_disabled: false,
+        updated_at: new Date().toISOString(),
+      });
+    if (insErr) throw insErr;
   }
 }
 

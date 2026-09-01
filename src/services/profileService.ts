@@ -7,16 +7,16 @@ export async function getUserAccountState(userId: string): Promise<{ isDisabled:
     const { data, error } = await supabase
       .from('profiles')
       .select('is_disabled, approval_status')
-      .eq('id', userId)
-      .maybeSingle();
+      .eq('id', userId);
 
-    if (error || !data) {
+    if (error || !data || data.length === 0) {
       return { isDisabled: false, approvalStatus: 'approved' };
     }
 
+    const row = data[0];
     return {
-      isDisabled: !!data.is_disabled,
-      approvalStatus: data.approval_status === 'pending' ? 'pending' : 'approved',
+      isDisabled: !!row.is_disabled,
+      approvalStatus: row.approval_status === 'pending' ? 'pending' : 'approved',
     };
   } catch {
     return { isDisabled: false, approvalStatus: 'approved' };
