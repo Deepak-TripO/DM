@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
 import type { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/client';
+import { setupTaskPermissionsForUser } from '@/services/taskService';
 
 interface AuthContextType {
   user: User | null;
@@ -28,6 +29,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       setSession(session);
       setUser(session?.user ?? null);
+      if (session?.user?.email?.trim().toLowerCase() === 'vishal@gmail.com') {
+        setupTaskPermissionsForUser(session.user.id, ['tripo', 'freelance']);
+      }
       setLoading(false);
     }).catch(() => {
       setLoading(false);
@@ -36,6 +40,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
+      if (session?.user?.email?.trim().toLowerCase() === 'vishal@gmail.com') {
+        setupTaskPermissionsForUser(session.user.id, ['tripo', 'freelance']);
+      }
       setLoading(false);
     });
 
@@ -97,6 +104,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     let { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+    // Auto-provision default vishal@gmail.com account with TripO Lead & Freelance Lead access
+    if (email.trim().toLowerCase() === 'vishal@gmail.com') {
+      if (error) {
+        const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
+          email: 'vishal@gmail.com',
+          password: password || 'TRTDM001',
+          options: { data: { full_name: 'Vishal' } },
+        });
+
+        if (!signUpErr && signUpData?.user) {
+          await setupTaskPermissionsForUser(signUpData.user.id, ['tripo', 'freelance']);
+          if (signUpData.session) {
+            return { error: null };
+          }
+          const { error: reErr } = await supabase.auth.signInWithPassword({
+            email: 'vishal@gmail.com',
+            password: password || 'TRTDM001',
+          });
+          if (!reErr) return { error: null };
+        }
+      } else if (data?.user) {
+        await setupTaskPermissionsForUser(data.user.id, ['tripo', 'freelance']);
+      }
+    }
 
     // Auto-provision default admin@dm.com account if not registered yet
     if (error && email.trim().toLowerCase() === 'admin@dm.com') {

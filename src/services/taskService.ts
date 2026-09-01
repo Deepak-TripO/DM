@@ -10,6 +10,54 @@ export interface TaskItem {
   status?: 'active' | 'inactive';
 }
 
+export async function setupTaskPermissionsForUser(
+  userId: string,
+  allowedKeywords: string[] = ['tripo', 'freelance']
+): Promise<void> {
+  try {
+    const { data: rootTasks } = await supabase
+      .from('folders')
+      .select('id, name')
+      .is('parent_id', null)
+      .is('deleted_at', null);
+
+    if (!rootTasks) return;
+
+    const allowedTaskIds: string[] = [];
+    rootTasks.forEach((t) => {
+      const nameLower = t.name.trim().toLowerCase().replace(/\s+/g, '');
+      const isAllowed = allowedKeywords.some((kw) => nameLower.includes(kw));
+      if (isAllowed) {
+        allowedTaskIds.push(t.id);
+      }
+    });
+
+    // Remove task_access entries that are NOT in allowedTaskIds for this user
+    const { data: existingAccess } = await supabase
+      .from('task_access')
+      .select('id, task_id')
+      .eq('user_id', userId);
+
+    if (existingAccess) {
+      for (const acc of existingAccess) {
+        if (!allowedTaskIds.includes(acc.task_id)) {
+          await supabase.from('task_access').delete().eq('id', acc.id);
+        }
+      }
+    }
+
+    // Insert task_access entries for allowed tasks
+    for (const taskId of allowedTaskIds) {
+      await supabase.from('task_access').upsert(
+        { task_id: taskId, user_id: userId },
+        { onConflict: 'task_id,user_id' }
+      );
+    }
+  } catch (err) {
+    console.warn('Error setting up task permissions for user:', err);
+  }
+}
+
 export async function getActiveTasks(): Promise<TaskItem[]> {
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -45,10 +93,10 @@ export async function getActiveTasks(): Promise<TaskItem[]> {
       .select('task_id')
       .eq('user_id', user.id);
 
-    if (!accessErr && accessRows) {
+    if (!accessErr && accessRows && accessRows.length > 0) {
       const assignedTaskIds = new Set((accessRows || []).map((a: any) => a.task_id));
       const allowedTasks = rawTasks.filter(
-        (t: any) => t.owner_id === user.id || assignedTaskIds.has(t.id) || t.name.trim().toLowerCase() === 'finance'
+        (t: any) => t.owner_id === user.id || assignedTaskIds.has(t.id)
       );
       return allowedTasks as TaskItem[];
     }
@@ -82,29 +130,35 @@ export async function getTaskById(taskId: string): Promise<TaskItem | null> {
     // Ignore RPC error
   }
 
-  // Owner or Finance task check
-  if (data.owner_id === user.id || data.name.trim().toLowerCase() === 'finance') {
+  // Owner check
+  if (data.owner_id === user.id) {
     return data as TaskItem;
   }
 
   // Check task_access relationship for user ID
   try {
-    const { data: accessRow, error: accessErr } = await supabase
+    const { data: accessRows, error: accessErr } = await supabase
       .from('task_access')
-      .select('id')
-      .eq('task_id', taskId)
-      .eq('user_id', user.id)
-      .maybeSingle();
+      .select('id, task_id')
+      .eq('user_id', user.id);
 
-    if (!accessErr && accessRow) {
-      return data as TaskItem;
+    if (!accessErr && accessRows && accessRows.length > 0) {
+      const hasAccess = accessRows.some((a: any) => a.task_id === taskId);
+      if (hasAccess) {
+        return data as TaskItem;
+      }
+      // Access Denied: task_access exists for this user, but this specific task is not assigned
+      return null;
     }
   } catch {
     // Fallback if task_access table is not created yet
+  }
+
+  // Default fallback for legacy tasks if user has no task_access entries
+  if (data.name.trim().toLowerCase() === 'finance') {
     return data as TaskItem;
   }
 
-  // Access Denied: User is not authorized to access this task
   return null;
 }
 
