@@ -2,13 +2,14 @@ import { createContext, useContext, useEffect, useState, useCallback, type React
 import type { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/client';
 import { setupTaskPermissionsForUser } from '@/services/taskService';
-import { isUserAccountDisabled } from '@/services/profileService';
+import { isUserAccountDisabled, getUserApprovalStatus } from '@/services/profileService';
 import { toast } from 'sonner';
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  isPendingApproval: boolean;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null; autoLoggedIn?: boolean }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -23,12 +24,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isPendingApproval, setIsPendingApproval] = useState(false);
 
   useEffect(() => {
     const validateSessionUser = async (currentSession: Session | null) => {
       if (!currentSession?.user) {
         setSession(null);
         setUser(null);
+        setIsPendingApproval(false);
         setLoading(false);
         return;
       }
@@ -38,9 +41,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await supabase.auth.signOut().catch(() => {});
         setSession(null);
         setUser(null);
+        setIsPendingApproval(false);
         setLoading(false);
         toast.error('Your account has been disabled. Please contact an administrator.');
         return;
+      }
+
+      const approvalStatus = await getUserApprovalStatus(currentSession.user.id);
+      if (approvalStatus === 'pending') {
+        setIsPendingApproval(true);
+      } else {
+        setIsPendingApproval(false);
       }
 
       setSession(currentSession);
@@ -111,6 +122,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       return { error: new Error(error.message) };
+    }
+
+    if (!error && data?.user) {
+      try {
+        await supabase
+          .from('profiles')
+          .upsert({
+            id: data.user.id,
+            full_name: fullName,
+            username: email.split('@')[0],
+            approval_status: 'pending',
+            is_disabled: false,
+            updated_at: new Date().toISOString(),
+          });
+      } catch (e) {
+        console.warn('Error setting pending approval status:', e);
+      }
     }
 
     if (data.session) {
@@ -226,6 +254,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
+    setIsPendingApproval(false);
   }, []);
 
   const resetPassword = useCallback(async (email: string) => {
@@ -246,7 +275,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signOut, resetPassword, updatePassword, updateEmail }}>
+    <AuthContext.Provider value={{ user, session, loading, isPendingApproval, signUp, signIn, signOut, resetPassword, updatePassword, updateEmail }}>
       {children}
     </AuthContext.Provider>
   );

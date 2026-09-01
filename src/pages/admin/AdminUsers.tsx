@@ -4,6 +4,7 @@ import {
   getAdminUsers,
   updateUserQuota,
   toggleUserStatus,
+  approveUserAccount,
   getUserFilesForAdmin,
   getUserActivityForAdmin,
   type AdminUserItem,
@@ -27,13 +28,14 @@ import {
   Shield,
   CheckCircle,
   XCircle,
+  Clock,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function AdminUsers() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'disabled' | 'custom_quota'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'disabled' | 'pending' | 'custom_quota'>('all');
   const [sortBy, setSortBy] = useState<'created_at' | 'full_name' | 'used_bytes'>('created_at');
 
   // Active user menu dropdown ID
@@ -86,6 +88,18 @@ export default function AdminUsers() {
       toast.success(newStatus ? 'User account disabled successfully' : 'User account enabled successfully');
     } catch (err: any) {
       toast.error(err?.message || 'Failed to change user account status');
+    }
+  };
+
+  const handleApproveUser = async (u: AdminUserItem) => {
+    try {
+      await approveUserAccount(u.id);
+      queryClient.invalidateQueries({ queryKey: ['adminUsers'] });
+      queryClient.invalidateQueries({ queryKey: ['adminOverviewStats'] });
+      setActiveMenuId(null);
+      toast.success('User account approved successfully');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to approve user account');
     }
   };
 
@@ -143,6 +157,7 @@ export default function AdminUsers() {
           >
             <option value="all">All Statuses</option>
             <option value="active">Active Only</option>
+            <option value="pending">Pending Approval Only</option>
             <option value="disabled">Disabled Only</option>
             <option value="custom_quota">Custom Quota Only</option>
           </select>
@@ -206,7 +221,12 @@ export default function AdminUsers() {
 
                     {/* Status */}
                     <td className="px-4 py-3">
-                      {u.is_disabled ? (
+                      {u.approval_status === 'pending' ? (
+                        <span className="inline-flex items-center gap-1 rounded-full neu-badge px-2.5 py-0.5 text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/30">
+                          <Clock className="h-3 w-3" />
+                          Pending Approval
+                        </span>
+                      ) : u.is_disabled ? (
                         <span className="inline-flex items-center gap-1 rounded-full neu-badge px-2.5 py-0.5 text-[10px] font-bold text-red-500">
                           <XCircle className="h-3 w-3" />
                           Disabled
@@ -262,6 +282,15 @@ export default function AdminUsers() {
 
                       {activeMenuId === u.id && (
                         <div className="absolute right-4 top-10 z-30 w-52 rounded-2xl neu-dropdown p-2 shadow-2xl text-left space-y-1">
+                          {u.approval_status === 'pending' && (
+                            <button
+                              onClick={() => handleApproveUser(u)}
+                              className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-emerald-500 hover:bg-emerald-500/10 cursor-pointer"
+                            >
+                              <UserCheck className="h-4 w-4" />
+                              Approve Account
+                            </button>
+                          )}
                           <button
                             onClick={() => { setActiveMenuId(null); setViewingUser(u); }}
                             className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-[var(--color-text-primary)] hover:bg-[var(--color-primary)]/10"
@@ -348,7 +377,12 @@ export default function AdminUsers() {
                 </div>
               </div>
 
-              {u.is_disabled ? (
+              {u.approval_status === 'pending' ? (
+                <span className="inline-flex items-center gap-1 rounded-full neu-badge px-2 py-0.5 text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/30">
+                  <Clock className="h-3 w-3" />
+                  Pending Approval
+                </span>
+              ) : u.is_disabled ? (
                 <span className="inline-flex items-center gap-1 rounded-full neu-badge px-2 py-0.5 text-[10px] font-bold text-red-500">
                   <XCircle className="h-3 w-3" />
                   Disabled
@@ -367,6 +401,14 @@ export default function AdminUsers() {
             </div>
 
             <div className="flex items-center justify-end gap-2 pt-1">
+              {u.approval_status === 'pending' && (
+                <button
+                  onClick={() => handleApproveUser(u)}
+                  className="px-3 py-1.5 rounded-xl neu-btn text-xs font-bold text-emerald-500 cursor-pointer"
+                >
+                  Approve
+                </button>
+              )}
               <button
                 onClick={() => {
                   setEditingQuotaUser(u);

@@ -16,6 +16,22 @@ export async function isUserAccountDisabled(userId: string): Promise<boolean> {
   }
 }
 
+export async function getUserApprovalStatus(userId: string): Promise<'pending' | 'approved'> {
+  if (!userId) return 'approved';
+  try {
+    const { data } = await supabase
+      .from('profiles')
+      .select('approval_status')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (data?.approval_status === 'pending') {
+      return 'pending';
+    }
+  } catch {}
+  return 'approved';
+}
+
 export async function getProfile(userId: string): Promise<Profile | null> {
   try {
     const { data, error } = await supabase

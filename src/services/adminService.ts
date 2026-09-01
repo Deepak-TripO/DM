@@ -15,6 +15,7 @@ export interface AdminUserItem {
   username: string | null;
   avatar_url: string | null;
   is_disabled: boolean;
+  approval_status?: 'pending' | 'approved';
   created_at: string;
   used_bytes: number;
   quota_bytes: number;
@@ -120,7 +121,7 @@ export async function getAdminOverviewStats(): Promise<AdminStats> {
 // 2. User Management
 export async function getAdminUsers(options?: {
   search?: string;
-  statusFilter?: 'all' | 'active' | 'disabled' | 'custom_quota';
+  statusFilter?: 'all' | 'active' | 'disabled' | 'pending' | 'custom_quota';
   sortBy?: 'created_at' | 'full_name' | 'used_bytes';
   sortOrder?: 'asc' | 'desc';
 }): Promise<AdminUserItem[]> {
@@ -131,7 +132,7 @@ export async function getAdminUsers(options?: {
 
   let query = supabase
     .from('profiles')
-    .select('id, full_name, username, avatar_url, is_disabled, created_at');
+    .select('id, full_name, username, avatar_url, is_disabled, approval_status, created_at');
 
   if (search) {
     query = query.or(`full_name.ilike.%${search}%,username.ilike.%${search}%`);
@@ -141,6 +142,8 @@ export async function getAdminUsers(options?: {
     query = query.eq('is_disabled', false);
   } else if (statusFilter === 'disabled') {
     query = query.eq('is_disabled', true);
+  } else if (statusFilter === 'pending') {
+    query = query.eq('approval_status', 'pending');
   }
 
   if (sortBy === 'created_at' || sortBy === 'full_name') {
@@ -177,6 +180,7 @@ export async function getAdminUsers(options?: {
       username: p.username,
       avatar_url: p.avatar_url,
       is_disabled: !!p.is_disabled,
+      approval_status: p.approval_status === 'pending' ? 'pending' : 'approved',
       created_at: p.created_at,
       used_bytes: quotaObj?.used_bytes || 0,
       quota_bytes: quotaObj?.quota_bytes || 10737418240,
@@ -223,6 +227,21 @@ export async function toggleUserStatus(userId: string, disabled: boolean): Promi
   if (error) throw error;
   if (data && data.is_disabled !== disabled) {
     throw new Error('Failed to update user account status in database.');
+  }
+}
+
+// Approve Pending User Account
+export async function approveUserAccount(userId: string): Promise<void> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .update({ approval_status: 'approved', is_disabled: false })
+    .eq('id', userId)
+    .select('approval_status')
+    .maybeSingle();
+
+  if (error) throw error;
+  if (data && data.approval_status !== 'approved') {
+    throw new Error('Failed to update account approval status in database.');
   }
 }
 
