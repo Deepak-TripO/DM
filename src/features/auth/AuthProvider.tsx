@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, useCallback, type React
 import type { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/client';
 import { setupTaskPermissionsForUser } from '@/services/taskService';
-import { isUserAccountDisabled, getUserApprovalStatus } from '@/services/profileService';
+import { getUserAccountState } from '@/services/profileService';
 import { toast } from 'sonner';
 
 interface AuthContextType {
@@ -36,8 +36,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const disabled = await isUserAccountDisabled(currentSession.user.id);
-      if (disabled) {
+      const { isDisabled, approvalStatus } = await getUserAccountState(currentSession.user.id);
+      if (isDisabled) {
         await supabase.auth.signOut().catch(() => {});
         setSession(null);
         setUser(null);
@@ -47,7 +47,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const approvalStatus = await getUserApprovalStatus(currentSession.user.id);
       if (approvalStatus === 'pending') {
         setIsPendingApproval(true);
       } else {
@@ -103,8 +102,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (isAlreadyRegistered) {
         const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
         if (!signInErr && signInData.session) {
-          const disabled = await isUserAccountDisabled(signInData.session.user.id);
-          if (disabled) {
+          const { isDisabled } = await getUserAccountState(signInData.session.user.id);
+          if (isDisabled) {
             await supabase.auth.signOut();
             return { error: new Error('Your account has been disabled. Please contact an administrator.') };
           }
@@ -142,8 +141,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     if (data.session) {
-      const disabled = await isUserAccountDisabled(data.session.user.id);
-      if (disabled) {
+      const { isDisabled } = await getUserAccountState(data.session.user.id);
+      if (isDisabled) {
         await supabase.auth.signOut();
         return { error: new Error('Your account has been disabled. Please contact an administrator.') };
       }
@@ -175,8 +174,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!signUpErr && signUpData?.user) {
           await setupTaskPermissionsForUser(signUpData.user.id, ['tripo', 'freelance']);
           if (signUpData.session) {
-            const disabled = await isUserAccountDisabled(signUpData.session.user.id);
-            if (disabled) {
+            const { isDisabled } = await getUserAccountState(signUpData.session.user.id);
+            if (isDisabled) {
               await supabase.auth.signOut();
               return { error: new Error('Your account has been disabled. Please contact an administrator.') };
             }
@@ -242,8 +241,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Check if account is disabled before completing login
     if (data?.user) {
-      const disabled = await isUserAccountDisabled(data.user.id);
-      if (disabled) {
+      const { isDisabled } = await getUserAccountState(data.user.id);
+      if (isDisabled) {
         await supabase.auth.signOut();
         return { error: new Error('Your account has been disabled. Please contact an administrator.') };
       }

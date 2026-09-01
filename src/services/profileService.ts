@@ -1,35 +1,26 @@
 import { supabase } from '@/lib/supabase/client';
 import type { StorageQuota, Profile } from '@/types';
 
-export async function isUserAccountDisabled(userId: string): Promise<boolean> {
-  if (!userId) return false;
+export async function getUserAccountState(userId: string): Promise<{ isDisabled: boolean; approvalStatus: 'pending' | 'approved' }> {
+  if (!userId) return { isDisabled: false, approvalStatus: 'approved' };
   try {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('profiles')
-      .select('is_disabled')
+      .select('is_disabled, approval_status')
       .eq('id', userId)
       .maybeSingle();
 
-    return !!data?.is_disabled;
-  } catch {
-    return false;
-  }
-}
-
-export async function getUserApprovalStatus(userId: string): Promise<'pending' | 'approved'> {
-  if (!userId) return 'approved';
-  try {
-    const { data } = await supabase
-      .from('profiles')
-      .select('approval_status')
-      .eq('id', userId)
-      .maybeSingle();
-
-    if (data?.approval_status === 'pending') {
-      return 'pending';
+    if (error || !data) {
+      return { isDisabled: false, approvalStatus: 'approved' };
     }
-  } catch {}
-  return 'approved';
+
+    return {
+      isDisabled: !!data.is_disabled,
+      approvalStatus: data.approval_status === 'pending' ? 'pending' : 'approved',
+    };
+  } catch {
+    return { isDisabled: false, approvalStatus: 'approved' };
+  }
 }
 
 export async function getProfile(userId: string): Promise<Profile | null> {
