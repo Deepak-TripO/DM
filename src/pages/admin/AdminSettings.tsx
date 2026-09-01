@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { getSystemSettings, updateGlobalDefaultQuota } from '@/services/adminService';
-import { Settings, Shield, HardDrive, Users, Link2, Save, Loader2, Info } from 'lucide-react';
+import { getSystemSettings, updateGlobalDefaultQuota, updatePdfFooterText } from '@/services/adminService';
+import { Settings, Shield, HardDrive, Users, Link2, Save, Loader2, Info, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function AdminSettings() {
   const queryClient = useQueryClient();
 
   const [defaultQuotaInputGB, setDefaultQuotaInputGB] = useState('10');
+  const [pdfFooterTextInput, setPdfFooterTextInput] = useState('TripO Offical');
   const [savingSettings, setSavingSettings] = useState(false);
 
   const { data: settings, isLoading } = useQuery({
@@ -18,6 +19,9 @@ export default function AdminSettings() {
   useEffect(() => {
     if (settings?.default_quota_bytes) {
       setDefaultQuotaInputGB(String(Math.round((settings.default_quota_bytes / (1024 * 1024 * 1024)) * 10) / 10));
+    }
+    if (settings?.pdf_footer_text) {
+      setPdfFooterTextInput(settings.pdf_footer_text);
     }
   }, [settings]);
 
@@ -32,9 +36,10 @@ export default function AdminSettings() {
     try {
       const quotaBytes = Math.round(gbVal * 1024 * 1024 * 1024);
       await updateGlobalDefaultQuota(quotaBytes, 'new');
+      await updatePdfFooterText(pdfFooterTextInput || 'TripO Offical');
       queryClient.invalidateQueries({ queryKey: ['adminSystemSettings'] });
       queryClient.invalidateQueries({ queryKey: ['adminStorageUsers'] });
-      toast.success('Admin system settings saved successfully');
+      toast.success('Admin system settings & PDF template saved successfully');
     } catch {
       toast.error('Failed to save admin settings');
     }
@@ -91,7 +96,36 @@ export default function AdminSettings() {
             </div>
           </div>
 
-          {/* SECTION 2: USER MANAGEMENT */}
+          {/* SECTION 2: PDF DOCUMENT TEMPLATE */}
+          <div className="rounded-3xl neu-card p-6 space-y-4">
+            <div className="flex items-center gap-3 border-b border-[var(--color-border-light)]/40 pb-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl neu-circle text-emerald-500">
+                <FileText className="h-5 w-5 text-emerald-500" />
+              </div>
+              <div>
+                <h2 className="text-base font-extrabold text-[var(--color-text-primary)]">PDF DOCUMENT TEMPLATE</h2>
+                <p className="text-xs font-semibold text-[var(--color-text-secondary)]">Configure Finance PDF export template and official footer text</p>
+              </div>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="space-y-2">
+                <label className="font-bold text-[var(--color-text-primary)]">Official PDF Footer Text:</label>
+                <input
+                  type="text"
+                  value={pdfFooterTextInput}
+                  onChange={(e) => setPdfFooterTextInput(e.target.value)}
+                  placeholder="TripO Offical"
+                  className="w-full max-w-md rounded-xl neu-input px-3.5 py-2.5 text-xs text-[var(--color-text-primary)] font-extrabold"
+                />
+                <p className="text-[11px] font-medium text-[var(--color-text-tertiary)]">
+                  This exact official text will be rendered neatly in the bottom-right corner of exported Finance PDF reports.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION 3: USER MANAGEMENT */}
           <div className="rounded-3xl neu-card p-6 space-y-4">
             <div className="flex items-center gap-3 border-b border-[var(--color-border-light)]/40 pb-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl neu-circle text-purple-500">
@@ -122,7 +156,7 @@ export default function AdminSettings() {
             </div>
           </div>
 
-          {/* SECTION 3: STORAGE */}
+          {/* SECTION 4: STORAGE */}
           <div className="rounded-3xl neu-card p-6 space-y-4">
             <div className="flex items-center gap-3 border-b border-[var(--color-border-light)]/40 pb-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl neu-circle text-indigo-500">
@@ -150,7 +184,7 @@ export default function AdminSettings() {
             </div>
           </div>
 
-          {/* SECTION 4: SHARING */}
+          {/* SECTION 5: SHARING */}
           <div className="rounded-3xl neu-card p-6 space-y-4">
             <div className="flex items-center gap-3 border-b border-[var(--color-border-light)]/40 pb-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl neu-circle text-amber-500">
@@ -178,7 +212,7 @@ export default function AdminSettings() {
             </div>
           </div>
 
-          {/* SECTION 5: SECURITY */}
+          {/* SECTION 6: SECURITY */}
           <div className="rounded-3xl neu-card p-6 space-y-4">
             <div className="flex items-center gap-3 border-b border-[var(--color-border-light)]/40 pb-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl neu-circle text-red-500">
@@ -211,7 +245,7 @@ export default function AdminSettings() {
             <button
               onClick={handleSaveGeneral}
               disabled={savingSettings}
-              className="flex items-center gap-2 rounded-xl neu-btn-primary px-6 py-3 text-xs font-bold text-white disabled:opacity-60"
+              className="flex items-center gap-2 rounded-xl neu-btn-primary px-6 py-3 text-xs font-bold text-white disabled:opacity-60 cursor-pointer"
             >
               {savingSettings ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               Save Admin Settings

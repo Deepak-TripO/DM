@@ -65,6 +65,20 @@ const getTodayFormatted = () => {
   return `${y}-${m}-${d}`;
 };
 
+export const getPdfFooterText = (): string => {
+  try {
+    const saved = localStorage.getItem('dm_pdf_footer_text');
+    if (saved && saved.trim()) return saved.trim();
+  } catch {}
+  return 'TripO Offical';
+};
+
+export const setPdfFooterText = (text: string): void => {
+  try {
+    localStorage.setItem('dm_pdf_footer_text', text.trim() || 'TripO Offical');
+  } catch {}
+};
+
 /**
  * PDF EXPORT — Fix font encoding issue (remove unwanted '1' prefix before amounts)
  */
@@ -229,9 +243,20 @@ export const exportToPdf = async (entries: FinanceEntry[], summary: SummaryData)
       doc.text('Generated from DM Finance', 18, 194);
       doc.text(`Page ${currentPage} of ${totalPages}`, 277, 194, { align: 'right' });
     },
-    margin: { left: 18, right: 18, bottom: 20 },
+    margin: { left: 18, right: 18, bottom: 24 },
     pageBreak: 'auto',
   });
+
+  // Render official footer watermark "TripO Offical" at bottom-right corner of all pages
+  const totalPages = (doc as any).internal.getNumberOfPages();
+  const pdfFooterText = getPdfFooterText();
+  for (let page = 1; page <= totalPages; page++) {
+    doc.setPage(page);
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(71, 85, 105); // slate-600
+    doc.text(pdfFooterText, 277, 198, { align: 'right' });
+  }
 
   const filename = `DM_Finance_${todayStr}.pdf`;
   doc.save(filename);

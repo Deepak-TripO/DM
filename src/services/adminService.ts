@@ -67,6 +67,7 @@ export interface AdminActivityItem {
 
 export interface SystemSettings {
   default_quota_bytes: number;
+  pdf_footer_text?: string;
   app_name?: string;
   max_upload_size_mb?: number;
 }
@@ -384,6 +385,16 @@ export async function getUserActivityForAdmin(userId: string): Promise<AdminActi
 
 // 3. Storage Control
 export async function getSystemSettings(): Promise<SystemSettings> {
+  let defaultQuota = 10737418240;
+  let pdfFooterText = 'TripO Offical';
+
+  try {
+    const savedLocal = localStorage.getItem('dm_pdf_footer_text');
+    if (savedLocal && savedLocal.trim()) {
+      pdfFooterText = savedLocal.trim();
+    }
+  } catch {}
+
   try {
     const { data, error } = await supabase
       .from('system_settings')
@@ -391,15 +402,45 @@ export async function getSystemSettings(): Promise<SystemSettings> {
 
     if (!error && data) {
       const quotaSetting = data.find((s) => s.key === 'default_quota_bytes');
-      return {
-        default_quota_bytes: quotaSetting ? Number(quotaSetting.value) : 10737418240,
-      };
+      if (quotaSetting) defaultQuota = Number(quotaSetting.value);
+
+      const footerSetting = data.find((s) => s.key === 'pdf_footer_text');
+      if (footerSetting) {
+        try {
+          const parsed = JSON.parse(footerSetting.value);
+          if (typeof parsed === 'string' && parsed.trim()) {
+            pdfFooterText = parsed.trim();
+          }
+        } catch {
+          if (typeof footerSetting.value === 'string' && footerSetting.value.trim()) {
+            pdfFooterText = footerSetting.value.trim();
+          }
+        }
+      }
     }
   } catch {
     // ignore
   }
 
-  return { default_quota_bytes: 10737418240 };
+  return {
+    default_quota_bytes: defaultQuota,
+    pdf_footer_text: pdfFooterText,
+  };
+}
+
+export async function updatePdfFooterText(text: string): Promise<void> {
+  const cleanText = text.trim() || 'TripO Offical';
+  try {
+    localStorage.setItem('dm_pdf_footer_text', cleanText);
+  } catch {}
+
+  try {
+    await supabase
+      .from('system_settings')
+      .upsert({ key: 'pdf_footer_text', value: JSON.stringify(cleanText), updated_at: new Date().toISOString() });
+  } catch {
+    // ignore DB fallback error
+  }
 }
 
 export async function updateGlobalDefaultQuota(quotaBytes: number, scope: 'new' | 'no_custom' | 'all'): Promise<void> {
