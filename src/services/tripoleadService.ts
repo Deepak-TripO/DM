@@ -3,6 +3,13 @@ import { getLocalUserTripoLeadAccessMap } from '@/services/adminService';
 
 export type TripoLeadStatus = 'Pending' | 'No Response' | 'Complete';
 
+export const TRIPO_LEAD_PROFESSIONAL_OPTIONS = [
+  'Stay Provider',
+  'Packager',
+  'Guide',
+  'Traveler',
+] as const;
+
 export interface TripoLeadEntry {
   id: string;
   task_id: string;
@@ -10,6 +17,8 @@ export interface TripoLeadEntry {
   district: string;
   area: string;
   location_link?: string | null;
+  professional?: string | null;
+  mobile_number?: string | null;
   status?: TripoLeadStatus | null;
   approach_date?: string | null;
   short_notes?: string | null;
@@ -199,20 +208,20 @@ async function checkIsAdmin(userId?: string): Promise<boolean> {
     return false;
   }
 
-  // 2. Check Supabase profiles table
+  // 2. Check Supabase admin_users table
   try {
     const { data } = await supabase
-      .from('profiles')
+      .from('admin_users')
       .select('role')
-      .eq('id', userId)
+      .eq('user_id', userId)
       .maybeSingle();
 
-    if (data?.role === 'admin') return true;
+    if (data) return true;
   } catch {}
 
   // 3. Check RPC is_admin
   try {
-    const { data: isAdminRpc } = await supabase.rpc('is_admin', { user_id: userId });
+    const { data: isAdminRpc } = await supabase.rpc('is_admin', { uid: userId });
     if (isAdminRpc === true) return true;
   } catch {}
 
@@ -233,7 +242,7 @@ export async function getTripoLeadEntries(
 
     if (search && search.trim()) {
       const s = `%${search.trim()}%`;
-      query = query.or(`hotel_name.ilike.${s},district.ilike.${s},area.ilike.${s}`);
+      query = query.or(`hotel_name.ilike.${s},district.ilike.${s},area.ilike.${s},professional.ilike.${s},mobile_number.ilike.${s}`);
     }
 
     const { data, error } = await query;
@@ -266,7 +275,9 @@ export async function getTripoLeadEntries(
     (e) =>
       e.hotel_name.toLowerCase().includes(s) ||
       e.district.toLowerCase().includes(s) ||
-      e.area.toLowerCase().includes(s)
+      e.area.toLowerCase().includes(s) ||
+      (e.professional && e.professional.toLowerCase().includes(s)) ||
+      (e.mobile_number && e.mobile_number.toLowerCase().includes(s))
   );
 }
 
@@ -292,7 +303,15 @@ export async function getTripoLeadTrashEntries(
       .order('deleted_at', { ascending: false });
 
     if (!error && data) {
-      return data as TripoLeadEntry[];
+      const dbIds = new Set(data.map((d: any) => d.id));
+      const localTrash = getLocalEntries(taskId).filter((e) => Boolean(e.deleted_at));
+      const merged = [...(data as TripoLeadEntry[])];
+      localTrash.forEach((loc) => {
+        if (!dbIds.has(loc.id)) {
+          merged.push(loc);
+        }
+      });
+      return merged;
     }
   } catch {}
 
@@ -306,6 +325,8 @@ export async function addTripoLeadEntry(
     district: string;
     area: string;
     location_link?: string;
+    professional?: string;
+    mobile_number?: string;
   },
   userId?: string
 ): Promise<TripoLeadEntry> {
@@ -316,6 +337,8 @@ export async function addTripoLeadEntry(
     district: entry.district,
     area: entry.area,
     location_link: entry.location_link || null,
+    professional: entry.professional || null,
+    mobile_number: entry.mobile_number || null,
     status: null,
     approach_date: null,
     short_notes: null,
@@ -338,6 +361,8 @@ export async function addTripoLeadEntry(
         district: newEntry.district,
         area: newEntry.area,
         location_link: newEntry.location_link,
+        professional: newEntry.professional,
+        mobile_number: newEntry.mobile_number,
         created_by: userId || null,
       })
       .select()
@@ -361,6 +386,8 @@ export async function updateTripoLeadEntry(
     district?: string;
     area?: string;
     location_link?: string;
+    professional?: string | null;
+    mobile_number?: string | null;
     status?: TripoLeadStatus | null;
     approach_date?: string | null;
     short_notes?: string | null;

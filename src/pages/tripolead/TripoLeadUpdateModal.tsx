@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { X, Tag, Calendar, FileText } from 'lucide-react';
+import { X, Tag, Calendar, FileText, Phone } from 'lucide-react';
 import type { TripoLeadEntry, TripoLeadStatus } from '@/services/tripoleadService';
 
 interface TripoLeadUpdateModalProps {
   open: boolean;
   onClose: () => void;
-  onSave: (data: { status: TripoLeadStatus; approach_date?: string; short_notes?: string }) => void;
+  onSave: (data: { status: TripoLeadStatus; approach_date?: string; short_notes?: string; mobile_number?: string }) => void;
   entry: TripoLeadEntry | null;
   isSubmitting?: boolean;
 }
@@ -20,12 +20,14 @@ export function TripoLeadUpdateModal({
   const [status, setStatus] = useState<TripoLeadStatus>('Pending');
   const [approachDate, setApproachDate] = useState('');
   const [shortNotes, setShortNotes] = useState('');
+  const [mobileNumber, setMobileNumber] = useState('');
 
   useEffect(() => {
     if (entry) {
       setStatus(entry.status || 'Pending');
       setApproachDate(entry.approach_date || new Date().toISOString().split('T')[0]);
       setShortNotes(entry.short_notes || '');
+      setMobileNumber(entry.mobile_number || '');
     }
   }, [entry, open]);
 
@@ -37,6 +39,7 @@ export function TripoLeadUpdateModal({
       status,
       approach_date: approachDate || undefined,
       short_notes: shortNotes.trim() || undefined,
+      mobile_number: mobileNumber.trim() || undefined,
     });
   };
 
@@ -65,6 +68,21 @@ export function TripoLeadUpdateModal({
 
         {/* Update Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Mobile Number */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-extrabold text-[var(--color-text-primary)] uppercase tracking-wider flex items-center gap-2">
+              <Phone className="h-3.5 w-3.5 text-teal-500" />
+              Mobile Number
+            </label>
+            <input
+              type="tel"
+              value={mobileNumber}
+              onChange={(e) => setMobileNumber(e.target.value)}
+              placeholder="e.g. +91 98765 43210"
+              className="w-full rounded-xl neu-pressed px-4 py-3 text-xs font-bold text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-teal-500/40"
+            />
+          </div>
+
           {/* 1. Status Dropdown */}
           <div className="space-y-1.5">
             <label className="text-xs font-extrabold text-[var(--color-text-primary)] uppercase tracking-wider flex items-center gap-2">

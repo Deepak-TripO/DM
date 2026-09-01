@@ -443,6 +443,26 @@ export async function getTaskRecentFiles(taskId: string, limit = 50): Promise<Fi
 }
 
 export async function getTaskTrashFiles(taskId: string): Promise<FileItem[]> {
+  try {
+    const { data: subFolders } = await supabase
+      .from('folders')
+      .select('id')
+      .eq('parent_id', taskId);
+
+    const folderIds = [taskId, ...(subFolders?.map((f) => f.id) || [])];
+
+    const { data, error } = await supabase
+      .from('files')
+      .select('*')
+      .in('folder_id', folderIds)
+      .not('deleted_at', 'is', null)
+      .order('deleted_at', { ascending: false });
+
+    if (!error && data) {
+      return data as FileItem[];
+    }
+  } catch {}
+
   const { data, error } = await supabase
     .from('files')
     .select('*')

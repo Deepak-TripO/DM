@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { X, Building2, MapPin, Navigation, ExternalLink } from 'lucide-react';
-import { TAMIL_NADU_DISTRICTS, type TripoLeadEntry } from '@/services/tripoleadService';
+import { X, Building2, MapPin, Navigation, ExternalLink, UserCheck, Phone } from 'lucide-react';
+import { TAMIL_NADU_DISTRICTS, TRIPO_LEAD_PROFESSIONAL_OPTIONS, type TripoLeadEntry } from '@/services/tripoleadService';
 
 interface TripoLeadEntryModalProps {
   open: boolean;
   onClose: () => void;
-  onSave: (data: { hotel_name: string; district: string; area: string; location_link?: string }) => void;
+  onSave: (data: { hotel_name: string; district: string; area: string; location_link?: string; professional?: string; mobile_number?: string }) => void;
   initialData?: TripoLeadEntry | null;
   isSubmitting?: boolean;
 }
@@ -21,6 +21,8 @@ export function TripoLeadEntryModal({
   const [district, setDistrict] = useState(TAMIL_NADU_DISTRICTS[0]);
   const [area, setArea] = useState('');
   const [locationLink, setLocationLink] = useState('');
+  const [professional, setProfessional] = useState('');
+  const [mobileNumber, setMobileNumber] = useState('');
 
   useEffect(() => {
     if (initialData) {
@@ -28,11 +30,15 @@ export function TripoLeadEntryModal({
       setDistrict(initialData.district || TAMIL_NADU_DISTRICTS[0]);
       setArea(initialData.area || '');
       setLocationLink(initialData.location_link || '');
+      setProfessional(initialData.professional || '');
+      setMobileNumber(initialData.mobile_number || '');
     } else {
       setHotelName('');
       setDistrict(TAMIL_NADU_DISTRICTS[0]);
       setArea('');
       setLocationLink('');
+      setProfessional('');
+      setMobileNumber('');
     }
   }, [initialData, open]);
 
@@ -47,6 +53,8 @@ export function TripoLeadEntryModal({
       district: district.trim(),
       area: area.trim(),
       location_link: locationLink.trim() || undefined,
+      professional: professional || undefined,
+      mobile_number: mobileNumber.trim() || undefined,
     });
   };
 
@@ -63,7 +71,7 @@ export function TripoLeadEntryModal({
               {isEditing ? 'Edit TripO Lead Entry' : 'Add New TripO Lead Entry'}
             </h2>
             <p className="text-xs font-semibold text-[var(--color-text-secondary)] mt-0.5">
-              Enter hotel details, select Tamil Nadu district, area, and location link
+              Enter lead details, select Tamil Nadu district, area, and location link
             </p>
           </div>
           <button
@@ -77,20 +85,57 @@ export function TripoLeadEntryModal({
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Hotel Name */}
+          {/* Name Field (Renamed from Hotel Name) */}
           <div className="space-y-1.5">
             <label className="text-xs font-extrabold text-[var(--color-text-primary)] uppercase tracking-wider flex items-center gap-2">
               <Building2 className="h-3.5 w-3.5 text-blue-500" />
-              Hotel Name <span className="text-red-500">*</span>
+              Name <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               required
               value={hotelName}
               onChange={(e) => setHotelName(e.target.value)}
-              placeholder="e.g. Grand Palace Hotel"
+              placeholder="e.g. Grand Palace Hotel / Contact Person"
               className="w-full rounded-xl neu-pressed px-4 py-3 text-xs font-bold text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-blue-500/40"
             />
+          </div>
+
+          {/* Mobile Number */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-extrabold text-[var(--color-text-primary)] uppercase tracking-wider flex items-center gap-2">
+              <Phone className="h-3.5 w-3.5 text-teal-500" />
+              Mobile Number
+            </label>
+            <input
+              type="tel"
+              value={mobileNumber}
+              onChange={(e) => setMobileNumber(e.target.value)}
+              placeholder="e.g. +91 98765 43210"
+              className="w-full rounded-xl neu-pressed px-4 py-3 text-xs font-bold text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-teal-500/40"
+            />
+          </div>
+
+          {/* Professional */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-extrabold text-[var(--color-text-primary)] uppercase tracking-wider flex items-center gap-2">
+              <UserCheck className="h-3.5 w-3.5 text-indigo-500" />
+              Professional
+            </label>
+            <select
+              value={professional}
+              onChange={(e) => setProfessional(e.target.value)}
+              className="w-full rounded-xl neu-pressed px-4 py-3 text-xs font-bold text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-indigo-500/40 bg-[var(--neu-bg)] cursor-pointer"
+            >
+              <option value="" className="bg-[var(--neu-bg)] text-[var(--color-text-secondary)] font-bold">
+                Select Professional
+              </option>
+              {TRIPO_LEAD_PROFESSIONAL_OPTIONS.map((opt) => (
+                <option key={opt} value={opt} className="bg-[var(--neu-bg)] text-[var(--color-text-primary)] font-bold">
+                  {opt}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* District & Area */}

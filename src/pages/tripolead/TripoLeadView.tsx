@@ -10,7 +10,10 @@ import {
   addTripoLeadEntry,
   updateTripoLeadEntry,
   softDeleteTripoLeadEntry,
+  restoreTripoLeadEntry,
+  permanentDeleteTripoLeadEntry,
   TAMIL_NADU_DISTRICTS,
+  TRIPO_LEAD_PROFESSIONAL_OPTIONS,
   type TripoLeadEntry,
   type TripoLeadStatus,
   type TripoLeadFolder,
@@ -21,6 +24,7 @@ import {
   getFiles,
   softDeleteFile,
   restoreFile,
+  permanentDeleteFile,
   toggleStarFile,
 } from '@/services/fileService';
 import type { TaskItem } from '@/services/taskService';
@@ -57,6 +61,7 @@ import {
   ExternalLink,
   Edit2,
   RotateCcw,
+  Phone,
 } from 'lucide-react';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { toast } from 'sonner';
@@ -72,7 +77,8 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Filter States (Status & District)
+  // Filter States (Profession, Status & District)
+  const [selectedProfession, setSelectedProfession] = useState<string>('All');
   const [selectedStatus, setSelectedStatus] = useState<string>('All');
   const [selectedDistrict, setSelectedDistrict] = useState<string>('All');
 
@@ -129,7 +135,7 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
     queryFn: () => getTripoLeadTrashEntries(task.id),
   });
 
-  // Filtered Entries Logic (Search + Status + District combined)
+  // Filtered Entries Logic (Search + Profession + Status + District combined)
   const filteredEntries = useMemo(() => {
     return entries.filter((entry) => {
       // 1. Search Query filter
@@ -140,29 +146,36 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
           entry.district.toLowerCase().includes(q) ||
           entry.area.toLowerCase().includes(q) ||
           (entry.location_link && entry.location_link.toLowerCase().includes(q)) ||
+          (entry.professional && entry.professional.toLowerCase().includes(q)) ||
+          (entry.mobile_number && entry.mobile_number.toLowerCase().includes(q)) ||
           (entry.status && entry.status.toLowerCase().includes(q)) ||
           (entry.short_notes && entry.short_notes.toLowerCase().includes(q));
 
         if (!matchesSearch) return false;
       }
 
-      // 2. Status Filter
+      // 2. Profession Filter
+      if (selectedProfession !== 'All') {
+        if (!entry.professional || entry.professional !== selectedProfession) return false;
+      }
+
+      // 3. Status Filter
       if (selectedStatus !== 'All') {
         if (entry.status !== selectedStatus) return false;
       }
 
-      // 3. District Filter
+      // 4. District Filter
       if (selectedDistrict !== 'All') {
         if (entry.district.toLowerCase() !== selectedDistrict.toLowerCase()) return false;
       }
 
       return true;
     });
-  }, [entries, searchQuery, selectedStatus, selectedDistrict]);
+  }, [entries, searchQuery, selectedProfession, selectedStatus, selectedDistrict]);
 
   // Mutations for TripO Lead entries
   const addEntryMutation = useMutation({
-    mutationFn: (data: { hotel_name: string; district: string; area: string; location_link?: string }) =>
+    mutationFn: (data: { hotel_name: string; district: string; area: string; location_link?: string; professional?: string; mobile_number?: string }) =>
       addTripoLeadEntry(task.id, data, user?.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tripoLeadEntries', task.id] });
@@ -176,19 +189,27 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
   });
 
   const updateEntryMutation = useMutation({
-    mutationFn: (data: { status: TripoLeadStatus; approach_date?: string; short_notes?: string }) =>
+    mutationFn: (data: { status: TripoLeadStatus; approach_date?: string; short_notes?: string; professional?: string; mobile_number?: string }) =>
       updateTripoLeadEntry(task.id, activeEntry!.id, data, user?.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tripoLeadEntries', task.id] });
       queryClient.invalidateQueries({ queryKey: ['tripoLeadRecentEntries', task.id] });
       setUpdateModalOpen(false);
       setActiveEntry(null);
-      toast.success('TripO Lead status updated successfully');
+      toast.success('TripO Lead entry updated successfully');
     },
     onError: (err: any) => {
-      toast.error(err?.message || 'Failed to update status');
+      toast.error(err?.message || 'Failed to update entry');
     },
   });
+
+  // Permanent Delete Target State
+  const [permDeleteTarget, setPermDeleteTarget] = useState<{
+    type: 'entry' | 'file';
+    id: string;
+    name: string;
+    item: any;
+  } | null>(null);
 
   const softDeleteEntryMutation = useMutation({
     mutationFn: (entryId: string) => softDeleteTripoLeadEntry(task.id, entryId, user?.id),
@@ -200,6 +221,45 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
     },
     onError: (err: any) => {
       toast.error(err?.message || 'Failed to delete entry');
+    },
+  });
+
+  const restoreEntryMutation = useMutation({
+    mutationFn: (entryId: string) => restoreTripoLeadEntry(task.id, entryId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tripoLeadEntries', task.id] });
+      queryClient.invalidateQueries({ queryKey: ['tripoLeadRecentEntries', task.id] });
+      queryClient.invalidateQueries({ queryKey: ['tripoLeadTrashEntries', task.id] });
+      toast.success('Entry restored successfully');
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Failed to restore entry');
+    },
+  });
+
+  const permanentDeleteEntryMutation = useMutation({
+    mutationFn: (entryId: string) => permanentDeleteTripoLeadEntry(task.id, entryId, user?.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tripoLeadEntries', task.id] });
+      queryClient.invalidateQueries({ queryKey: ['tripoLeadRecentEntries', task.id] });
+      queryClient.invalidateQueries({ queryKey: ['tripoLeadTrashEntries', task.id] });
+      toast.success('Entry permanently deleted');
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Failed to permanently delete entry');
+    },
+  });
+
+  const permanentDeleteFileMutation = useMutation({
+    mutationFn: (file: FileItem) => permanentDeleteFile(user?.id || '', file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tripoLeadFiles', task.id] });
+      queryClient.invalidateQueries({ queryKey: ['tripoLeadFolderFiles', task.id, openedFolder?.id] });
+      queryClient.invalidateQueries({ queryKey: ['tripoLeadTrashFiles', task.id] });
+      toast.success('File permanently deleted');
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Failed to permanently delete file');
     },
   });
 
@@ -295,6 +355,23 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
                         )}
                       </div>
 
+                      {/* Profession Filter Control */}
+                      <div className="relative shrink-0">
+                        <select
+                          value={selectedProfession}
+                          onChange={(e) => setSelectedProfession(e.target.value)}
+                          className="rounded-xl neu-pressed px-3.5 py-2.5 text-xs font-bold text-[var(--color-text-primary)] focus:outline-none bg-[var(--neu-bg)] cursor-pointer"
+                          aria-label="Filter by Profession"
+                        >
+                          <option value="All">Profession: All</option>
+                          {TRIPO_LEAD_PROFESSIONAL_OPTIONS.map((p) => (
+                            <option key={p} value={p}>
+                              {p}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
                       {/* District Filter Control */}
                       <div className="relative shrink-0">
                         <select
@@ -328,10 +405,11 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
                       </div>
 
                       {/* Clear Filters Button */}
-                      {(searchQuery || selectedStatus !== 'All' || selectedDistrict !== 'All') && (
+                      {(searchQuery || selectedProfession !== 'All' || selectedStatus !== 'All' || selectedDistrict !== 'All') && (
                         <button
                           onClick={() => {
                             setSearchQuery('');
+                            setSelectedProfession('All');
                             setSelectedStatus('All');
                             setSelectedDistrict('All');
                           }}
@@ -386,12 +464,26 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
                       </button>
                     </div>
 
-                    {/* Row 2: District Filter + Status Filter */}
+                    {/* Row 2: Profession Filter + District Filter + Status Filter */}
                     <div className="flex items-center gap-2">
+                      <select
+                        value={selectedProfession}
+                        onChange={(e) => setSelectedProfession(e.target.value)}
+                        className="flex-1 rounded-xl neu-pressed px-2.5 py-2 text-[11px] font-bold text-[var(--color-text-primary)] focus:outline-none bg-[var(--neu-bg)] cursor-pointer truncate"
+                        aria-label="Filter by Profession"
+                      >
+                        <option value="All">Profession: All</option>
+                        {TRIPO_LEAD_PROFESSIONAL_OPTIONS.map((p) => (
+                          <option key={p} value={p}>
+                            {p}
+                          </option>
+                        ))}
+                      </select>
+
                       <select
                         value={selectedDistrict}
                         onChange={(e) => setSelectedDistrict(e.target.value)}
-                        className="flex-1 rounded-xl neu-pressed px-2.5 py-2 text-[11px] font-bold text-[var(--color-text-primary)] focus:outline-none bg-[var(--neu-bg)] cursor-pointer truncate"
+                        className="flex-1 rounded-xl neu-pressed px-1.5 py-1.5 text-[10px] font-bold text-[var(--color-text-primary)] focus:outline-none bg-[var(--neu-bg)] cursor-pointer truncate max-w-[105px]"
                         aria-label="Filter by District"
                       >
                         <option value="All">District: All</option>
@@ -414,10 +506,11 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
                         <option value="Complete">Status: Complete</option>
                       </select>
 
-                      {(searchQuery || selectedStatus !== 'All' || selectedDistrict !== 'All') && (
+                      {(searchQuery || selectedProfession !== 'All' || selectedStatus !== 'All' || selectedDistrict !== 'All') && (
                         <button
                           onClick={() => {
                             setSearchQuery('');
+                            setSelectedProfession('All');
                             setSelectedStatus('All');
                             setSelectedDistrict('All');
                           }}
@@ -464,6 +557,11 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
                                 <h3 className="text-sm md:text-base font-extrabold text-[var(--color-text-primary)] truncate">
                                   {entry.hotel_name}
                                 </h3>
+                                {entry.professional && (
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-indigo-500/10 text-indigo-500 border border-indigo-500/30">
+                                    {entry.professional}
+                                  </span>
+                                )}
                                 <span
                                   className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
                                     entry.status === 'Pending'
@@ -500,6 +598,15 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
                                   <Navigation className="h-3.5 w-3.5 text-amber-500 shrink-0" />
                                   {entry.area}
                                 </span>
+                                {entry.mobile_number && (
+                                  <>
+                                    <span>•</span>
+                                    <span className="flex items-center gap-1 text-[var(--color-text-primary)] font-bold">
+                                      <Phone className="h-3.5 w-3.5 text-teal-500 shrink-0" />
+                                      {entry.mobile_number}
+                                    </span>
+                                  </>
+                                )}
                                 {entry.approach_date && (
                                   <>
                                     <span>•</span>
@@ -943,7 +1050,7 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
             <div className="space-y-6">
               <div>
                 <h1 className="hidden md:block text-2xl font-black text-[var(--color-text-primary)]">TripO Lead Trash</h1>
-                <p className="hidden md:block text-xs font-semibold text-[var(--color-text-secondary)] mt-1">Deleted files in TripO Lead</p>
+                <p className="hidden md:block text-xs font-semibold text-[var(--color-text-secondary)] mt-1">Deleted items in TripO Lead</p>
                 <h1 className="block md:hidden text-xl font-black text-[var(--color-text-primary)]">Trash</h1>
               </div>
 
@@ -951,22 +1058,92 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
                 <EmptyState icon={Trash2} title="Trash is empty" description="Deleted items in TripO Lead will appear here." />
               ) : (
                 <div className="space-y-6">
+                  {/* Deleted Entries Section */}
+                  {trashEntries.length > 0 && (
+                    <div className="neu-card rounded-2xl overflow-hidden border border-[var(--color-border-light)]/40">
+                      <div className="p-3 bg-[var(--neu-bg)] border-b border-[var(--color-border-light)]/40 font-bold text-xs text-[var(--color-text-primary)] uppercase tracking-wider">
+                        Deleted Entries ({trashEntries.length})
+                      </div>
+                      <div className="divide-y divide-[var(--color-border-light)]/40">
+                        {trashEntries.map((entry) => (
+                          <div key={entry.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-[var(--color-primary)]/5 transition-colors">
+                            <div className="min-w-0 flex-1 space-y-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h4 className="text-sm font-bold text-[var(--color-text-primary)] truncate">{entry.hotel_name}</h4>
+                                {entry.professional && (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-500/10 text-indigo-500 border border-indigo-500/30">
+                                    {entry.professional}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs text-[var(--color-text-secondary)] font-semibold">
+                                {entry.district} &middot; {entry.area} {entry.mobile_number ? `· ${entry.mobile_number}` : ''}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <button
+                                onClick={() => restoreEntryMutation.mutate(entry.id)}
+                                className="p-2 rounded-xl neu-btn text-[var(--color-text-primary)] hover:text-emerald-500 flex items-center justify-center cursor-pointer transition-colors"
+                                title="Restore"
+                                aria-label="Restore"
+                              >
+                                <RotateCcw className="h-4 w-4 text-emerald-500" />
+                              </button>
+                              <button
+                                onClick={() => setPermDeleteTarget({ type: 'entry', id: entry.id, name: entry.hotel_name, item: entry })}
+                                className="p-2 rounded-xl bg-red-500/10 border border-red-500/30 text-red-500 hover:bg-red-500 hover:text-white transition-colors flex items-center justify-center cursor-pointer"
+                                title="Permanent Delete"
+                                aria-label="Permanent Delete"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Deleted Files Section */}
                   {trashFiles.length > 0 && (
                     <div className="neu-card rounded-2xl overflow-hidden border border-[var(--color-border-light)]/40">
-                      <div className="p-3 bg-[var(--neu-bg)] border-b border-[var(--color-border-light)]/40 font-bold text-xs">Deleted Files</div>
+                      <div className="p-3 bg-[var(--neu-bg)] border-b border-[var(--color-border-light)]/40 font-bold text-xs text-[var(--color-text-primary)] uppercase tracking-wider">
+                        Deleted Files ({trashFiles.length})
+                      </div>
                       <div className="divide-y divide-[var(--color-border-light)]/40">
                         {trashFiles.map((file) => (
-                          <div key={file.id} className="p-4 flex items-center justify-between gap-3">
+                          <div key={file.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-[var(--color-primary)]/5 transition-colors">
                             <div className="flex items-center gap-3 min-w-0 flex-1">
-                              <FileText className="h-5 w-5 text-red-400" />
-                              <span className="text-xs font-bold text-[var(--color-text-primary)] truncate">{file.name}</span>
+                              <div className="h-9 w-9 neu-circle flex items-center justify-center shrink-0">
+                                <FileIcon extension={file.extension} />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <span className="text-xs font-bold text-[var(--color-text-primary)] truncate block" title={file.name}>
+                                  {file.name}
+                                </span>
+                                <span className="text-[10px] font-semibold text-[var(--color-text-tertiary)]">
+                                  {formatBytes(file.size_bytes)} &middot; {formatDate(file.updated_at)}
+                                </span>
+                              </div>
                             </div>
-                            <button
-                              onClick={() => restoreFile(file.id).then(() => queryClient.invalidateQueries({ queryKey: ['tripoLeadTrashFiles', task.id] }))}
-                              className="text-xs font-bold text-emerald-500 hover:underline cursor-pointer"
-                            >
-                              Restore
-                            </button>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <button
+                                onClick={() => restoreFile(file.id).then(() => queryClient.invalidateQueries({ queryKey: ['tripoLeadTrashFiles', task.id] }))}
+                                className="p-2 rounded-xl neu-btn text-[var(--color-text-primary)] hover:text-emerald-500 flex items-center justify-center cursor-pointer transition-colors"
+                                title="Restore"
+                                aria-label="Restore"
+                              >
+                                <RotateCcw className="h-4 w-4 text-emerald-500" />
+                              </button>
+                              <button
+                                onClick={() => setPermDeleteTarget({ type: 'file', id: file.id, name: file.name, item: file })}
+                                className="p-2 rounded-xl bg-red-500/10 border border-red-500/30 text-red-500 hover:bg-red-500 hover:text-white transition-colors flex items-center justify-center cursor-pointer"
+                                title="Permanent Delete"
+                                aria-label="Permanent Delete"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -1033,6 +1210,65 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
           file={previewFile}
           onClose={() => setPreviewFile(null)}
         />
+      )}
+
+      {/* Permanent Delete Confirmation Modal */}
+      {permDeleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-xs" onClick={() => setPermDeleteTarget(null)} />
+          <div className="relative w-full max-w-md rounded-3xl neu-modal p-6 md:p-8 shadow-2xl space-y-6">
+            <div className="flex items-center justify-between border-b border-[var(--color-border-light)]/40 pb-4">
+              <h3 className="text-base font-extrabold text-[var(--color-text-primary)]">
+                Permanent Delete Confirmation
+              </h3>
+              <button
+                onClick={() => setPermDeleteTarget(null)}
+                className="h-8 w-8 neu-circle text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] cursor-pointer"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-xs text-[var(--color-text-secondary)] font-semibold leading-relaxed">
+                Are you sure you want to permanently delete this item?
+              </p>
+              <div className="p-3 rounded-xl neu-pressed bg-[var(--neu-bg)] border border-red-500/30">
+                <span className="text-xs font-extrabold text-[var(--color-text-primary)] break-all">
+                  "{permDeleteTarget.name}"
+                </span>
+              </div>
+              <p className="text-[11px] font-bold text-red-500">
+                This item will be permanently removed and cannot be recovered.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-[var(--color-border-light)]/40">
+              <button
+                type="button"
+                onClick={() => setPermDeleteTarget(null)}
+                className="px-5 py-2.5 rounded-xl neu-btn text-xs font-extrabold text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (permDeleteTarget.type === 'entry') {
+                    permanentDeleteEntryMutation.mutate(permDeleteTarget.id);
+                  } else {
+                    permanentDeleteFileMutation.mutate(permDeleteTarget.item);
+                  }
+                  setPermDeleteTarget(null);
+                }}
+                className="px-5 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-xs font-extrabold text-white shadow-md cursor-pointer transition-colors"
+              >
+                Permanent Delete
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

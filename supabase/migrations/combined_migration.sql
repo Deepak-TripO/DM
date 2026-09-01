@@ -458,6 +458,8 @@ CREATE TABLE IF NOT EXISTS public.tripolead_entries (
 ALTER TABLE public.tripolead_entries ADD COLUMN IF NOT EXISTS status TEXT;
 ALTER TABLE public.tripolead_entries ADD COLUMN IF NOT EXISTS approach_date DATE;
 ALTER TABLE public.tripolead_entries ADD COLUMN IF NOT EXISTS short_notes TEXT;
+ALTER TABLE public.tripolead_entries ADD COLUMN IF NOT EXISTS professional TEXT;
+ALTER TABLE public.tripolead_entries ADD COLUMN IF NOT EXISTS mobile_number TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_tripolead_entries_task_id ON public.tripolead_entries(task_id);
 CREATE INDEX IF NOT EXISTS idx_tripolead_entries_deleted_at ON public.tripolead_entries(deleted_at);
