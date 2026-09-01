@@ -236,12 +236,76 @@ export async function approveUserAccount(userId: string): Promise<void> {
     .from('profiles')
     .update({ approval_status: 'approved', is_disabled: false })
     .eq('id', userId)
-    .select('approval_status')
-    .maybeSingle();
+    .select('approval_status, is_disabled')
+    .single();
 
   if (error) throw error;
-  if (data && data.approval_status !== 'approved') {
+  if (!data || data.approval_status !== 'approved') {
     throw new Error('Failed to update account approval status in database.');
+  }
+}
+
+// Fetch All Available Root Tasks for Admin Permissions Modal
+export async function getAllAvailableTasks(): Promise<{ id: string; name: string }[]> {
+  const { data, error } = await supabase
+    .from('folders')
+    .select('id, name')
+    .is('parent_id', null)
+    .is('deleted_at', null)
+    .order('name', { ascending: true });
+
+  if (error) throw error;
+  return (data || []).filter((t: any) => t.name.trim().toLowerCase() !== 'photos');
+}
+
+// Fetch Assigned Task IDs for Specific User
+export async function getUserAssignedTaskIds(userId: string): Promise<string[]> {
+  try {
+    const { data, error } = await supabase
+      .from('task_access')
+      .select('task_id')
+      .eq('user_id', userId);
+
+    if (error) throw error;
+    return (data || []).map((row: any) => row.task_id);
+  } catch {
+    return [];
+  }
+}
+
+// Save User Task Access Assignments
+export async function updateUserTaskAccess(userId: string, allowedTaskIds: string[]): Promise<void> {
+  const { data: existing, error: fetchErr } = await supabase
+    .from('task_access')
+    .select('id, task_id')
+    .eq('user_id', userId);
+
+  if (fetchErr) throw fetchErr;
+
+  const existingMap = new Map<string, string>();
+  (existing || []).forEach((row: any) => {
+    existingMap.set(row.task_id, row.id);
+  });
+
+  // Delete access rows no longer allowed
+  for (const [taskId, accessId] of existingMap.entries()) {
+    if (!allowedTaskIds.includes(taskId)) {
+      const { error: delErr } = await supabase
+        .from('task_access')
+        .delete()
+        .eq('id', accessId);
+      if (delErr) throw delErr;
+    }
+  }
+
+  // Insert new task access rows
+  for (const taskId of allowedTaskIds) {
+    if (!existingMap.has(taskId)) {
+      const { error: insErr } = await supabase
+        .from('task_access')
+        .insert({ task_id: taskId, user_id: userId });
+      if (insErr) throw insErr;
+    }
   }
 }
 

@@ -5,6 +5,9 @@ import {
   updateUserQuota,
   toggleUserStatus,
   approveUserAccount,
+  getAllAvailableTasks,
+  getUserAssignedTaskIds,
+  updateUserTaskAccess,
   getUserFilesForAdmin,
   getUserActivityForAdmin,
   type AdminUserItem,
@@ -23,7 +26,6 @@ import {
   FileText,
   Activity,
   Eye,
-  Edit,
   X,
   Shield,
   CheckCircle,
@@ -51,10 +53,47 @@ export default function AdminUsers() {
   const [userActivityModal, setUserActivityModal] = useState<{ user: AdminUserItem; logs: AdminActivityItem[] } | null>(null);
   const [loadingModalData, setLoadingModalData] = useState(false);
 
+  // Task Access Permissions Modal State
+  const [taskAccessModalUser, setTaskAccessModalUser] = useState<AdminUserItem | null>(null);
+  const [availableTasks, setAvailableTasks] = useState<{ id: string; name: string }[]>([]);
+  const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
+  const [loadingTaskAccess, setLoadingTaskAccess] = useState(false);
+  const [savingTaskAccess, setSavingTaskAccess] = useState(false);
+
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['adminUsers', search, statusFilter, sortBy],
     queryFn: () => getAdminUsers({ search, statusFilter, sortBy }),
   });
+
+  const openTaskAccessModal = async (u: AdminUserItem) => {
+    setTaskAccessModalUser(u);
+    setLoadingTaskAccess(true);
+    try {
+      const [tasks, assignedIds] = await Promise.all([
+        getAllAvailableTasks(),
+        getUserAssignedTaskIds(u.id),
+      ]);
+      setAvailableTasks(tasks);
+      setSelectedTaskIds(assignedIds);
+    } catch {
+      toast.error('Failed to load task permissions');
+    }
+    setLoadingTaskAccess(false);
+  };
+
+  const handleSaveTaskAccess = async () => {
+    if (!taskAccessModalUser) return;
+    setSavingTaskAccess(true);
+    try {
+      await updateUserTaskAccess(taskAccessModalUser.id, selectedTaskIds);
+      queryClient.invalidateQueries({ queryKey: ['adminUsers'] });
+      setTaskAccessModalUser(null);
+      toast.success('Task permissions saved successfully');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to save task permissions');
+    }
+    setSavingTaskAccess(false);
+  };
 
   const handleSaveQuota = async () => {
     if (!editingQuotaUser) return;
@@ -97,7 +136,8 @@ export default function AdminUsers() {
       queryClient.invalidateQueries({ queryKey: ['adminUsers'] });
       queryClient.invalidateQueries({ queryKey: ['adminOverviewStats'] });
       setActiveMenuId(null);
-      toast.success('User account approved successfully');
+      toast.success('Account approved successfully');
+      openTaskAccessModal(u);
     } catch (err: any) {
       toast.error(err?.message || 'Failed to approve user account');
     }
@@ -275,7 +315,7 @@ export default function AdminUsers() {
                     <td className="px-4 py-3 text-right relative">
                       <button
                         onClick={() => setActiveMenuId(activeMenuId === u.id ? null : u.id)}
-                        className="h-8 w-8 neu-circle text-[var(--color-text-secondary)] hover:text-[var(--color-primary)]"
+                        className="h-8 w-8 neu-circle text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] cursor-pointer"
                       >
                         <MoreVertical className="h-4 w-4" />
                       </button>
@@ -292,8 +332,15 @@ export default function AdminUsers() {
                             </button>
                           )}
                           <button
+                            onClick={() => { setActiveMenuId(null); openTaskAccessModal(u); }}
+                            className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 cursor-pointer"
+                          >
+                            <Shield className="h-4 w-4" />
+                            Task Access
+                          </button>
+                          <button
                             onClick={() => { setActiveMenuId(null); setViewingUser(u); }}
-                            className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-[var(--color-text-primary)] hover:bg-[var(--color-primary)]/10"
+                            className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-[var(--color-text-primary)] hover:bg-[var(--color-primary)]/10 cursor-pointer"
                           >
                             <Eye className="h-4 w-4 text-[var(--color-text-tertiary)]" />
                             View User
@@ -305,7 +352,7 @@ export default function AdminUsers() {
                               setEditingQuotaUser(u);
                               setNewQuotaGB(String(Math.round((u.quota_bytes / (1024 * 1024 * 1024)) * 10) / 10));
                             }}
-                            className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-[var(--color-text-primary)] hover:bg-[var(--color-primary)]/10"
+                            className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-[var(--color-text-primary)] hover:bg-[var(--color-primary)]/10 cursor-pointer"
                           >
                             <HardDrive className="h-4 w-4 text-[var(--color-primary)]" />
                             Change Storage Quota
@@ -313,7 +360,7 @@ export default function AdminUsers() {
 
                           <button
                             onClick={() => handleViewFiles(u)}
-                            className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-[var(--color-text-primary)] hover:bg-[var(--color-primary)]/10"
+                            className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-[var(--color-text-primary)] hover:bg-[var(--color-primary)]/10 cursor-pointer"
                           >
                             <FileText className="h-4 w-4 text-purple-500" />
                             View Files
@@ -321,7 +368,7 @@ export default function AdminUsers() {
 
                           <button
                             onClick={() => handleViewActivity(u)}
-                            className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-[var(--color-text-primary)] hover:bg-[var(--color-primary)]/10"
+                            className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-[var(--color-text-primary)] hover:bg-[var(--color-primary)]/10 cursor-pointer"
                           >
                             <Activity className="h-4 w-4 text-indigo-500" />
                             View Activity
@@ -331,7 +378,7 @@ export default function AdminUsers() {
 
                           <button
                             onClick={() => handleToggleStatus(u)}
-                            className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold ${
+                            className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold cursor-pointer ${
                               u.is_disabled ? 'text-emerald-500 hover:bg-emerald-500/10' : 'text-red-500 hover:bg-red-500/10'
                             }`}
                           >
@@ -400,7 +447,7 @@ export default function AdminUsers() {
               <span className="font-bold text-[var(--color-text-primary)]">{formatBytes(u.used_bytes)} / {formatBytes(u.quota_bytes)}</span>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-1">
+            <div className="flex items-center justify-end gap-2 pt-1 flex-wrap">
               {u.approval_status === 'pending' && (
                 <button
                   onClick={() => handleApproveUser(u)}
@@ -409,6 +456,12 @@ export default function AdminUsers() {
                   Approve
                 </button>
               )}
+              <button
+                onClick={() => openTaskAccessModal(u)}
+                className="px-3 py-1.5 rounded-xl neu-btn text-xs font-bold text-[var(--color-primary)] cursor-pointer"
+              >
+                Task Access
+              </button>
               <button
                 onClick={() => {
                   setEditingQuotaUser(u);
@@ -450,62 +503,56 @@ export default function AdminUsers() {
         </div>
       )}
 
-      {/* MODAL 1: Change Storage Quota */}
+      {/* MODAL 1: Edit Storage Quota */}
       {editingQuotaUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-xs" onClick={() => setEditingQuotaUser(null)} />
-          <div className="relative w-full max-w-md rounded-3xl neu-modal p-7 shadow-2xl space-y-4">
+          <div className="relative w-full max-w-md rounded-3xl neu-modal p-7 shadow-2xl space-y-5">
             <div className="flex items-center justify-between border-b border-[var(--color-border-light)]/40 pb-3">
-              <h3 className="text-base font-extrabold text-[var(--color-text-primary)]">User Storage Quota</h3>
-              <button onClick={() => setEditingQuotaUser(null)} className="h-8 w-8 neu-circle text-[var(--color-text-tertiary)]">
+              <h3 className="text-base font-extrabold text-[var(--color-text-primary)]">Edit Storage Quota</h3>
+              <button onClick={() => setEditingQuotaUser(null)} className="h-8 w-8 neu-circle text-[var(--color-text-tertiary)] cursor-pointer">
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="space-y-3 text-xs">
+            <div className="space-y-3">
+              <p className="text-xs text-[var(--color-text-secondary)] font-semibold">
+                Set custom storage limit for <strong className="text-[var(--color-text-primary)]">{editingQuotaUser.full_name || 'User'}</strong>
+              </p>
+
               <div>
-                <span className="text-[var(--color-text-tertiary)] font-semibold">User:</span>
-                <p className="font-extrabold text-[var(--color-text-primary)] text-sm">{editingQuotaUser.full_name || 'User'}</p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 rounded-2xl neu-pressed p-4">
-                <div>
-                  <span className="text-[var(--color-text-tertiary)] font-semibold">Current Storage</span>
-                  <p className="font-bold text-[var(--color-text-primary)]">{formatBytes(editingQuotaUser.used_bytes)} used</p>
-                </div>
-                <div>
-                  <span className="text-[var(--color-text-tertiary)] font-semibold">Current Quota</span>
-                  <p className="font-bold text-[var(--color-text-primary)]">{formatBytes(editingQuotaUser.quota_bytes)}</p>
-                </div>
-              </div>
-
-              <div className="space-y-1.5 pt-2">
-                <label className="font-bold text-[var(--color-text-primary)]">New Storage Quota (GB):</label>
-                <div className="flex items-center gap-2">
+                <label className="text-[11px] font-bold uppercase text-[var(--color-text-tertiary)] tracking-wider block mb-1.5">
+                  Quota Limit (in GB)
+                </label>
+                <div className="relative">
                   <input
                     type="number"
                     step="0.5"
                     min="0.5"
                     value={newQuotaGB}
                     onChange={(e) => setNewQuotaGB(e.target.value)}
-                    className="flex-1 rounded-xl neu-input px-3.5 py-2.5 text-sm text-[var(--color-text-primary)]"
+                    className="w-full rounded-xl neu-input py-2.5 px-3 text-xs text-[var(--color-text-primary)] font-mono font-bold"
                   />
-                  <span className="text-xs font-bold text-[var(--color-text-secondary)]">GB</span>
+                  <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-extrabold text-[var(--color-text-tertiary)]">
+                    GB
+                  </span>
                 </div>
               </div>
             </div>
 
             <div className="flex justify-end gap-3 pt-3 border-t border-[var(--color-border-light)]/40">
               <button
+                type="button"
                 onClick={() => setEditingQuotaUser(null)}
-                className="rounded-xl neu-btn px-4 py-2.5 text-xs font-bold text-[var(--color-text-primary)]"
+                className="rounded-xl neu-btn px-4 py-2.5 text-xs font-bold text-[var(--color-text-primary)] cursor-pointer"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleSaveQuota}
                 disabled={savingQuota}
-                className="flex items-center gap-2 rounded-xl neu-btn-primary px-4 py-2.5 text-xs font-bold text-white disabled:opacity-60"
+                className="flex items-center gap-2 rounded-xl neu-btn-primary px-4 py-2.5 text-xs font-bold text-white disabled:opacity-60 cursor-pointer"
               >
                 {savingQuota && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                 Save Changes
@@ -522,7 +569,7 @@ export default function AdminUsers() {
           <div className="relative w-full max-w-md rounded-3xl neu-modal p-7 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-[var(--color-border-light)]/40 pb-3">
               <h3 className="text-base font-extrabold text-[var(--color-text-primary)]">User Profile Details</h3>
-              <button onClick={() => setViewingUser(null)} className="h-8 w-8 neu-circle text-[var(--color-text-tertiary)]">
+              <button onClick={() => setViewingUser(null)} className="h-8 w-8 neu-circle text-[var(--color-text-tertiary)] cursor-pointer">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -545,7 +592,7 @@ export default function AdminUsers() {
               <div className="space-y-2">
                 <div className="flex justify-between neu-pressed p-2.5 rounded-xl"><span className="text-[var(--color-text-tertiary)]">User ID</span><span className="font-mono text-[11px] font-bold text-[var(--color-text-primary)]">{viewingUser.id}</span></div>
                 <div className="flex justify-between neu-pressed p-2.5 rounded-xl"><span className="text-[var(--color-text-tertiary)]">Email</span><span className="font-mono text-[11px] font-bold text-[var(--color-text-primary)]">{viewingUser.email || `${viewingUser.username || viewingUser.id.slice(0, 8)}@user.com`}</span></div>
-                <div className="flex justify-between neu-pressed p-2.5 rounded-xl"><span className="text-[var(--color-text-tertiary)]">Status</span><span className="font-bold text-[var(--color-text-primary)]">{viewingUser.is_disabled ? 'Disabled' : 'Active'}</span></div>
+                <div className="flex justify-between neu-pressed p-2.5 rounded-xl"><span className="text-[var(--color-text-tertiary)]">Status</span><span className="font-bold text-[var(--color-text-primary)]">{viewingUser.approval_status === 'pending' ? 'Pending Approval' : viewingUser.is_disabled ? 'Disabled' : 'Active'}</span></div>
                 <div className="flex justify-between neu-pressed p-2.5 rounded-xl"><span className="text-[var(--color-text-tertiary)]">Joined Date</span><span className="font-bold text-[var(--color-text-primary)]">{formatDate(viewingUser.created_at)}</span></div>
                 <div className="flex justify-between neu-pressed p-2.5 rounded-xl"><span className="text-[var(--color-text-tertiary)]">Total Files</span><span className="font-bold text-[var(--color-text-primary)]">{viewingUser.file_count}</span></div>
                 <div className="flex justify-between neu-pressed p-2.5 rounded-xl"><span className="text-[var(--color-text-tertiary)]">Storage Quota</span><span className="font-bold text-[var(--color-text-primary)]">{formatBytes(viewingUser.quota_bytes)}</span></div>
@@ -556,7 +603,7 @@ export default function AdminUsers() {
             <div className="flex justify-end pt-3 border-t border-[var(--color-border-light)]/40">
               <button
                 onClick={() => setViewingUser(null)}
-                className="rounded-xl neu-btn px-4 py-2 text-xs font-bold text-[var(--color-text-primary)]"
+                className="rounded-xl neu-btn px-4 py-2 text-xs font-bold text-[var(--color-text-primary)] cursor-pointer"
               >
                 Close
               </button>
@@ -575,7 +622,7 @@ export default function AdminUsers() {
                 <h3 className="text-base font-extrabold text-[var(--color-text-primary)]">Files owned by {userFilesModal.user.full_name || 'User'}</h3>
                 <p className="text-xs font-semibold text-[var(--color-text-tertiary)]">{userFilesModal.files.length} total files</p>
               </div>
-              <button onClick={() => setUserFilesModal(null)} className="h-8 w-8 neu-circle text-[var(--color-text-tertiary)]">
+              <button onClick={() => setUserFilesModal(null)} className="h-8 w-8 neu-circle text-[var(--color-text-tertiary)] cursor-pointer">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -598,7 +645,7 @@ export default function AdminUsers() {
             <div className="flex justify-end pt-3 border-t border-[var(--color-border-light)]/40">
               <button
                 onClick={() => setUserFilesModal(null)}
-                className="rounded-xl neu-btn px-4 py-2 text-xs font-bold text-[var(--color-text-primary)]"
+                className="rounded-xl neu-btn px-4 py-2 text-xs font-bold text-[var(--color-text-primary)] cursor-pointer"
               >
                 Close
               </button>
@@ -617,7 +664,7 @@ export default function AdminUsers() {
                 <h3 className="text-base font-extrabold text-[var(--color-text-primary)]">Activity for {userActivityModal.user.full_name || 'User'}</h3>
                 <p className="text-xs font-semibold text-[var(--color-text-tertiary)]">Recent user actions</p>
               </div>
-              <button onClick={() => setUserActivityModal(null)} className="h-8 w-8 neu-circle text-[var(--color-text-tertiary)]">
+              <button onClick={() => setUserActivityModal(null)} className="h-8 w-8 neu-circle text-[var(--color-text-tertiary)] cursor-pointer">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -641,9 +688,100 @@ export default function AdminUsers() {
             <div className="flex justify-end pt-3 border-t border-[var(--color-border-light)]/40">
               <button
                 onClick={() => setUserActivityModal(null)}
-                className="rounded-xl neu-btn px-4 py-2 text-xs font-bold text-[var(--color-text-primary)]"
+                className="rounded-xl neu-btn px-4 py-2 text-xs font-bold text-[var(--color-text-primary)] cursor-pointer"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 5: Task Access Permissions */}
+      {taskAccessModalUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-xs" onClick={() => setTaskAccessModalUser(null)} />
+          <div className="relative w-full max-w-md rounded-3xl neu-modal p-7 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between border-b border-[var(--color-border-light)]/40 pb-3">
+              <div>
+                <h3 className="text-base font-extrabold text-[var(--color-text-primary)]">
+                  Task Access Permissions
+                </h3>
+                <p className="text-xs font-semibold text-[var(--color-text-tertiary)]">
+                  User: {taskAccessModalUser.full_name || 'User'} (@{taskAccessModalUser.username || taskAccessModalUser.id.slice(0, 8)})
+                </p>
+              </div>
+              <button
+                onClick={() => setTaskAccessModalUser(null)}
+                className="h-8 w-8 neu-circle text-[var(--color-text-tertiary)] cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-[var(--color-text-secondary)] font-semibold leading-relaxed">
+              Select which tasks this user is allowed to access. Non-selected tasks will be strictly blocked.
+            </p>
+
+            {loadingTaskAccess ? (
+              <div className="flex justify-center py-6">
+                <Loader2 className="h-6 w-6 animate-spin text-[var(--color-primary)]" />
+              </div>
+            ) : availableTasks.length === 0 ? (
+              <div className="py-4 text-center text-xs font-semibold text-[var(--color-text-tertiary)]">
+                No active tasks found in database.
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                {availableTasks.map((t) => {
+                  const isChecked = selectedTaskIds.includes(t.id);
+                  return (
+                    <label
+                      key={t.id}
+                      className="flex items-center justify-between p-3 rounded-2xl neu-pressed cursor-pointer hover:bg-[var(--color-primary)]/5 transition-all"
+                    >
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedTaskIds([...selectedTaskIds, t.id]);
+                            } else {
+                              setSelectedTaskIds(selectedTaskIds.filter((id) => id !== t.id));
+                            }
+                          }}
+                          className="h-4 w-4 rounded accent-[var(--color-primary)] cursor-pointer"
+                        />
+                        <span className="text-xs font-extrabold text-[var(--color-text-primary)]">
+                          {t.name}
+                        </span>
+                      </div>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isChecked ? 'text-emerald-500 bg-emerald-500/10' : 'text-[var(--color-text-tertiary)]'}`}>
+                        {isChecked ? 'Allowed' : 'Blocked'}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3 pt-3 border-t border-[var(--color-border-light)]/40">
+              <button
+                type="button"
+                onClick={() => setTaskAccessModalUser(null)}
+                className="rounded-xl neu-btn px-4 py-2.5 text-xs font-bold text-[var(--color-text-primary)] cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveTaskAccess}
+                disabled={savingTaskAccess || loadingTaskAccess}
+                className="flex items-center gap-2 rounded-xl neu-btn-primary px-4 py-2.5 text-xs font-bold text-white disabled:opacity-60 cursor-pointer"
+              >
+                {savingTaskAccess && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                Save Task Access
               </button>
             </div>
           </div>

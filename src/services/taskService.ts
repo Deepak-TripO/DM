@@ -93,7 +93,7 @@ export async function getActiveTasks(): Promise<TaskItem[]> {
       .select('task_id')
       .eq('user_id', user.id);
 
-    if (!accessErr && accessRows && accessRows.length > 0) {
+    if (!accessErr && accessRows) {
       const assignedTaskIds = new Set((accessRows || []).map((a: any) => a.task_id));
       const allowedTasks = rawTasks.filter(
         (t: any) => t.owner_id === user.id || assignedTaskIds.has(t.id)
@@ -142,7 +142,7 @@ export async function getTaskById(taskId: string): Promise<TaskItem | null> {
       .select('id, task_id')
       .eq('user_id', user.id);
 
-    if (!accessErr && accessRows && accessRows.length > 0) {
+    if (!accessErr && accessRows) {
       const hasAccess = accessRows.some((a: any) => a.task_id === taskId);
       if (hasAccess) {
         return data as TaskItem;
