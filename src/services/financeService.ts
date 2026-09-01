@@ -194,6 +194,48 @@ export async function getFinanceEntries(
   search?: string,
   categoryFilter?: string
 ): Promise<FinanceEntry[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  // Data Security Check: Verify user is Admin or explicitly authorized for Finance in task_access
+  let isAuthorized = false;
+  if (user.email?.toLowerCase() === 'admin@dm.com') {
+    isAuthorized = true;
+  } else {
+    try {
+      const { data: rpcAdmin } = await supabase.rpc('is_admin', { uid: user.id });
+      if (rpcAdmin === true) {
+        isAuthorized = true;
+      } else {
+        const { data: accessRows } = await supabase
+          .from('task_access')
+          .select('task_id')
+          .eq('user_id', user.id);
+
+        if (accessRows && accessRows.length > 0) {
+          const { data: financeFolder } = await supabase
+            .from('folders')
+            .select('id')
+            .ilike('name', 'finance')
+            .is('parent_id', null)
+            .is('deleted_at', null)
+            .maybeSingle();
+
+          if (financeFolder && accessRows.some((a: any) => a.task_id === financeFolder.id)) {
+            isAuthorized = true;
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  if (!isAuthorized) {
+    console.warn('Blocked unauthorized request for Finance data.');
+    return [];
+  }
+
   try {
     let query = supabase
       .from('finance_entries')

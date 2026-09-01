@@ -95,16 +95,14 @@ export async function getActiveTasks(): Promise<TaskItem[]> {
 
     if (!accessErr && accessRows) {
       const assignedTaskIds = new Set((accessRows || []).map((a: any) => a.task_id));
-      const allowedTasks = rawTasks.filter(
-        (t: any) => t.owner_id === user.id || assignedTaskIds.has(t.id)
-      );
+      const allowedTasks = rawTasks.filter((t: any) => assignedTaskIds.has(t.id));
       return allowedTasks as TaskItem[];
     }
   } catch {
-    // Fallback if task_access table is not created yet
+    // Ignore error
   }
 
-  return rawTasks as TaskItem[];
+  return [];
 }
 
 export async function getTaskById(taskId: string): Promise<TaskItem | null> {
@@ -130,11 +128,6 @@ export async function getTaskById(taskId: string): Promise<TaskItem | null> {
     // Ignore RPC error
   }
 
-  // Owner check
-  if (data.owner_id === user.id) {
-    return data as TaskItem;
-  }
-
   // Check task_access relationship for user ID
   try {
     const { data: accessRows, error: accessErr } = await supabase
@@ -151,12 +144,7 @@ export async function getTaskById(taskId: string): Promise<TaskItem | null> {
       return null;
     }
   } catch {
-    // Fallback if task_access table is not created yet
-  }
-
-  // Default fallback for legacy tasks if user has no task_access entries
-  if (data.name.trim().toLowerCase() === 'finance') {
-    return data as TaskItem;
+    // Ignore error
   }
 
   return null;
