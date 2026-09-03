@@ -234,7 +234,7 @@ export const exportToPdf = async (entries: FinanceEntry[], summary: SummaryData)
       }
     },
     didDrawPage: (data) => {
-      // Minimal Footer
+      // Page numbering footer
       const totalPages = (doc as any).internal.getNumberOfPages();
       const currentPage = data.pageNumber;
       doc.setFontSize(8);
@@ -243,20 +243,27 @@ export const exportToPdf = async (entries: FinanceEntry[], summary: SummaryData)
       doc.text('Generated from DM Finance', 18, 194);
       doc.text(`Page ${currentPage} of ${totalPages}`, 277, 194, { align: 'right' });
     },
-    margin: { left: 18, right: 18, bottom: 24 },
+    margin: { left: 18, right: 18, bottom: 35 },
     pageBreak: 'auto',
   });
 
-  // Render official footer watermark "TripO Offical" at bottom-right corner of all pages
-  const totalPages = (doc as any).internal.getNumberOfPages();
+  // Render official right-corner finishing watermark "TripO Official" on final page with clean seal space above it
+  const totalPages = (doc as any).getNumberOfPages();
+  doc.setPage(totalPages);
   const pdfFooterText = getPdfFooterText();
-  for (let page = 1; page <= totalPages; page++) {
-    doc.setPage(page);
-    doc.setFontSize(8.5);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(71, 85, 105); // slate-600
-    doc.text(pdfFooterText, 277, 198, { align: 'right' });
+  const lastY = (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY : 140;
+  
+  let sealY = lastY + 22; // Clean blank space reserved for seal
+  if (sealY > 182) {
+    doc.addPage();
+    doc.setPage((doc as any).getNumberOfPages());
+    sealY = 35;
   }
+
+  doc.setFontSize(9.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(51, 65, 85); // slate-700
+  doc.text(pdfFooterText, 277, sealY, { align: 'right' });
 
   const filename = `DM_Finance_${todayStr}.pdf`;
   doc.save(filename);
@@ -362,6 +369,15 @@ export const exportToJpg = async (entries: FinanceEntry[], summary: SummaryData)
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <!-- Finishing Signature & Seal Space Area -->
+      <div style="margin-top: 36px; display: flex; justify-content: flex-end; align-items: flex-end; padding-right: 12px;">
+        <div style="text-align: right;">
+          <!-- Blank space reserved for physical / company seal -->
+          <div style="height: 60px;"></div>
+          <div style="font-size: 13px; font-weight: 800; color: #334155;">${getPdfFooterText()}</div>
+        </div>
       </div>
     </div>
   `;
@@ -563,6 +579,15 @@ export const exportToDocx = async (entries: FinanceEntry[], summary: SummaryData
           }),
           new Paragraph({ text: '' }),
           mainTable,
+          new Paragraph({ text: '' }),
+          new Paragraph({ text: '' }),
+          new Paragraph({ text: '' }),
+          new Paragraph({
+            alignment: AlignmentType.RIGHT,
+            children: [
+              new TextRun({ text: getPdfFooterText(), bold: true, size: 22, color: '334155' }),
+            ],
+          }),
         ],
       },
     ],

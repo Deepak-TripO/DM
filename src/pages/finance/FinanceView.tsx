@@ -202,14 +202,57 @@ export function FinanceView({ task }: FinanceViewProps) {
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [isExporting, setIsExporting] = useState<'pdf' | 'jpg' | 'docx' | null>(null);
 
+  // Date Range Export State
+  const [exportMode, setExportMode] = useState<'range' | 'all'>('all');
+  const [exportStartDate, setExportStartDate] = useState('');
+  const [exportEndDate, setExportEndDate] = useState('');
+
+  const getFilteredExportData = async () => {
+    // Retrieve complete stored finance dataset for taskId from database (bypassing UI search/category filter)
+    let allStoredEntries: FinanceEntry[] = [];
+    try {
+      allStoredEntries = await getFinanceEntries(taskId, '', 'All');
+    } catch {
+      allStoredEntries = entries;
+    }
+
+    let exportEntries = [...allStoredEntries];
+
+    if (exportMode === 'range') {
+      if (!exportStartDate || !exportEndDate) {
+        toast.error('Please select both Start Date and End Date.');
+        return null;
+      }
+      if (exportStartDate > exportEndDate) {
+        toast.error('Start date cannot be after end date.');
+        return null;
+      }
+      exportEntries = allStoredEntries.filter(
+        (e) => e.date >= exportStartDate && e.date <= exportEndDate
+      );
+    }
+
+    if (exportEntries.length === 0) {
+      toast.error('No data available for the selected date range.');
+      return null;
+    }
+
+    // Recalculate summary totals for the exported dataset
+    const summary = {
+      overallTotal: exportEntries.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0),
+      deepakTotal: exportEntries.reduce((acc, curr) => acc + (Number(curr.deepak_amount) || 0), 0),
+      elumugamTotal: exportEntries.reduce((acc, curr) => acc + (Number(curr.elumugam_amount) || 0), 0),
+    };
+
+    return { entries: exportEntries, summary };
+  };
+
   const handleExportPdf = async () => {
+    const data = await getFilteredExportData();
+    if (!data) return;
     setIsExporting('pdf');
     try {
-      await exportToPdf(entries, {
-        deepakTotal: expenseDeepakTotal,
-        elumugamTotal: expenseElumugamTotal,
-        overallTotal: expenseOverallTotal,
-      });
+      await exportToPdf(data.entries, data.summary);
       toast.success('PDF generated and downloaded successfully!');
       setExportModalOpen(false);
     } catch (err) {
@@ -221,13 +264,11 @@ export function FinanceView({ task }: FinanceViewProps) {
   };
 
   const handleExportJpg = async () => {
+    const data = await getFilteredExportData();
+    if (!data) return;
     setIsExporting('jpg');
     try {
-      await exportToJpg(entries, {
-        deepakTotal: expenseDeepakTotal,
-        elumugamTotal: expenseElumugamTotal,
-        overallTotal: expenseOverallTotal,
-      });
+      await exportToJpg(data.entries, data.summary);
       toast.success('JPG generated and downloaded successfully!');
       setExportModalOpen(false);
     } catch (err) {
@@ -239,13 +280,11 @@ export function FinanceView({ task }: FinanceViewProps) {
   };
 
   const handleExportDocx = async () => {
+    const data = await getFilteredExportData();
+    if (!data) return;
     setIsExporting('docx');
     try {
-      await exportToDocx(entries, {
-        deepakTotal: expenseDeepakTotal,
-        elumugamTotal: expenseElumugamTotal,
-        overallTotal: expenseOverallTotal,
-      });
+      await exportToDocx(data.entries, data.summary);
       toast.success('Document generated and downloaded successfully!');
       setExportModalOpen(false);
     } catch (err) {
@@ -1432,6 +1471,7 @@ export function FinanceView({ task }: FinanceViewProps) {
             onClick={() => !isExporting && setExportModalOpen(false)}
           />
           <div className="relative w-full max-w-sm rounded-3xl neu-modal p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-[var(--color-border-light)]/40 pb-3">
               <div className="flex items-center gap-2">
                 <Download className="h-5 w-5 text-[var(--color-primary)]" />
@@ -1442,13 +1482,75 @@ export function FinanceView({ task }: FinanceViewProps) {
                   onClick={() => setExportModalOpen(false)}
                   className="text-xs font-bold text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] cursor-pointer"
                 >
-                  Close
+                  Cancel
                 </button>
               )}
             </div>
 
-            <p className="text-xs font-medium text-[var(--color-text-secondary)]">
-              Choose a format to export the complete Finance dataset:
+            {/* Selection Mode: Date Range vs All Data */}
+            <div className="space-y-3">
+              <label className="block text-xs font-extrabold text-[var(--color-text-primary)] uppercase tracking-wider">
+                Select Export Range
+              </label>
+
+              <div className="grid grid-cols-2 gap-2 rounded-2xl neu-pressed p-1">
+                <button
+                  type="button"
+                  onClick={() => setExportMode('range')}
+                  className={cn(
+                    'py-2 px-3 rounded-xl text-xs font-extrabold transition-all cursor-pointer text-center',
+                    exportMode === 'range'
+                      ? 'neu-active text-[var(--color-primary)] shadow-xs'
+                      : 'text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]'
+                  )}
+                >
+                  Select Date Range
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setExportMode('all')}
+                  className={cn(
+                    'py-2 px-3 rounded-xl text-xs font-extrabold transition-all cursor-pointer text-center',
+                    exportMode === 'all'
+                      ? 'neu-active text-[var(--color-primary)] shadow-xs'
+                      : 'text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]'
+                  )}
+                >
+                  All Data
+                </button>
+              </div>
+
+              {/* Date Inputs when Date Range Mode selected */}
+              {exportMode === 'range' && (
+                <div className="grid grid-cols-2 gap-3 pt-1 animate-in fade-in zoom-in-95 duration-150">
+                  <div>
+                    <label className="mb-1 block text-[11px] font-bold text-[var(--color-text-secondary)]">
+                      Start Date
+                    </label>
+                    <input
+                      type="date"
+                      value={exportStartDate}
+                      onChange={(e) => setExportStartDate(e.target.value)}
+                      className="w-full rounded-xl neu-input px-3 py-2 text-xs font-semibold text-[var(--color-text-primary)] focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-[11px] font-bold text-[var(--color-text-secondary)]">
+                      End Date
+                    </label>
+                    <input
+                      type="date"
+                      value={exportEndDate}
+                      onChange={(e) => setExportEndDate(e.target.value)}
+                      className="w-full rounded-xl neu-input px-3 py-2 text-xs font-semibold text-[var(--color-text-primary)] focus:outline-none"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <p className="text-xs font-medium text-[var(--color-text-secondary)] pt-1 border-t border-[var(--color-border-light)]/40">
+              Select export format:
             </p>
 
             <div className="space-y-2.5">
