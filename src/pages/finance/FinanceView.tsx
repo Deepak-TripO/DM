@@ -20,6 +20,8 @@ import { useAuth } from '@/features/auth/AuthProvider';
 import { useAdmin } from '@/hooks/useAdmin';
 import { useFinanceAccess } from '@/hooks/useFinanceAccess';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { Header } from '@/components/Header';
+import { useAppLayout } from '@/layouts/AppLayout';
 import { cn } from '@/lib/utils';
 import {
   exportToPdf,
@@ -55,6 +57,7 @@ export function FinanceView({ task }: FinanceViewProps) {
   const { user } = useAuth();
   const { isAdmin } = useAdmin();
   const { canAddEntry } = useFinanceAccess();
+  const { sidebarOpen, toggleSidebar, hasSidebar } = useAppLayout();
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
@@ -504,7 +507,9 @@ export function FinanceView({ task }: FinanceViewProps) {
   const splitAmountHalf = numAmount / 2;
 
   return (
-    <div className="w-full space-y-6">
+    <div className="flex flex-col min-h-screen w-full">
+      <Header onLogoClick={hasSidebar ? toggleSidebar : undefined} sidebarOpen={sidebarOpen} />
+      <div className="flex-1 space-y-6 p-4 md:p-6 max-w-7xl mx-auto w-full">
       {/* Mobile-Only Header & Controls (< md) */}
       <div className="block md:hidden space-y-3">
         {/* Finance Header Title */}
@@ -1534,6 +1539,7 @@ export function FinanceView({ task }: FinanceViewProps) {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

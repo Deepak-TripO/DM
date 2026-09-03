@@ -58,8 +58,45 @@ export async function setupTaskPermissionsForUser(
   }
 }
 
+export async function checkIsAdminUser(userId: string, email?: string): Promise<boolean> {
+  if (email && email.trim().toLowerCase() === 'admin@dm.com') {
+    return true;
+  }
+  try {
+    const { data: rpcAdmin } = await supabase.rpc('is_admin', { uid: userId });
+    if (rpcAdmin === true) return true;
+  } catch {
+    // Ignore RPC error
+  }
+  try {
+    const { data: adminRow } = await supabase
+      .from('admin_users')
+      .select('user_id')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (adminRow) return true;
+  } catch {
+    // Ignore table query error
+  }
+  try {
+    const { data: profileRow } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .maybeSingle();
+    if (profileRow && profileRow.role?.trim().toLowerCase() === 'admin') return true;
+  } catch {
+    // Ignore profile query error
+  }
+  return false;
+}
+
 export async function getActiveTasks(): Promise<TaskItem[]> {
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData?.user;
+  if (!user) return [];
+
+  const isAdmin = await checkIsAdminUser(user.id, user.email);
 
   const { data, error } = await supabase
     .from('folders')
@@ -68,22 +105,17 @@ export async function getActiveTasks(): Promise<TaskItem[]> {
     .is('deleted_at', null)
     .order('name', { ascending: true });
 
-  if (error) throw error;
+  if (error) {
+    console.error('Error fetching root tasks in getActiveTasks:', error);
+    throw error;
+  }
 
   const rawTasks = (data || []).filter(
     (item: any) => item.name.trim().toLowerCase() !== 'photos'
   );
 
-  if (!user) return [];
-
-  // Check if current user is authorized admin
-  try {
-    const { data: rpcAdmin } = await supabase.rpc('is_admin', { uid: user.id });
-    if (rpcAdmin === true) {
-      return rawTasks as TaskItem[];
-    }
-  } catch {
-    // Ignore RPC error
+  if (isAdmin) {
+    return rawTasks as TaskItem[];
   }
 
   // Non-admin user: Fetch task IDs explicitly assigned in task_access table
@@ -98,16 +130,19 @@ export async function getActiveTasks(): Promise<TaskItem[]> {
       const allowedTasks = rawTasks.filter((t: any) => assignedTaskIds.has(t.id));
       return allowedTasks as TaskItem[];
     }
-  } catch {
-    // Ignore error
+  } catch (err) {
+    console.warn('Error fetching task_access for non-admin user:', err);
   }
 
   return [];
 }
 
 export async function getTaskById(taskId: string): Promise<TaskItem | null> {
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData?.user;
   if (!user) return null;
+
+  const isAdmin = await checkIsAdminUser(user.id, user.email);
 
   const { data, error } = await supabase
     .from('folders')
@@ -118,17 +153,11 @@ export async function getTaskById(taskId: string): Promise<TaskItem | null> {
 
   if (error || !data) return null;
 
-  // Check if user is authorized admin
-  try {
-    const { data: rpcAdmin } = await supabase.rpc('is_admin', { uid: user.id });
-    if (rpcAdmin === true) {
-      return data as TaskItem;
-    }
-  } catch {
-    // Ignore RPC error
+  if (isAdmin) {
+    return data as TaskItem;
   }
 
-  // Check task_access relationship for user ID
+  // Non-admin user check task_access relationship for user ID
   try {
     const { data: accessRows, error: accessErr } = await supabase
       .from('task_access')
@@ -143,8 +172,8 @@ export async function getTaskById(taskId: string): Promise<TaskItem | null> {
       // Access Denied: task_access exists for this user, but this specific task is not assigned
       return null;
     }
-  } catch {
-    // Ignore error
+  } catch (err) {
+    console.warn('Error checking task_access for task ID:', err);
   }
 
   return null;

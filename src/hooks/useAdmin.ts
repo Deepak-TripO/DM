@@ -3,60 +3,91 @@ import { supabase } from '@/lib/supabase/client';
 import { useAuth } from '@/features/auth/AuthProvider';
 
 export function useAdmin() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const checkAdmin = useCallback(async () => {
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
     if (!user) {
       setIsAdmin(false);
       setLoading(false);
       return;
     }
 
-    const userEmail = user.email?.toLowerCase();
+    const userEmail = user.email?.trim().toLowerCase();
     const isDefaultAdminEmail = userEmail === 'admin@dm.com';
 
+    // Fast path for default admin email to eliminate UI flicker / race condition
+    if (isDefaultAdminEmail) {
+      setIsAdmin(true);
+      setLoading(false);
+
+      // Ensure backend admin_users and profile records exist in background
+      try {
+        await supabase.from('admin_users').upsert(
+          { user_id: user.id, role: 'admin' },
+          { onConflict: 'user_id' }
+        );
+      } catch {
+        // Ignore background sync error
+      }
+      return;
+    }
+
     try {
-      // Primary security check: RPC is_admin function (SECURITY DEFINER)
+      // Check 1: RPC is_admin function (SECURITY DEFINER)
       const { data: rpcAdmin, error: rpcError } = await supabase.rpc('is_admin', { uid: user.id });
 
-      if (!rpcError && typeof rpcAdmin === 'boolean') {
-        setIsAdmin(rpcAdmin);
-        setLoading(false);
-        return;
-      }
-
-      // Secondary check: query admin_users table directly
-      const { data, error } = await supabase
-        .from('admin_users')
-        .select('user_id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (!error && data) {
+      if (!rpcError && rpcAdmin === true) {
         setIsAdmin(true);
         setLoading(false);
         return;
       }
 
-      // Default email fallback (admin@dm.com)
-      if (isDefaultAdminEmail) {
+      // Check 2: query admin_users table directly
+      const { data: adminRow, error: adminErr } = await supabase
+        .from('admin_users')
+        .select('user_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (!adminErr && adminRow) {
+        setIsAdmin(true);
+        setLoading(false);
+        return;
+      }
+
+      // Check 3: query profiles table for role === 'admin'
+      const { data: profileRow, error: profileErr } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (!profileErr && profileRow && profileRow.role?.trim().toLowerCase() === 'admin') {
         setIsAdmin(true);
         setLoading(false);
         return;
       }
 
       setIsAdmin(false);
-    } catch {
-      setIsAdmin(isDefaultAdminEmail);
+    } catch (err) {
+      console.warn('Error verifying admin permissions:', err);
+      setIsAdmin(false);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  }, [user]);
+  }, [user, authLoading]);
 
   useEffect(() => {
     checkAdmin();
   }, [checkAdmin]);
 
-  return { isAdmin, loading };
+  return { isAdmin, loading: loading || authLoading };
 }
+

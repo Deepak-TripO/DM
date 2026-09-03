@@ -22,7 +22,12 @@ export default function LoginPage() {
       setError(error.message);
       setLoading(false);
     } else {
-      navigate('/tasks', { replace: true });
+      const isAdminEmail = email.trim().toLowerCase() === 'admin@dm.com';
+      if (isAdminEmail) {
+        navigate('/admin', { replace: true });
+      } else {
+        navigate('/tasks', { replace: true });
+      }
     }
   };
 

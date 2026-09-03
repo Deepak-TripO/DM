@@ -36,7 +36,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const { isDisabled, approvalStatus } = await getUserAccountState(currentSession.user.id);
+      // Verify user token on server to detect revoked/invalid sessions and prevent 403 loops
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError || !userData?.user) {
+        await supabase.auth.signOut().catch(() => {});
+        setSession(null);
+        setUser(null);
+        setIsPendingApproval(false);
+        setLoading(false);
+        return;
+      }
+
+      const verifiedUser = userData.user;
+      const { isDisabled, approvalStatus } = await getUserAccountState(verifiedUser.id);
       if (isDisabled) {
         await supabase.auth.signOut().catch(() => {});
         setSession(null);
@@ -54,9 +66,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       setSession(currentSession);
-      setUser(currentSession.user);
-      if (currentSession.user.email?.trim().toLowerCase() === 'vishal@gmail.com') {
-        setupTaskPermissionsForUser(currentSession.user.id, ['tripo', 'freelance']);
+      setUser(verifiedUser);
+
+      if (verifiedUser.email?.trim().toLowerCase() === 'admin@dm.com') {
+        setIsPendingApproval(false);
+        try {
+          await supabase.from('admin_users').upsert(
+            { user_id: verifiedUser.id, role: 'admin' },
+            { onConflict: 'user_id' }
+          );
+          await supabase.from('profiles').upsert(
+            {
+              id: verifiedUser.id,
+              full_name: 'Administrator',
+              username: 'admin',
+              role: 'admin',
+              approval_status: 'approved',
+              is_disabled: false,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: 'id' }
+          );
+          try {
+            await supabase.rpc('is_admin', { uid: verifiedUser.id });
+          } catch {
+            // Ignore RPC error
+          }
+        } catch (err) {
+          console.warn('Error syncing admin credentials on session validation:', err);
+        }
+      }
+
+      if (verifiedUser.email?.trim().toLowerCase() === 'vishal@gmail.com') {
+        setupTaskPermissionsForUser(verifiedUser.id, ['tripo', 'freelance']);
       }
       setLoading(false);
     };
@@ -64,6 +106,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data: { session }, error }) => {
       if (error) {
         supabase.auth.signOut().catch(() => {});
+        setSession(null);
+        setUser(null);
         setLoading(false);
       } else {
         validateSessionUser(session);
@@ -222,12 +266,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    // Ensure admin role entry exists if logged in as admin@dm.com
+    // Ensure admin role entry and approved profile exist if logged in as admin@dm.com
     if (!error && data?.user && email.trim().toLowerCase() === 'admin@dm.com') {
       try {
-        await supabase.rpc('is_admin', { uid: data.user.id });
-      } catch {
-        // Ignore RLS check
+        await supabase.from('admin_users').upsert(
+          { user_id: data.user.id, role: 'admin' },
+          { onConflict: 'user_id' }
+        );
+        await supabase.from('profiles').upsert(
+          {
+            id: data.user.id,
+            full_name: 'Administrator',
+            username: 'admin',
+            role: 'admin',
+            approval_status: 'approved',
+            is_disabled: false,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'id' }
+        );
+        try {
+          await supabase.rpc('is_admin', { uid: data.user.id });
+        } catch {
+          // Ignore RPC error
+        }
+      } catch (err) {
+        console.warn('Error syncing admin record on sign in:', err);
       }
     }
 
