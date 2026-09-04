@@ -398,9 +398,10 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
                           aria-label="Filter by Status"
                         >
                           <option value="All">Status: All</option>
-                          <option value="Pending">Status: Pending</option>
                           <option value="No Response">Status: No Response</option>
+                          <option value="Pending">Status: Pending</option>
                           <option value="Complete">Status: Complete</option>
+                          <option value="Follow up">Status: Follow up</option>
                         </select>
                       </div>
 
@@ -501,9 +502,10 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
                         aria-label="Filter by Status"
                       >
                         <option value="All">Status: All</option>
-                        <option value="Pending">Status: Pending</option>
                         <option value="No Response">Status: No Response</option>
+                        <option value="Pending">Status: Pending</option>
                         <option value="Complete">Status: Complete</option>
+                        <option value="Follow up">Status: Follow up</option>
                       </select>
 
                       {(searchQuery || selectedProfession !== 'All' || selectedStatus !== 'All' || selectedDistrict !== 'All') && (
@@ -564,23 +566,27 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
                                 )}
                                 <span
                                   className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
-                                    entry.status === 'Pending'
-                                      ? 'bg-red-500/10 text-red-500 border-red-500/30'
-                                      : entry.status === 'No Response'
+                                    entry.status === 'No Response'
                                       ? 'bg-amber-500/10 text-amber-500 border-amber-500/30'
+                                      : entry.status === 'Pending'
+                                      ? 'bg-red-500/10 text-red-500 border-red-500/30'
                                       : entry.status === 'Complete'
                                       ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
+                                      : entry.status === 'Follow up'
+                                      ? 'bg-pink-500/10 text-pink-500 border-pink-500/30'
                                       : 'bg-gray-500/10 text-[var(--color-text-tertiary)] border-gray-500/20'
                                   }`}
                                 >
                                   <span
                                     className={`h-1.5 w-1.5 rounded-full ${
-                                      entry.status === 'Pending'
-                                        ? 'bg-red-500'
-                                        : entry.status === 'No Response'
+                                      entry.status === 'No Response'
                                         ? 'bg-amber-500'
+                                        : entry.status === 'Pending'
+                                        ? 'bg-red-500'
                                         : entry.status === 'Complete'
                                         ? 'bg-emerald-500'
+                                        : entry.status === 'Follow up'
+                                        ? 'bg-pink-500'
                                         : 'bg-gray-400'
                                     }`}
                                   />

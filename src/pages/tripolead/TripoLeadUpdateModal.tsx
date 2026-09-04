@@ -95,21 +95,28 @@ export function TripoLeadUpdateModal({
                 value={status}
                 onChange={(e) => setStatus(e.target.value as TripoLeadStatus)}
                 className={`w-full rounded-xl neu-pressed px-4 py-3 text-xs font-extrabold focus:outline-none focus:ring-2 bg-[var(--neu-bg)] cursor-pointer ${
-                  status === 'Pending'
-                    ? 'text-red-500 focus:ring-red-500/40'
-                    : status === 'No Response'
+                  status === 'No Response'
                     ? 'text-amber-500 focus:ring-amber-500/40'
-                    : 'text-emerald-500 focus:ring-emerald-500/40'
+                    : status === 'Pending'
+                    ? 'text-red-500 focus:ring-red-500/40'
+                    : status === 'Complete'
+                    ? 'text-emerald-500 focus:ring-emerald-500/40'
+                    : status === 'Follow up'
+                    ? 'text-pink-500 focus:ring-pink-500/40'
+                    : 'text-[var(--color-text-primary)]'
                 }`}
               >
-                <option value="Pending" className="text-red-500 bg-[var(--neu-bg)] font-bold">
-                  Pending — RED
-                </option>
                 <option value="No Response" className="text-amber-500 bg-[var(--neu-bg)] font-bold">
-                  No Response — YELLOW
+                  No Response — Yellow
+                </option>
+                <option value="Pending" className="text-red-500 bg-[var(--neu-bg)] font-bold">
+                  Pending — Red
                 </option>
                 <option value="Complete" className="text-emerald-500 bg-[var(--neu-bg)] font-bold">
-                  Complete — GREEN
+                  Complete — Green
+                </option>
+                <option value="Follow up" className="text-pink-500 bg-[var(--neu-bg)] font-bold">
+                  Follow up — Pink
                 </option>
               </select>
             </div>
@@ -117,20 +124,28 @@ export function TripoLeadUpdateModal({
             <div className="pt-1">
               <span
                 className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold border ${
-                  status === 'Pending'
-                    ? 'bg-red-500/10 text-red-500 border-red-500/30'
-                    : status === 'No Response'
+                  status === 'No Response'
                     ? 'bg-amber-500/10 text-amber-500 border-amber-500/30'
-                    : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
+                    : status === 'Pending'
+                    ? 'bg-red-500/10 text-red-500 border-red-500/30'
+                    : status === 'Complete'
+                    ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
+                    : status === 'Follow up'
+                    ? 'bg-pink-500/10 text-pink-500 border-pink-500/30'
+                    : 'bg-gray-500/10 text-[var(--color-text-tertiary)] border-gray-500/20'
                 }`}
               >
                 <span
                   className={`h-2 w-2 rounded-full ${
-                    status === 'Pending'
-                      ? 'bg-red-500'
-                      : status === 'No Response'
+                    status === 'No Response'
                       ? 'bg-amber-500'
-                      : 'bg-emerald-500'
+                      : status === 'Pending'
+                      ? 'bg-red-500'
+                      : status === 'Complete'
+                      ? 'bg-emerald-500'
+                      : status === 'Follow up'
+                      ? 'bg-pink-500'
+                      : 'bg-gray-400'
                   }`}
                 />
                 {status}
