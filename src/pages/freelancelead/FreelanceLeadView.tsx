@@ -112,7 +112,9 @@ export function FreelanceLeadView({ task }: FreelanceLeadViewProps) {
   const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
 
+  const isVishalUser = user?.email?.trim().toLowerCase() === 'vishal@gmail.com';
   const isUserAdmin = Boolean(isAdminHook || user?.role === 'admin' || user?.email?.toLowerCase() === 'admin@dm.com');
+  const canModifyFreelanceLead = Boolean(isUserAdmin || isVishalUser);
 
   // Queries for Freelance Lead entries & files
   const { data: entries = [], isLoading: loadingEntries } = useQuery({
@@ -288,8 +290,8 @@ export function FreelanceLeadView({ task }: FreelanceLeadViewProps) {
   });
 
   const handleOpenEditModal = (entry: FreelanceLeadEntry) => {
-    if (!isUserAdmin) {
-      toast.error('Access Denied: Only Administrators can edit Freelance Lead entries.');
+    if (!canModifyFreelanceLead) {
+      toast.error('Access Denied: You do not have permission to edit Freelance Lead entries.');
       return;
     }
     setEditingEntry(entry);
@@ -297,8 +299,8 @@ export function FreelanceLeadView({ task }: FreelanceLeadViewProps) {
   };
 
   const handleOpenUpdateModal = (entry: FreelanceLeadEntry) => {
-    if (!isUserAdmin) {
-      toast.error('Access Denied: Only Administrators can update Freelance Lead entries.');
+    if (!canModifyFreelanceLead) {
+      toast.error('Access Denied: You do not have permission to update Freelance Lead entries.');
       return;
     }
     setActiveEntry(entry);
@@ -362,6 +364,7 @@ export function FreelanceLeadView({ task }: FreelanceLeadViewProps) {
                       <option value="Pending">Status: Pending</option>
                       <option value="No Response">Status: No Response</option>
                       <option value="Complete">Status: Complete</option>
+                      <option value="Follow up">Status: Follow up</option>
                     </select>
                   </div>
 
@@ -453,6 +456,7 @@ export function FreelanceLeadView({ task }: FreelanceLeadViewProps) {
                     <option value="Pending">Status: Pending</option>
                     <option value="No Response">Status: No Response</option>
                     <option value="Complete">Status: Complete</option>
+                    <option value="Follow up">Status: Follow up</option>
                   </select>
 
                   <select
@@ -531,7 +535,11 @@ export function FreelanceLeadView({ task }: FreelanceLeadViewProps) {
                                       ? 'bg-red-500/10 text-red-500 border-red-500/30'
                                       : entry.status === 'No Response'
                                       ? 'bg-amber-500/10 text-amber-500 border-amber-500/30'
-                                      : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
+                                      : entry.status === 'Complete'
+                                      ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
+                                      : entry.status === 'Follow up'
+                                      ? 'bg-pink-500/10 text-pink-500 border-pink-500/30'
+                                      : 'bg-gray-500/10 text-[var(--color-text-tertiary)] border-gray-500/20'
                                   }`}
                                 >
                                   <span
@@ -540,7 +548,11 @@ export function FreelanceLeadView({ task }: FreelanceLeadViewProps) {
                                         ? 'bg-red-500'
                                         : entry.status === 'No Response'
                                         ? 'bg-amber-500'
-                                        : 'bg-emerald-500'
+                                        : entry.status === 'Complete'
+                                        ? 'bg-emerald-500'
+                                        : entry.status === 'Follow up'
+                                        ? 'bg-pink-500'
+                                        : 'bg-gray-400'
                                     }`}
                                   />
                                   {entry.status}
@@ -593,7 +605,7 @@ export function FreelanceLeadView({ task }: FreelanceLeadViewProps) {
                               <Star className={`h-3.5 w-3.5 ${isStarred ? 'fill-amber-500 text-amber-500' : ''}`} />
                             </button>
 
-                            {isUserAdmin && (
+                            {canModifyFreelanceLead && (
                               <button
                                 onClick={() => handleOpenEditModal(entry)}
                                 className="neu-btn px-3 py-1.5 rounded-xl text-xs font-extrabold text-[var(--color-text-primary)] flex items-center gap-1.5 shadow-xs hover:scale-[1.02] cursor-pointer"
@@ -604,7 +616,7 @@ export function FreelanceLeadView({ task }: FreelanceLeadViewProps) {
                               </button>
                             )}
 
-                            {isUserAdmin && (
+                            {canModifyFreelanceLead && (
                               <button
                                 onClick={() => handleOpenUpdateModal(entry)}
                                 className="neu-btn-primary px-3.5 py-1.5 rounded-xl text-xs font-extrabold text-white flex items-center gap-1.5 shadow-sm hover:scale-[1.02] cursor-pointer"
@@ -615,7 +627,7 @@ export function FreelanceLeadView({ task }: FreelanceLeadViewProps) {
                               </button>
                             )}
 
-                            {isUserAdmin && (
+                            {canModifyFreelanceLead && (
                               <button
                                 onClick={() => softDeleteEntryMutation.mutate(entry.id)}
                                 className="h-8 w-8 neu-circle text-red-500 hover:scale-105 cursor-pointer flex items-center justify-center"
@@ -659,7 +671,7 @@ export function FreelanceLeadView({ task }: FreelanceLeadViewProps) {
                                     onClick={() => setMobileMenuEntryId(null)}
                                   />
                                   <div className="absolute right-0 top-8 z-40 w-36 rounded-2xl neu-modal p-1.5 shadow-2xl border border-[var(--color-border-light)]/60 animate-in fade-in zoom-in-95 duration-150">
-                                    {isUserAdmin ? (
+                                    {canModifyFreelanceLead ? (
                                       <div className="space-y-0.5">
                                         <button
                                           onClick={() => {
@@ -909,7 +921,11 @@ export function FreelanceLeadView({ task }: FreelanceLeadViewProps) {
                                         ? 'bg-red-500/10 text-red-500 border-red-500/30'
                                         : entry.status === 'No Response'
                                         ? 'bg-amber-500/10 text-amber-500 border-amber-500/30'
-                                        : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
+                                        : entry.status === 'Complete'
+                                        ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
+                                        : entry.status === 'Follow up'
+                                        ? 'bg-pink-500/10 text-pink-500 border-pink-500/30'
+                                        : 'bg-gray-500/10 text-[var(--color-text-tertiary)] border-gray-500/20'
                                     }`}
                                   >
                                     <span
@@ -918,7 +934,11 @@ export function FreelanceLeadView({ task }: FreelanceLeadViewProps) {
                                           ? 'bg-red-500'
                                           : entry.status === 'No Response'
                                           ? 'bg-amber-500'
-                                          : 'bg-emerald-500'
+                                          : entry.status === 'Complete'
+                                          ? 'bg-emerald-500'
+                                          : entry.status === 'Follow up'
+                                          ? 'bg-pink-500'
+                                          : 'bg-gray-400'
                                       }`}
                                     />
                                     {entry.status}
@@ -939,7 +959,7 @@ export function FreelanceLeadView({ task }: FreelanceLeadViewProps) {
                               >
                                 <Star className="h-3.5 w-3.5 fill-amber-500" />
                               </button>
-                              {isUserAdmin && (
+                              {canModifyFreelanceLead && (
                                 <button
                                   onClick={() => handleOpenEditModal(entry)}
                                   className="neu-btn px-3 py-1.5 rounded-xl text-xs font-extrabold text-[var(--color-text-primary)] flex items-center gap-1.5 shadow-xs hover:scale-[1.02] cursor-pointer"
@@ -949,7 +969,7 @@ export function FreelanceLeadView({ task }: FreelanceLeadViewProps) {
                                   Edit
                                 </button>
                               )}
-                              {isUserAdmin && (
+                              {canModifyFreelanceLead && (
                                 <button
                                   onClick={() => handleOpenUpdateModal(entry)}
                                   className="neu-btn-primary px-3.5 py-1.5 rounded-xl text-xs font-extrabold text-white flex items-center gap-1.5 shadow-sm hover:scale-[1.02] cursor-pointer"
@@ -958,7 +978,7 @@ export function FreelanceLeadView({ task }: FreelanceLeadViewProps) {
                                   Update
                                 </button>
                               )}
-                              {isUserAdmin && (
+                              {canModifyFreelanceLead && (
                                 <button
                                   onClick={() => softDeleteEntryMutation.mutate(entry.id)}
                                   className="h-8 w-8 neu-circle text-red-500 hover:scale-105 cursor-pointer flex items-center justify-center"
@@ -1042,7 +1062,7 @@ export function FreelanceLeadView({ task }: FreelanceLeadViewProps) {
                           {entry.district} &middot; {entry.area} &middot; {formatRelativeTime(entry.updated_at)}
                         </p>
                       </div>
-                      {isUserAdmin && (
+                      {canModifyFreelanceLead && (
                         <div className="flex gap-2">
                           <button onClick={() => handleOpenEditModal(entry)} className="h-8 w-8 neu-circle text-[var(--color-text-primary)] cursor-pointer" title="Edit Entry Details">
                             <Pencil className="h-3.5 w-3.5 text-blue-500" />
@@ -1087,7 +1107,7 @@ export function FreelanceLeadView({ task }: FreelanceLeadViewProps) {
                             <p className="text-xs font-extrabold text-[var(--color-text-primary)]">{entry.hotel_name}</p>
                             <p className="text-[10px] font-semibold text-[var(--color-text-tertiary)]">{entry.district} &middot; {entry.area}</p>
                           </div>
-                          {isUserAdmin && (
+                          {canModifyFreelanceLead && (
                             <div className="flex gap-2">
                               <button onClick={() => restoreEntryMutation.mutate(entry.id)} className="h-8 w-8 neu-circle text-blue-500 cursor-pointer" title="Restore">
                                 <RotateCcw className="h-3.5 w-3.5" />
@@ -1111,7 +1131,7 @@ export function FreelanceLeadView({ task }: FreelanceLeadViewProps) {
                             <FileIcon extension={file.extension} size="sm" />
                             <span className="text-xs font-extrabold text-[var(--color-text-primary)]">{file.name}</span>
                           </div>
-                          {isUserAdmin && (
+                          {canModifyFreelanceLead && (
                             <div className="flex gap-2">
                               <button onClick={() => restoreFileMutation.mutate(file.id)} className="h-8 w-8 neu-circle text-blue-500 cursor-pointer" title="Restore">
                                 <RotateCcw className="h-3.5 w-3.5" />
@@ -1143,8 +1163,8 @@ export function FreelanceLeadView({ task }: FreelanceLeadViewProps) {
         isSubmitting={addEntryMutation.isPending}
       />
 
-      {/* Edit Entry Modal (Admin Only) */}
-      {isUserAdmin && (
+      {/* Edit Entry Modal */}
+      {canModifyFreelanceLead && (
         <FreelanceLeadEntryModal
           open={editingModalOpen}
           onClose={() => {
@@ -1157,8 +1177,8 @@ export function FreelanceLeadView({ task }: FreelanceLeadViewProps) {
         />
       )}
 
-      {/* Update Status/Date/Notes Modal (Admin Only) */}
-      {isUserAdmin && (
+      {/* Update Status/Date/Notes Modal */}
+      {canModifyFreelanceLead && (
         <FreelanceLeadUpdateModal
           open={updateModalOpen}
           onClose={() => {

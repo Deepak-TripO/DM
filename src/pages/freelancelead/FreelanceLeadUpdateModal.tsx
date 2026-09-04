@@ -73,21 +73,23 @@ export function FreelanceLeadUpdateModal({
               Lead Status <span className="text-red-500">*</span>
             </label>
 
-            <div className="grid grid-cols-3 gap-2">
-              {(['Pending', 'No Response', 'Complete'] as FreelanceLeadStatus[]).map((s) => {
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {(['Pending', 'No Response', 'Complete', 'Follow up'] as FreelanceLeadStatus[]).map((s) => {
                 const isSelected = status === s;
                 return (
                   <button
                     key={s}
                     type="button"
                     onClick={() => setStatus(s)}
-                    className={`py-2.5 px-2 rounded-xl text-xs font-black transition-all cursor-pointer border text-center ${
+                    className={`py-2.5 px-1.5 rounded-xl text-[11px] font-black transition-all cursor-pointer border text-center ${
                       isSelected
                         ? s === 'Pending'
                           ? 'bg-red-500 text-white border-red-600 shadow-md'
                           : s === 'No Response'
                           ? 'bg-amber-500 text-white border-amber-600 shadow-md'
-                          : 'bg-emerald-500 text-white border-emerald-600 shadow-md'
+                          : s === 'Complete'
+                          ? 'bg-emerald-500 text-white border-emerald-600 shadow-md'
+                          : 'bg-pink-500 text-white border-pink-600 shadow-md'
                         : 'neu-btn text-[var(--color-text-secondary)] border-transparent'
                     }`}
                   >

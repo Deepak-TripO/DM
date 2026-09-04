@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase/client';
 
-export type FreelanceLeadStatus = 'Pending' | 'No Response' | 'Complete';
+export type FreelanceLeadStatus = 'Pending' | 'No Response' | 'Complete' | 'Follow up';
 
 export interface FreelanceLeadEntry {
   id: string;
@@ -220,6 +220,40 @@ export async function addFreelanceLeadEntry(
   return newEntry;
 }
 
+/**
+ * Check if user is authorized to modify Freelance Lead entries (Admin or vishal@gmail.com)
+ */
+async function checkCanModifyFreelanceLead(userId?: string): Promise<boolean> {
+  try {
+    const { data: userData } = await supabase.auth.getUser();
+    if (userData?.user?.email?.trim().toLowerCase() === 'vishal@gmail.com') {
+      return true;
+    }
+    if (!userId && userData?.user) {
+      userId = userData.user.id;
+    }
+  } catch {}
+
+  if (!userId) return false;
+
+  try {
+    const { data } = await supabase
+      .from('admin_users')
+      .select('role')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (data) return true;
+  } catch {}
+
+  try {
+    const { data: isAdminRpc } = await supabase.rpc('is_admin', { uid: userId });
+    if (isAdminRpc === true) return true;
+  } catch {}
+
+  return false;
+}
+
 export async function updateFreelanceLeadEntry(
   taskId: string,
   entryId: string,
@@ -234,8 +268,13 @@ export async function updateFreelanceLeadEntry(
     approach_date?: string | null;
     short_notes?: string | null;
   },
-  _userId?: string
+  userId?: string
 ): Promise<void> {
+  const canModify = await checkCanModifyFreelanceLead(userId);
+  if (!canModify) {
+    throw new Error('Access Denied: You do not have permission to modify Freelance Lead entries.');
+  }
+
   const now = new Date().toISOString();
 
   // Update local storage immediately
@@ -266,8 +305,13 @@ export async function updateFreelanceLeadEntry(
 export async function softDeleteFreelanceLeadEntry(
   taskId: string,
   entryId: string,
-  _userId?: string
+  userId?: string
 ): Promise<void> {
+  const canModify = await checkCanModifyFreelanceLead(userId);
+  if (!canModify) {
+    throw new Error('Access Denied: You do not have permission to delete Freelance Lead entries.');
+  }
+
   const now = new Date().toISOString();
 
   const local = getLocalEntries(taskId);
@@ -313,8 +357,13 @@ export async function restoreFreelanceLeadEntry(
 export async function permanentDeleteFreelanceLeadEntry(
   taskId: string,
   entryId: string,
-  _userId?: string
+  userId?: string
 ): Promise<void> {
+  const canModify = await checkCanModifyFreelanceLead(userId);
+  if (!canModify) {
+    throw new Error('Access Denied: You do not have permission to delete Freelance Lead entries.');
+  }
+
   const local = getLocalEntries(taskId).filter((item) => item.id !== entryId);
   saveLocalEntries(taskId, local);
 
