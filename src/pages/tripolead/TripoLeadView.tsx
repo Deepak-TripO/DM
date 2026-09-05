@@ -62,6 +62,7 @@ import {
   Edit2,
   RotateCcw,
   Phone,
+  Pencil,
 } from 'lucide-react';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { toast } from 'sonner';
@@ -84,6 +85,7 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
 
   // Modals
   const [addEntryModalOpen, setAddEntryModalOpen] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<TripoLeadEntry | null>(null);
   const [updateModalOpen, setUpdateModalOpen] = useState(false);
   const [activeEntry, setActiveEntry] = useState<TripoLeadEntry | null>(null);
 
@@ -175,16 +177,32 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
 
   // Mutations for TripO Lead entries
   const addEntryMutation = useMutation({
-    mutationFn: (data: { hotel_name: string; district: string; area: string; location_link?: string; professional?: string; mobile_number?: string }) =>
+    mutationFn: (data: { hotel_name: string; district: string; area: string; location_link?: string; professional?: string; mobile_number?: string; state?: string }) =>
       addTripoLeadEntry(task.id, data, user?.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tripoLeadEntries', task.id] });
       queryClient.invalidateQueries({ queryKey: ['tripoLeadRecentEntries', task.id] });
       setAddEntryModalOpen(false);
+      setEditingEntry(null);
       toast.success('TripO Lead entry created successfully');
     },
     onError: (err: any) => {
       toast.error(err?.message || 'Failed to create entry');
+    },
+  });
+
+  const updateEntryDetailsMutation = useMutation({
+    mutationFn: ({ entryId, data }: { entryId: string; data: any }) =>
+      updateTripoLeadEntry(task.id, entryId, data, user?.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tripoLeadEntries', task.id] });
+      queryClient.invalidateQueries({ queryKey: ['tripoLeadRecentEntries', task.id] });
+      setAddEntryModalOpen(false);
+      setEditingEntry(null);
+      toast.success('TripO Lead entry updated successfully');
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Failed to update entry');
     },
   });
 
@@ -595,15 +613,28 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
                               </div>
 
                               <div className="flex items-center gap-3 text-xs font-semibold text-[var(--color-text-secondary)] flex-wrap">
+                                {entry.state && (
+                                  <>
+                                    <span className="flex items-center gap-1">
+                                      <MapPin className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                                      {entry.state}
+                                    </span>
+                                    <span>•</span>
+                                  </>
+                                )}
                                 <span className="flex items-center gap-1">
                                   <MapPin className="h-3.5 w-3.5 text-purple-500 shrink-0" />
                                   {entry.district}
                                 </span>
-                                <span>•</span>
-                                <span className="flex items-center gap-1">
-                                  <Navigation className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-                                  {entry.area}
-                                </span>
+                                {entry.area && (
+                                  <>
+                                    <span>•</span>
+                                    <span className="flex items-center gap-1">
+                                      <Navigation className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                                      {entry.area}
+                                    </span>
+                                  </>
+                                )}
                                 {entry.mobile_number && (
                                   <>
                                     <span>•</span>
@@ -639,11 +670,22 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="p-2 rounded-xl neu-btn text-emerald-500 hover:text-emerald-600 transition-colors"
-                                  title="Open Location Link"
+                                  title="Open Link"
                                 >
                                   <ExternalLink className="h-4 w-4" />
                                 </a>
                               )}
+
+                              <button
+                                onClick={() => {
+                                  setEditingEntry(entry);
+                                  setAddEntryModalOpen(true);
+                                }}
+                                className="p-2 rounded-xl neu-btn text-[var(--color-text-secondary)] hover:text-indigo-500 transition-colors cursor-pointer"
+                                title="Edit Entry Details"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </button>
 
                               <button
                                 onClick={() => {
@@ -1171,12 +1213,22 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
         }}
       />
 
-      {/* TripO Lead Entry Creation Modal */}
+      {/* TripO Lead Entry Creation / Edit Modal */}
       <TripoLeadEntryModal
         open={addEntryModalOpen}
-        onClose={() => setAddEntryModalOpen(false)}
-        onSave={(data) => addEntryMutation.mutate(data)}
-        isSubmitting={addEntryMutation.isPending}
+        onClose={() => {
+          setAddEntryModalOpen(false);
+          setEditingEntry(null);
+        }}
+        onSave={(data) => {
+          if (editingEntry) {
+            updateEntryDetailsMutation.mutate({ entryId: editingEntry.id, data });
+          } else {
+            addEntryMutation.mutate(data);
+          }
+        }}
+        initialData={editingEntry}
+        isSubmitting={addEntryMutation.isPending || updateEntryDetailsMutation.isPending}
       />
 
       {/* TripO Lead Entry Status Update Modal */}
