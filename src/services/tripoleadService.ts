@@ -1025,9 +1025,19 @@ export async function deleteTripoLeadFolder(taskId: string, folderId: string): P
 }
 
 /**
- * Check if current user is Admin
+ * Check if user is authorized to modify TripO Lead entries (Admin or vishal@gmail.com)
  */
-async function checkIsAdmin(userId?: string): Promise<boolean> {
+async function checkCanModifyTripoLead(userId?: string): Promise<boolean> {
+  try {
+    const { data: userData } = await supabase.auth.getUser();
+    if (userData?.user?.email?.trim().toLowerCase() === 'vishal@gmail.com') {
+      return true;
+    }
+    if (!userId && userData?.user) {
+      userId = userData.user.id;
+    }
+  } catch {}
+
   if (!userId) return false;
 
   // 1. Check local access override first
@@ -1226,9 +1236,9 @@ export async function updateTripoLeadEntry(
   },
   userId?: string
 ): Promise<void> {
-  const isAdmin = await checkIsAdmin(userId);
-  if (!isAdmin) {
-    throw new Error('Access Denied: Only Administrators can update TripO Lead entries.');
+  const canModify = await checkCanModifyTripoLead(userId);
+  if (!canModify) {
+    throw new Error('Access Denied: You do not have permission to update TripO Lead entries.');
   }
 
   const now = new Date().toISOString();
@@ -1270,9 +1280,9 @@ export async function softDeleteTripoLeadEntry(
   entryId: string,
   userId?: string
 ): Promise<void> {
-  const isAdmin = await checkIsAdmin(userId);
-  if (!isAdmin) {
-    throw new Error('Access Denied: Only Administrators can delete TripO Lead entries.');
+  const canModify = await checkCanModifyTripoLead(userId);
+  if (!canModify) {
+    throw new Error('Access Denied: You do not have permission to delete TripO Lead entries.');
   }
 
   const now = new Date().toISOString();
@@ -1319,9 +1329,9 @@ export async function restoreTripoLeadEntry(taskId: string, entryId: string): Pr
 }
 
 export async function permanentDeleteTripoLeadEntry(taskId: string, entryId: string, userId?: string): Promise<void> {
-  const isAdmin = await checkIsAdmin(userId);
-  if (!isAdmin) {
-    throw new Error('Access Denied: Only Administrators can delete TripO Lead entries.');
+  const canModify = await checkCanModifyTripoLead(userId);
+  if (!canModify) {
+    throw new Error('Access Denied: You do not have permission to delete TripO Lead entries.');
   }
 
   const local = getLocalEntries(taskId).filter((e) => e.id !== entryId);

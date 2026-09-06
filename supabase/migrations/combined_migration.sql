@@ -524,18 +524,29 @@ CREATE POLICY "Allowed users can insert tripolead entries"
 
 DROP POLICY IF EXISTS "Users can update tripolead entries" ON public.tripolead_entries;
 DROP POLICY IF EXISTS "Admins can update tripolead entries" ON public.tripolead_entries;
-CREATE POLICY "Admins can update tripolead entries"
+DROP POLICY IF EXISTS "Admins and Vishal can update tripolead entries" ON public.tripolead_entries;
+CREATE POLICY "Admins and Vishal can update tripolead entries"
     ON public.tripolead_entries FOR UPDATE
     TO authenticated
-    USING (public.is_admin(auth.uid()))
-    WITH CHECK (public.is_admin(auth.uid()));
+    USING (
+        public.is_admin(auth.uid()) OR 
+        LOWER(auth.jwt() ->> 'email') = 'vishal@gmail.com'
+    )
+    WITH CHECK (
+        public.is_admin(auth.uid()) OR 
+        LOWER(auth.jwt() ->> 'email') = 'vishal@gmail.com'
+    );
 
 DROP POLICY IF EXISTS "Users can delete tripolead entries" ON public.tripolead_entries;
 DROP POLICY IF EXISTS "Admins can delete tripolead entries" ON public.tripolead_entries;
-CREATE POLICY "Admins can delete tripolead entries"
+DROP POLICY IF EXISTS "Admins and Vishal can delete tripolead entries" ON public.tripolead_entries;
+CREATE POLICY "Admins and Vishal can delete tripolead entries"
     ON public.tripolead_entries FOR DELETE
     TO authenticated
-    USING (public.is_admin(auth.uid()));
+    USING (
+        public.is_admin(auth.uid()) OR 
+        LOWER(auth.jwt() ->> 'email') = 'vishal@gmail.com'
+    );
 
 -- 14. FREELANCE LEAD ENTRIES TABLE
 CREATE TABLE IF NOT EXISTS public.freelancelead_entries (
