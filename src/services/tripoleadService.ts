@@ -1160,8 +1160,8 @@ export async function addTripoLeadEntry(
   taskId: string,
   entry: {
     hotel_name: string;
-    district: string;
-    area: string;
+    district?: string;
+    area?: string;
     location_link?: string;
     professional?: string;
     mobile_number?: string;
@@ -1173,12 +1173,12 @@ export async function addTripoLeadEntry(
     id: crypto.randomUUID(),
     task_id: taskId,
     hotel_name: entry.hotel_name,
-    district: entry.district,
-    area: entry.area,
+    district: entry.district || '',
+    area: entry.area || '',
     location_link: entry.location_link || null,
     professional: entry.professional || null,
     mobile_number: entry.mobile_number || null,
-    state: entry.state || 'Tamil Nadu',
+    state: entry.state || null,
     status: null,
     approach_date: null,
     short_notes: null,

@@ -177,7 +177,7 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
 
   // Mutations for TripO Lead entries
   const addEntryMutation = useMutation({
-    mutationFn: (data: { hotel_name: string; district: string; area: string; location_link?: string; professional?: string; mobile_number?: string; state?: string }) =>
+    mutationFn: (data: { hotel_name: string; district?: string; area?: string; location_link?: string; professional?: string; mobile_number?: string; state?: string }) =>
       addTripoLeadEntry(task.id, data, user?.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tripoLeadEntries', task.id] });
@@ -622,10 +622,12 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
                                     <span>•</span>
                                   </>
                                 )}
-                                <span className="flex items-center gap-1">
-                                  <MapPin className="h-3.5 w-3.5 text-purple-500 shrink-0" />
-                                  {entry.district}
-                                </span>
+                                 {entry.district && (
+                                   <span className="flex items-center gap-1">
+                                     <MapPin className="h-3.5 w-3.5 text-purple-500 shrink-0" />
+                                     {entry.district}
+                                   </span>
+                                 )}
                                 {entry.area && (
                                   <>
                                     <span>•</span>

@@ -13,8 +13,8 @@ interface TripoLeadEntryModalProps {
   onClose: () => void;
   onSave: (data: {
     hotel_name: string;
-    district: string;
-    area: string;
+    district?: string;
+    area?: string;
     location_link?: string;
     professional?: string;
     mobile_number?: string;
@@ -74,13 +74,13 @@ export function TripoLeadEntryModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isPackager) {
-      if (!hotelName.trim() || !mobileNumber.trim() || !state.trim() || !district.trim()) return;
+      if (!hotelName.trim()) return;
 
       onSave({
         hotel_name: hotelName.trim(),
-        mobile_number: mobileNumber.trim(),
-        state: state.trim(),
-        district: district.trim(),
+        mobile_number: mobileNumber.trim() || undefined,
+        state: state.trim() || undefined,
+        district: district.trim() || undefined,
         area: area.trim(),
         location_link: locationLink.trim() || undefined,
         professional: professional || undefined,
@@ -102,7 +102,7 @@ export function TripoLeadEntryModal({
 
   const isEditing = !!initialData;
   const isFormInvalid = isPackager
-    ? !hotelName.trim() || !mobileNumber.trim() || !state.trim() || !district.trim()
+    ? !hotelName.trim()
     : !hotelName.trim() || !district.trim() || !area.trim();
 
   return (
@@ -174,11 +174,10 @@ export function TripoLeadEntryModal({
                 <div className="space-y-1.5">
                   <label className="text-xs font-extrabold text-[var(--color-text-primary)] uppercase tracking-wider flex items-center gap-2">
                     <Phone className="h-3.5 w-3.5 text-teal-500" />
-                    Mobile Number <span className="text-red-500">*</span>
+                    Mobile Number <span className="text-[var(--color-text-tertiary)] font-semibold normal-case">(Optional)</span>
                   </label>
                   <input
                     type="tel"
-                    required
                     value={mobileNumber}
                     onChange={(e) => setMobileNumber(e.target.value)}
                     placeholder="e.g. +91 98765 43210"
@@ -190,10 +189,9 @@ export function TripoLeadEntryModal({
                 <div className="space-y-1.5">
                   <label className="text-xs font-extrabold text-[var(--color-text-primary)] uppercase tracking-wider flex items-center gap-2">
                     <MapPin className="h-3.5 w-3.5 text-emerald-500" />
-                    State <span className="text-red-500">*</span>
+                    State <span className="text-[var(--color-text-tertiary)] font-semibold normal-case">(Optional)</span>
                   </label>
                   <select
-                    required
                     value={state}
                     onChange={(e) => handleStateChange(e.target.value)}
                     className="w-full rounded-xl neu-pressed px-4 py-3 text-xs font-bold text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-emerald-500/40 bg-[var(--neu-bg)] cursor-pointer"
@@ -216,10 +214,9 @@ export function TripoLeadEntryModal({
                 <div className="space-y-1.5">
                   <label className="text-xs font-extrabold text-[var(--color-text-primary)] uppercase tracking-wider flex items-center gap-2">
                     <MapPin className="h-3.5 w-3.5 text-purple-500" />
-                    District <span className="text-red-500">*</span>
+                    District <span className="text-[var(--color-text-tertiary)] font-semibold normal-case">(Optional)</span>
                   </label>
                   <select
-                    required
                     value={district}
                     onChange={(e) => setDistrict(e.target.value)}
                     className="w-full rounded-xl neu-pressed px-4 py-3 text-xs font-bold text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-purple-500/40 bg-[var(--neu-bg)] cursor-pointer"

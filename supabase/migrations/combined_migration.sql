@@ -497,6 +497,8 @@ ALTER TABLE public.tripolead_entries ADD COLUMN IF NOT EXISTS approach_date DATE
 ALTER TABLE public.tripolead_entries ADD COLUMN IF NOT EXISTS short_notes TEXT;
 ALTER TABLE public.tripolead_entries ADD COLUMN IF NOT EXISTS professional TEXT;
 ALTER TABLE public.tripolead_entries ADD COLUMN IF NOT EXISTS mobile_number TEXT;
+ALTER TABLE public.tripolead_entries ALTER COLUMN district DROP NOT NULL;
+ALTER TABLE public.tripolead_entries ALTER COLUMN area DROP NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_tripolead_entries_task_id ON public.tripolead_entries(task_id);
 CREATE INDEX IF NOT EXISTS idx_tripolead_entries_deleted_at ON public.tripolead_entries(deleted_at);
