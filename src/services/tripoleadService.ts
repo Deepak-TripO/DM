@@ -1156,6 +1156,60 @@ export async function getTripoLeadTrashEntries(
   return getLocalEntries(taskId).filter((e) => Boolean(e.deleted_at));
 }
 
+export async function checkDuplicateTripoLead(
+  taskId: string,
+  entry: {
+    hotel_name?: string;
+    district?: string;
+    location_link?: string;
+    mobile_number?: string;
+  },
+  excludeId?: string
+): Promise<boolean> {
+  const normName = (entry.hotel_name || '').trim().toLowerCase();
+  const normMobile = (entry.mobile_number || '').trim().toLowerCase();
+  const normDistrict = (entry.district || '').trim().toLowerCase();
+  const normLink = (entry.location_link || '').trim().toLowerCase();
+
+  let allEntries: TripoLeadEntry[] = [];
+  try {
+    const { data, error } = await supabase
+      .from('tripolead_entries')
+      .select('*')
+      .eq('task_id', taskId)
+      .is('deleted_at', null);
+
+    if (!error && data) {
+      allEntries = data as TripoLeadEntry[];
+    }
+  } catch {}
+
+  const localEntries = getLocalEntries(taskId).filter((e) => !e.deleted_at);
+  const dbIds = new Set(allEntries.map((e) => e.id));
+  localEntries.forEach((loc) => {
+    if (!dbIds.has(loc.id)) {
+      allEntries.push(loc);
+    }
+  });
+
+  return allEntries.some((e) => {
+    if (e.deleted_at) return false;
+    if (excludeId && e.id === excludeId) return false;
+
+    const eName = (e.hotel_name || '').trim().toLowerCase();
+    const eMobile = (e.mobile_number || '').trim().toLowerCase();
+    const eDistrict = (e.district || '').trim().toLowerCase();
+    const eLink = (e.location_link || '').trim().toLowerCase();
+
+    return (
+      eName === normName &&
+      eMobile === normMobile &&
+      eDistrict === normDistrict &&
+      eLink === normLink
+    );
+  });
+}
+
 export async function addTripoLeadEntry(
   taskId: string,
   entry: {
@@ -1169,6 +1223,17 @@ export async function addTripoLeadEntry(
   },
   userId?: string
 ): Promise<TripoLeadEntry> {
+  const isDuplicate = await checkDuplicateTripoLead(taskId, {
+    hotel_name: entry.hotel_name,
+    mobile_number: entry.mobile_number,
+    district: entry.district,
+    location_link: entry.location_link,
+  });
+
+  if (isDuplicate) {
+    throw new Error('Duplicate TripO Lead entry. This lead already exists.');
+  }
+
   const newEntry: TripoLeadEntry = {
     id: crypto.randomUUID(),
     task_id: taskId,
@@ -1186,10 +1251,6 @@ export async function addTripoLeadEntry(
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
-
-  const local = getLocalEntries(taskId);
-  local.unshift(newEntry);
-  saveLocalEntries(taskId, local);
 
   try {
     const { data, error } = await supabase
@@ -1209,13 +1270,31 @@ export async function addTripoLeadEntry(
       .select()
       .single();
 
-    if (!error && data) {
-      const updatedLocal = getLocalEntries(taskId).map((e) => (e.id === newEntry.id ? data : e));
-      saveLocalEntries(taskId, updatedLocal);
+    if (error) {
+      if (error.message && (error.message.includes('Duplicate') || error.message.includes('duplicate'))) {
+        throw new Error('Duplicate TripO Lead entry. This lead already exists.');
+      }
+      throw new Error(error.message);
+    }
+
+    if (data) {
+      const local = getLocalEntries(taskId);
+      local.unshift(data as TripoLeadEntry);
+      saveLocalEntries(taskId, local);
       return data as TripoLeadEntry;
     }
-  } catch {}
+  } catch (err: any) {
+    if (err.message && err.message.includes('Duplicate')) {
+      throw err;
+    }
+    if (err.message) {
+      throw err;
+    }
+  }
 
+  const local = getLocalEntries(taskId);
+  local.unshift(newEntry);
+  saveLocalEntries(taskId, local);
   return newEntry;
 }
 
@@ -1241,20 +1320,30 @@ export async function updateTripoLeadEntry(
     throw new Error('Access Denied: You do not have permission to update TripO Lead entries.');
   }
 
-  const now = new Date().toISOString();
-
   const local = getLocalEntries(taskId);
-  const updatedLocal = local.map((item) => {
-    if (item.id === entryId) {
-      return {
-        ...item,
-        ...updates,
-        updated_at: now,
-      };
-    }
-    return item;
-  });
-  saveLocalEntries(taskId, updatedLocal);
+  const currentEntry = local.find((e) => e.id === entryId);
+
+  const finalHotelName = updates.hotel_name !== undefined ? updates.hotel_name : currentEntry?.hotel_name;
+  const finalMobileNumber = updates.mobile_number !== undefined ? (updates.mobile_number || undefined) : currentEntry?.mobile_number;
+  const finalDistrict = updates.district !== undefined ? updates.district : currentEntry?.district;
+  const finalLocationLink = updates.location_link !== undefined ? (updates.location_link || undefined) : currentEntry?.location_link;
+
+  const isDuplicate = await checkDuplicateTripoLead(
+    taskId,
+    {
+      hotel_name: finalHotelName || '',
+      mobile_number: finalMobileNumber || undefined,
+      district: finalDistrict || '',
+      location_link: finalLocationLink || undefined,
+    },
+    entryId
+  );
+
+  if (isDuplicate) {
+    throw new Error('Duplicate TripO Lead entry. This lead already exists.');
+  }
+
+  const now = new Date().toISOString();
 
   try {
     const { error } = await supabase
@@ -1266,13 +1355,31 @@ export async function updateTripoLeadEntry(
       .eq('id', entryId);
 
     if (error) {
+      if (error.message && (error.message.includes('Duplicate') || error.message.includes('duplicate'))) {
+        throw new Error('Duplicate TripO Lead entry. This lead already exists.');
+      }
       throw new Error(error.message);
     }
   } catch (err: any) {
-    if (err.message && err.message.includes('Access Denied')) {
+    if (err.message && (err.message.includes('Access Denied') || err.message.includes('Duplicate'))) {
+      throw err;
+    }
+    if (err.message) {
       throw err;
     }
   }
+
+  const updatedLocal = local.map((item) => {
+    if (item.id === entryId) {
+      return {
+        ...item,
+        ...updates,
+        updated_at: now,
+      };
+    }
+    return item;
+  });
+  saveLocalEntries(taskId, updatedLocal);
 }
 
 export async function softDeleteTripoLeadEntry(

@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { X, Tag, Calendar, FileText, Phone } from 'lucide-react';
+import { X, Tag, Calendar, FileText, Phone, AlertCircle } from 'lucide-react';
 import type { TripoLeadEntry, TripoLeadStatus } from '@/services/tripoleadService';
 
 interface TripoLeadUpdateModalProps {
   open: boolean;
   onClose: () => void;
-  onSave: (data: { status: TripoLeadStatus; approach_date?: string; short_notes?: string; mobile_number?: string }) => void;
+  onSave: (data: { status: TripoLeadStatus; approach_date?: string; short_notes?: string; mobile_number?: string }) => Promise<any> | void;
   entry: TripoLeadEntry | null;
   isSubmitting?: boolean;
 }
@@ -21,8 +21,10 @@ export function TripoLeadUpdateModal({
   const [approachDate, setApproachDate] = useState('');
   const [shortNotes, setShortNotes] = useState('');
   const [mobileNumber, setMobileNumber] = useState('');
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
+    setErrorMsg(null);
     if (entry) {
       setStatus(entry.status || 'Pending');
       setApproachDate(entry.approach_date || new Date().toISOString().split('T')[0]);
@@ -33,14 +35,19 @@ export function TripoLeadUpdateModal({
 
   if (!open || !entry) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSave({
-      status,
-      approach_date: approachDate || undefined,
-      short_notes: shortNotes.trim() || undefined,
-      mobile_number: mobileNumber.trim() || undefined,
-    });
+    setErrorMsg(null);
+    try {
+      await onSave({
+        status,
+        approach_date: approachDate || undefined,
+        short_notes: shortNotes.trim() || undefined,
+        mobile_number: mobileNumber.trim() || undefined,
+      });
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Duplicate TripO Lead entry. This lead already exists.');
+    }
   };
 
   return (
@@ -181,6 +188,14 @@ export function TripoLeadUpdateModal({
               className="w-full rounded-xl neu-pressed px-4 py-3 text-xs font-bold text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-amber-500/40 resize-none"
             />
           </div>
+
+          {/* Error Message Display */}
+          {errorMsg && (
+            <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 flex items-center gap-2.5 text-xs font-bold text-red-500 animate-in fade-in slide-in-from-top-1">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>{errorMsg}</span>
+            </div>
+          )}
 
           {/* Form Actions */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-[var(--color-border-light)]/40">

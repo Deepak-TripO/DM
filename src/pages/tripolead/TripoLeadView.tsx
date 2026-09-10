@@ -1222,11 +1222,11 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
           setAddEntryModalOpen(false);
           setEditingEntry(null);
         }}
-        onSave={(data) => {
+        onSave={async (data) => {
           if (editingEntry) {
-            updateEntryDetailsMutation.mutate({ entryId: editingEntry.id, data });
+            await updateEntryDetailsMutation.mutateAsync({ entryId: editingEntry.id, data });
           } else {
-            addEntryMutation.mutate(data);
+            await addEntryMutation.mutateAsync(data);
           }
         }}
         initialData={editingEntry}
@@ -1240,7 +1240,9 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
           setUpdateModalOpen(false);
           setActiveEntry(null);
         }}
-        onSave={(data) => updateEntryMutation.mutate(data)}
+        onSave={async (data) => {
+          await updateEntryMutation.mutateAsync(data);
+        }}
         entry={activeEntry}
         isSubmitting={updateEntryMutation.isPending}
       />

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Building2, MapPin, Navigation, ExternalLink, UserCheck, Phone } from 'lucide-react';
+import { X, Building2, MapPin, Navigation, ExternalLink, UserCheck, Phone, AlertCircle } from 'lucide-react';
 import {
   TAMIL_NADU_DISTRICTS,
   INDIAN_STATES,
@@ -19,7 +19,7 @@ interface TripoLeadEntryModalProps {
     professional?: string;
     mobile_number?: string;
     state?: string;
-  }) => void;
+  }) => Promise<any> | void;
   initialData?: TripoLeadEntry | null;
   isSubmitting?: boolean;
 }
@@ -38,8 +38,10 @@ export function TripoLeadEntryModal({
   const [professional, setProfessional] = useState('');
   const [mobileNumber, setMobileNumber] = useState('');
   const [state, setState] = useState('Tamil Nadu');
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
+    setErrorMsg(null);
     if (initialData) {
       setHotelName(initialData.hotel_name || '');
       setProfessional(initialData.professional || '');
@@ -65,38 +67,47 @@ export function TripoLeadEntryModal({
   const isPackager = professional === 'Packager';
 
   const handleStateChange = (newState: string) => {
+    setErrorMsg(null);
     setState(newState);
     setDistrict('');
   };
 
   const availableDistricts = state ? INDIAN_STATES_DISTRICTS_MAP[state] || [] : [];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMsg(null);
+
+    const payload = isPackager
+      ? {
+          hotel_name: hotelName.trim(),
+          mobile_number: mobileNumber.trim() || undefined,
+          state: state.trim() || undefined,
+          district: district.trim() || undefined,
+          area: area.trim(),
+          location_link: locationLink.trim() || undefined,
+          professional: professional || undefined,
+        }
+      : {
+          hotel_name: hotelName.trim(),
+          district: district.trim(),
+          area: area.trim(),
+          location_link: locationLink.trim() || undefined,
+          professional: professional || undefined,
+          mobile_number: mobileNumber.trim() || undefined,
+          state: state.trim() || undefined,
+        };
+
     if (isPackager) {
       if (!hotelName.trim()) return;
-
-      onSave({
-        hotel_name: hotelName.trim(),
-        mobile_number: mobileNumber.trim() || undefined,
-        state: state.trim() || undefined,
-        district: district.trim() || undefined,
-        area: area.trim(),
-        location_link: locationLink.trim() || undefined,
-        professional: professional || undefined,
-      });
     } else {
       if (!hotelName.trim() || !district || !area.trim()) return;
+    }
 
-      onSave({
-        hotel_name: hotelName.trim(),
-        district: district.trim(),
-        area: area.trim(),
-        location_link: locationLink.trim() || undefined,
-        professional: professional || undefined,
-        mobile_number: mobileNumber.trim() || undefined,
-        state: state.trim() || undefined,
-      });
+    try {
+      await onSave(payload);
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Duplicate TripO Lead entry. This lead already exists.');
     }
   };
 
@@ -348,6 +359,14 @@ export function TripoLeadEntryModal({
                 />
               </div>
             </>
+          )}
+
+          {/* Error Message Display */}
+          {errorMsg && (
+            <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 flex items-center gap-2.5 text-xs font-bold text-red-500 animate-in fade-in slide-in-from-top-1">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>{errorMsg}</span>
+            </div>
           )}
 
           {/* Form Actions */}
