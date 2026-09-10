@@ -890,6 +890,7 @@ export interface TripoLeadEntry {
   status?: TripoLeadStatus | null;
   approach_date?: string | null;
   short_notes?: string | null;
+  is_starred?: boolean | null;
   deleted_at?: string | null;
   created_at: string;
   updated_at: string;
@@ -1451,3 +1452,49 @@ export async function permanentDeleteTripoLeadEntry(taskId: string, entryId: str
       .eq('id', entryId);
   } catch {}
 }
+
+export async function toggleStarTripoLeadEntry(
+  taskId: string,
+  entryId: string,
+  isStarred: boolean,
+  userId?: string
+): Promise<void> {
+  const canModify = await checkCanModifyTripoLead(userId);
+  if (!canModify) {
+    throw new Error('Access Denied: You do not have permission to star TripO Lead entries.');
+  }
+
+  const now = new Date().toISOString();
+
+  const local = getLocalEntries(taskId);
+  const updatedLocal = local.map((item) => {
+    if (item.id === entryId) {
+      return {
+        ...item,
+        is_starred: isStarred,
+        updated_at: now,
+      };
+    }
+    return item;
+  });
+  saveLocalEntries(taskId, updatedLocal);
+
+  try {
+    const { error } = await supabase
+      .from('tripolead_entries')
+      .update({
+        is_starred: isStarred,
+        updated_at: now,
+      })
+      .eq('id', entryId);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+  } catch (err: any) {
+    if (err.message && err.message.includes('Access Denied')) {
+      throw err;
+    }
+  }
+}
+

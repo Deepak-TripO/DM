@@ -12,6 +12,7 @@ import {
   softDeleteTripoLeadEntry,
   restoreTripoLeadEntry,
   permanentDeleteTripoLeadEntry,
+  toggleStarTripoLeadEntry,
   TAMIL_NADU_DISTRICTS,
   TRIPO_LEAD_PROFESSIONAL_OPTIONS,
   type TripoLeadEntry,
@@ -78,10 +79,11 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Filter States (Profession, Status & District)
+  // Filter States (Profession, Status, District & Starred)
   const [selectedProfession, setSelectedProfession] = useState<string>('All');
   const [selectedStatus, setSelectedStatus] = useState<string>('All');
   const [selectedDistrict, setSelectedDistrict] = useState<string>('All');
+  const [selectedStarredFilter, setSelectedStarredFilter] = useState<string>('All');
 
   // Modals
   const [addEntryModalOpen, setAddEntryModalOpen] = useState(false);
@@ -137,7 +139,7 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
     queryFn: () => getTripoLeadTrashEntries(task.id),
   });
 
-  // Filtered Entries Logic (Search + Profession + Status + District combined)
+  // Filtered Entries Logic (Search + Profession + Status + District + Starred combined)
   const filteredEntries = useMemo(() => {
     return entries.filter((entry) => {
       // 1. Search Query filter
@@ -171,11 +173,29 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
         if (entry.district.toLowerCase() !== selectedDistrict.toLowerCase()) return false;
       }
 
+      // 5. Starred Filter
+      if (selectedStarredFilter === 'Starred') {
+        if (!entry.is_starred) return false;
+      }
+
       return true;
     });
-  }, [entries, searchQuery, selectedProfession, selectedStatus, selectedDistrict]);
+  }, [entries, searchQuery, selectedProfession, selectedStatus, selectedDistrict, selectedStarredFilter]);
 
   // Mutations for TripO Lead entries
+  const toggleStarMutation = useMutation({
+    mutationFn: ({ entryId, isStarred }: { entryId: string; isStarred: boolean }) =>
+      toggleStarTripoLeadEntry(task.id, entryId, isStarred, user?.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tripoLeadEntries', task.id] });
+      queryClient.invalidateQueries({ queryKey: ['tripoLeadRecentEntries', task.id] });
+      toast.success('Starred status updated');
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Failed to update starred status');
+    },
+  });
+
   const addEntryMutation = useMutation({
     mutationFn: (data: { hotel_name: string; district?: string; area?: string; location_link?: string; professional?: string; mobile_number?: string; state?: string }) =>
       addTripoLeadEntry(task.id, data, user?.id),
@@ -423,14 +443,28 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
                         </select>
                       </div>
 
+                      {/* Starred Filter Control */}
+                      <div className="relative shrink-0">
+                        <select
+                          value={selectedStarredFilter}
+                          onChange={(e) => setSelectedStarredFilter(e.target.value)}
+                          className="rounded-xl neu-pressed px-3.5 py-2.5 text-xs font-bold text-[var(--color-text-primary)] focus:outline-none bg-[var(--neu-bg)] cursor-pointer"
+                          aria-label="Filter by Starred"
+                        >
+                          <option value="All">Leads: All</option>
+                          <option value="Starred">Leads: Starred ⭐</option>
+                        </select>
+                      </div>
+
                       {/* Clear Filters Button */}
-                      {(searchQuery || selectedProfession !== 'All' || selectedStatus !== 'All' || selectedDistrict !== 'All') && (
+                      {(searchQuery || selectedProfession !== 'All' || selectedStatus !== 'All' || selectedDistrict !== 'All' || selectedStarredFilter !== 'All') && (
                         <button
                           onClick={() => {
                             setSearchQuery('');
                             setSelectedProfession('All');
                             setSelectedStatus('All');
                             setSelectedDistrict('All');
+                            setSelectedStarredFilter('All');
                           }}
                           className="px-3 py-2.5 rounded-xl text-xs font-bold text-red-500 hover:bg-red-500/10 flex items-center justify-center gap-1 shrink-0 cursor-pointer"
                           title="Clear all filters"
@@ -483,8 +517,8 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
                       </button>
                     </div>
 
-                    {/* Row 2: Profession Filter + District Filter + Status Filter */}
-                    <div className="flex items-center gap-2">
+                    {/* Row 2: Profession Filter + District Filter + Status Filter + Starred Filter */}
+                    <div className="flex items-center gap-2 flex-wrap">
                       <select
                         value={selectedProfession}
                         onChange={(e) => setSelectedProfession(e.target.value)}
@@ -526,13 +560,24 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
                         <option value="Follow up">Status: Follow up</option>
                       </select>
 
-                      {(searchQuery || selectedProfession !== 'All' || selectedStatus !== 'All' || selectedDistrict !== 'All') && (
+                      <select
+                        value={selectedStarredFilter}
+                        onChange={(e) => setSelectedStarredFilter(e.target.value)}
+                        className="rounded-xl neu-pressed px-2 py-2 text-[11px] font-bold text-[var(--color-text-primary)] focus:outline-none bg-[var(--neu-bg)] cursor-pointer shrink-0"
+                        aria-label="Filter by Starred"
+                      >
+                        <option value="All">All</option>
+                        <option value="Starred">Starred ⭐</option>
+                      </select>
+
+                      {(searchQuery || selectedProfession !== 'All' || selectedStatus !== 'All' || selectedDistrict !== 'All' || selectedStarredFilter !== 'All') && (
                         <button
                           onClick={() => {
                             setSearchQuery('');
                             setSelectedProfession('All');
                             setSelectedStatus('All');
                             setSelectedDistrict('All');
+                            setSelectedStarredFilter('All');
                           }}
                           className="px-2 py-2 rounded-xl text-[11px] font-extrabold text-red-500 hover:bg-red-500/10 shrink-0 cursor-pointer"
                           title="Clear filters"
@@ -666,6 +711,25 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
 
                             {/* Actions */}
                             <div className="flex items-center gap-2 shrink-0">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleStarMutation.mutate({
+                                    entryId: entry.id,
+                                    isStarred: !entry.is_starred,
+                                  });
+                                }}
+                                className={`p-2 rounded-xl neu-btn transition-colors cursor-pointer ${
+                                  entry.is_starred
+                                    ? 'text-amber-500 hover:text-amber-600'
+                                    : 'text-[var(--color-text-tertiary)] hover:text-amber-500'
+                                }`}
+                                title={entry.is_starred ? 'Unstar' : 'Star'}
+                                aria-label={entry.is_starred ? 'Unstar lead' : 'Star lead'}
+                              >
+                                <Star className={`h-4 w-4 ${entry.is_starred ? 'fill-amber-500 text-amber-500' : ''}`} />
+                              </button>
+
                               {entry.location_link && (
                                 <a
                                   href={entry.location_link}
