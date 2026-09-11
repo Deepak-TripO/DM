@@ -1,4 +1,4 @@
-import { Home, FolderOpen, Clock, Trash2 } from 'lucide-react';
+import { Home, Star, FolderOpen, Clock, Trash2 } from 'lucide-react';
 import type { TripoLeadTab } from './TripoLeadSidebar';
 
 interface TripoLeadMobileBottomNavProps {
@@ -14,6 +14,14 @@ const navItems: { id: TripoLeadTab; label: string; icon: any; color: string; act
     color: '#3B82F6',
     activeText: '#2563EB',
     activeBg: 'rgba(59, 130, 246, 0.14)',
+  },
+  {
+    id: 'starred',
+    label: 'Starred',
+    icon: Star,
+    color: '#EAB308',
+    activeText: '#CA8A04',
+    activeBg: 'rgba(234, 179, 8, 0.14)',
   },
   {
     id: 'files',

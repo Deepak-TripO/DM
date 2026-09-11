@@ -138,16 +138,39 @@ export function TripoLeadEntryModal({
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Professional */}
+          {/* Professional Selection */}
           <div className="space-y-1.5">
             <label className="text-xs font-extrabold text-[var(--color-text-primary)] uppercase tracking-wider flex items-center gap-2">
               <UserCheck className="h-3.5 w-3.5 text-indigo-500" />
               Professional
             </label>
+
+            {/* Desktop View: Single Horizontal Row of 4 Options */}
+            <div className="hidden md:grid md:grid-cols-4 gap-2">
+              {TRIPO_LEAD_PROFESSIONAL_OPTIONS.map((opt) => {
+                const isSelected = professional === opt;
+                return (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => setProfessional(isSelected ? '' : opt)}
+                    className={`px-3 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer text-center truncate border ${
+                      isSelected
+                        ? 'neu-pressed bg-indigo-500/10 text-indigo-600 border-indigo-500/40 shadow-xs'
+                        : 'neu-btn text-[var(--color-text-secondary)] border-[var(--color-border-light)]/40 hover:text-[var(--color-text-primary)]'
+                    }`}
+                  >
+                    {opt}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Mobile View: Original Select Dropdown */}
             <select
               value={professional}
               onChange={(e) => setProfessional(e.target.value)}
-              className="w-full rounded-xl neu-pressed px-4 py-3 text-xs font-bold text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-indigo-500/40 bg-[var(--neu-bg)] cursor-pointer"
+              className="md:hidden w-full rounded-xl neu-pressed px-4 py-3 text-xs font-bold text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-indigo-500/40 bg-[var(--neu-bg)] cursor-pointer"
             >
               <option value="" className="bg-[var(--neu-bg)] text-[var(--color-text-secondary)] font-bold">
                 Select Professional

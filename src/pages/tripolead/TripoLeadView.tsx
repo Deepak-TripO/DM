@@ -83,7 +83,7 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
   const [selectedProfession, setSelectedProfession] = useState<string>('All');
   const [selectedStatus, setSelectedStatus] = useState<string>('All');
   const [selectedDistrict, setSelectedDistrict] = useState<string>('All');
-  const [selectedStarredFilter, setSelectedStarredFilter] = useState<string>('All');
+  const [starredProfession, setStarredProfession] = useState<string>('All');
 
   // Modals
   const [addEntryModalOpen, setAddEntryModalOpen] = useState(false);
@@ -165,7 +165,11 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
 
       // 3. Status Filter
       if (selectedStatus !== 'All') {
-        if (entry.status !== selectedStatus) return false;
+        if (selectedStatus === 'No Status') {
+          if (entry.status && entry.status.trim() !== '') return false;
+        } else if (entry.status !== selectedStatus) {
+          return false;
+        }
       }
 
       // 4. District Filter
@@ -173,14 +177,9 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
         if (entry.district.toLowerCase() !== selectedDistrict.toLowerCase()) return false;
       }
 
-      // 5. Starred Filter
-      if (selectedStarredFilter === 'Starred') {
-        if (!entry.is_starred) return false;
-      }
-
       return true;
     });
-  }, [entries, searchQuery, selectedProfession, selectedStatus, selectedDistrict, selectedStarredFilter]);
+  }, [entries, searchQuery, selectedProfession, selectedStatus, selectedDistrict]);
 
   // Mutations for TripO Lead entries
   const toggleStarMutation = useMutation({
@@ -436,35 +435,22 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
                           aria-label="Filter by Status"
                         >
                           <option value="All">Status: All</option>
+                          <option value="No Status">Status: No Status</option>
+                          <option value="Follow up">Status: Follow up</option>
                           <option value="No Response">Status: No Response</option>
                           <option value="Pending">Status: Pending</option>
                           <option value="Complete">Status: Complete</option>
-                          <option value="Follow up">Status: Follow up</option>
-                        </select>
-                      </div>
-
-                      {/* Starred Filter Control */}
-                      <div className="relative shrink-0">
-                        <select
-                          value={selectedStarredFilter}
-                          onChange={(e) => setSelectedStarredFilter(e.target.value)}
-                          className="rounded-xl neu-pressed px-3.5 py-2.5 text-xs font-bold text-[var(--color-text-primary)] focus:outline-none bg-[var(--neu-bg)] cursor-pointer"
-                          aria-label="Filter by Starred"
-                        >
-                          <option value="All">Leads: All</option>
-                          <option value="Starred">Leads: Starred ⭐</option>
                         </select>
                       </div>
 
                       {/* Clear Filters Button */}
-                      {(searchQuery || selectedProfession !== 'All' || selectedStatus !== 'All' || selectedDistrict !== 'All' || selectedStarredFilter !== 'All') && (
+                      {(searchQuery || selectedProfession !== 'All' || selectedStatus !== 'All' || selectedDistrict !== 'All') && (
                         <button
                           onClick={() => {
                             setSearchQuery('');
                             setSelectedProfession('All');
                             setSelectedStatus('All');
                             setSelectedDistrict('All');
-                            setSelectedStarredFilter('All');
                           }}
                           className="px-3 py-2.5 rounded-xl text-xs font-bold text-red-500 hover:bg-red-500/10 flex items-center justify-center gap-1 shrink-0 cursor-pointer"
                           title="Clear all filters"
@@ -554,30 +540,20 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
                         aria-label="Filter by Status"
                       >
                         <option value="All">Status: All</option>
+                        <option value="No Status">Status: No Status</option>
+                        <option value="Follow up">Status: Follow up</option>
                         <option value="No Response">Status: No Response</option>
                         <option value="Pending">Status: Pending</option>
                         <option value="Complete">Status: Complete</option>
-                        <option value="Follow up">Status: Follow up</option>
                       </select>
 
-                      <select
-                        value={selectedStarredFilter}
-                        onChange={(e) => setSelectedStarredFilter(e.target.value)}
-                        className="rounded-xl neu-pressed px-2 py-2 text-[11px] font-bold text-[var(--color-text-primary)] focus:outline-none bg-[var(--neu-bg)] cursor-pointer shrink-0"
-                        aria-label="Filter by Starred"
-                      >
-                        <option value="All">All</option>
-                        <option value="Starred">Starred ⭐</option>
-                      </select>
-
-                      {(searchQuery || selectedProfession !== 'All' || selectedStatus !== 'All' || selectedDistrict !== 'All' || selectedStarredFilter !== 'All') && (
+                      {(searchQuery || selectedProfession !== 'All' || selectedStatus !== 'All' || selectedDistrict !== 'All') && (
                         <button
                           onClick={() => {
                             setSearchQuery('');
                             setSelectedProfession('All');
                             setSelectedStatus('All');
                             setSelectedDistrict('All');
-                            setSelectedStarredFilter('All');
                           }}
                           className="px-2 py-2 rounded-xl text-[11px] font-extrabold text-red-500 hover:bg-red-500/10 shrink-0 cursor-pointer"
                           title="Clear filters"
@@ -1005,6 +981,276 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
                   )}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* TAB: STARRED LEADS */}
+          {activeTab === 'starred' && (
+            <div className="space-y-6">
+              {/* Header / Search & Professional Filter */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                <div>
+                  <h1 className="text-xl md:text-2xl font-black text-[var(--color-text-primary)] flex items-center gap-2">
+                    <Star className="h-6 w-6 text-amber-500 fill-amber-500 shrink-0" />
+                    <span>Starred Leads</span>
+                  </h1>
+                  <p className="text-xs font-semibold text-[var(--color-text-secondary)] mt-1">
+                    Important and bookmarked TripO Lead entries
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3 flex-1 max-w-lg">
+                  {/* Professional Filter in Starred */}
+                  <select
+                    value={starredProfession}
+                    onChange={(e) => setStarredProfession(e.target.value)}
+                    className="rounded-xl neu-pressed px-3.5 py-2.5 text-xs font-bold text-[var(--color-text-primary)] focus:outline-none bg-[var(--neu-bg)] cursor-pointer shrink-0"
+                    aria-label="Filter Starred by Professional"
+                  >
+                    <option value="All">Profession: All</option>
+                    {TRIPO_LEAD_PROFESSIONAL_OPTIONS.map((p) => (
+                      <option key={p} value={p}>
+                        {p}
+                      </option>
+                    ))}
+                  </select>
+
+                  {/* Search Bar */}
+                  <div className="relative flex-1 min-w-0">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--color-text-tertiary)]" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search starred leads..."
+                      className="w-full rounded-xl neu-pressed pl-10 pr-8 py-2.5 text-xs font-bold text-[var(--color-text-primary)] focus:outline-none"
+                    />
+                    {searchQuery && (
+                      <button
+                        onClick={() => setSearchQuery('')}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] cursor-pointer"
+                        title="Clear search"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Starred List */}
+              {loadingEntries ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map((n) => (
+                    <div key={n} className="h-20 rounded-2xl neu-card animate-pulse" />
+                  ))}
+                </div>
+              ) : (() => {
+                const starredEntries = entries.filter((entry) => {
+                  if (!entry.is_starred || entry.deleted_at) return false;
+                  if (starredProfession !== 'All') {
+                    if (!entry.professional || entry.professional !== starredProfession) return false;
+                  }
+                  if (searchQuery && searchQuery.trim()) {
+                    const q = searchQuery.trim().toLowerCase();
+                    return (
+                      entry.hotel_name.toLowerCase().includes(q) ||
+                      entry.district.toLowerCase().includes(q) ||
+                      entry.area.toLowerCase().includes(q) ||
+                      (entry.location_link && entry.location_link.toLowerCase().includes(q)) ||
+                      (entry.professional && entry.professional.toLowerCase().includes(q)) ||
+                      (entry.mobile_number && entry.mobile_number.toLowerCase().includes(q)) ||
+                      (entry.status && entry.status.toLowerCase().includes(q)) ||
+                      (entry.short_notes && entry.short_notes.toLowerCase().includes(q))
+                    );
+                  }
+                  return true;
+                });
+
+                if (starredEntries.length === 0) {
+                  return (
+                    <EmptyState
+                      icon={Star}
+                      title={searchQuery ? 'No matching starred leads' : 'No starred leads yet.'}
+                      description={
+                        searchQuery
+                          ? 'Try adjusting your search query.'
+                          : 'Star important TripO Lead entries from Home to view them here.'
+                      }
+                    />
+                  );
+                }
+
+                return (
+                  <div className="space-y-3">
+                    {starredEntries.map((entry) => (
+                      <div
+                        key={entry.id}
+                        className="rounded-2xl neu-card p-4 md:p-5 relative group hover:border-[var(--color-primary)]/40 transition-all"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div className="space-y-1 min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className="text-sm md:text-base font-extrabold text-[var(--color-text-primary)] truncate">
+                                {entry.hotel_name}
+                              </h3>
+                              {entry.professional && (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-indigo-500/10 text-indigo-500 border border-indigo-500/30">
+                                  {entry.professional}
+                                </span>
+                              )}
+                              <span
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
+                                  entry.status === 'No Response'
+                                    ? 'bg-amber-500/10 text-amber-500 border-amber-500/30'
+                                    : entry.status === 'Pending'
+                                    ? 'bg-red-500/10 text-red-500 border-red-500/30'
+                                    : entry.status === 'Complete'
+                                    ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
+                                    : entry.status === 'Follow up'
+                                    ? 'bg-pink-500/10 text-pink-500 border-pink-500/30'
+                                    : 'bg-gray-500/10 text-[var(--color-text-tertiary)] border-gray-500/20'
+                                }`}
+                              >
+                                <span
+                                  className={`h-1.5 w-1.5 rounded-full ${
+                                    entry.status === 'No Response'
+                                      ? 'bg-amber-500'
+                                      : entry.status === 'Pending'
+                                      ? 'bg-red-500'
+                                      : entry.status === 'Complete'
+                                      ? 'bg-emerald-500'
+                                      : entry.status === 'Follow up'
+                                      ? 'bg-pink-500'
+                                      : 'bg-gray-400'
+                                  }`}
+                                />
+                                {entry.status || 'No Status'}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-3 text-xs font-semibold text-[var(--color-text-secondary)] flex-wrap">
+                              {entry.state && (
+                                <>
+                                  <span className="flex items-center gap-1">
+                                    <MapPin className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                                    {entry.state}
+                                  </span>
+                                  <span>•</span>
+                                </>
+                              )}
+                              {entry.district && (
+                                <span className="flex items-center gap-1">
+                                  <MapPin className="h-3.5 w-3.5 text-purple-500 shrink-0" />
+                                  {entry.district}
+                                </span>
+                              )}
+                              {entry.area && (
+                                <>
+                                  <span>•</span>
+                                  <span className="flex items-center gap-1">
+                                    <Navigation className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                                    {entry.area}
+                                  </span>
+                                </>
+                              )}
+                              {entry.mobile_number && (
+                                <>
+                                  <span>•</span>
+                                  <span className="flex items-center gap-1 text-[var(--color-text-primary)] font-bold">
+                                    <Phone className="h-3.5 w-3.5 text-teal-500 shrink-0" />
+                                    {entry.mobile_number}
+                                  </span>
+                                </>
+                              )}
+                              {entry.approach_date && (
+                                <>
+                                  <span>•</span>
+                                  <span className="flex items-center gap-1 text-[var(--color-text-tertiary)]">
+                                    <Calendar className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+                                    {entry.approach_date}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+
+                            {entry.short_notes && (
+                              <p className="text-xs text-[var(--color-text-tertiary)] mt-1 line-clamp-2 bg-[var(--color-surface-secondary)]/50 p-2 rounded-lg border border-[var(--color-border-light)]/20">
+                                <span className="font-bold">Notes:</span> {entry.short_notes}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Actions */}
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleStarMutation.mutate({
+                                  entryId: entry.id,
+                                  isStarred: !entry.is_starred,
+                                });
+                              }}
+                              className="p-2 rounded-xl neu-btn text-amber-500 hover:text-amber-600 transition-colors cursor-pointer"
+                              title="Unstar Lead"
+                              aria-label="Unstar lead"
+                            >
+                              <Star className="h-4 w-4 fill-amber-500 text-amber-500" />
+                            </button>
+
+                            {entry.location_link && (
+                              <a
+                                href={entry.location_link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-2 rounded-xl neu-btn text-emerald-500 hover:text-emerald-600 transition-colors"
+                                title="Open Link"
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                              </a>
+                            )}
+
+                            <button
+                              onClick={() => {
+                                setEditingEntry(entry);
+                                setAddEntryModalOpen(true);
+                              }}
+                              className="p-2 rounded-xl neu-btn text-[var(--color-text-secondary)] hover:text-indigo-500 transition-colors cursor-pointer"
+                              title="Edit Entry Details"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                setActiveEntry(entry);
+                                setUpdateModalOpen(true);
+                              }}
+                              className="px-3 py-1.5 rounded-xl neu-btn text-xs font-bold text-[var(--color-text-primary)] hover:text-blue-500 flex items-center gap-1.5 cursor-pointer"
+                              title="Update Status"
+                            >
+                              <Edit2 className="h-3.5 w-3.5 text-blue-500" />
+                              <span>Status</span>
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                if (confirm(`Delete entry "${entry.hotel_name}"?`)) {
+                                  softDeleteEntryMutation.mutate(entry.id);
+                                }
+                              }}
+                              className="p-2 rounded-xl neu-btn text-[var(--color-text-tertiary)] hover:text-red-500 transition-colors cursor-pointer"
+                              title="Delete Entry"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
           )}
 
