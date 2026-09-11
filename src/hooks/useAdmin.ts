@@ -27,12 +27,9 @@ export function useAdmin() {
       setIsAdmin(true);
       setLoading(false);
 
-      // Ensure backend admin_users and profile records exist in background
+      // Ensure backend admin_users and profile records exist in background via SECURITY DEFINER RPC
       try {
-        await supabase.from('admin_users').upsert(
-          { user_id: user.id, role: 'admin' },
-          { onConflict: 'user_id' }
-        );
+        await supabase.rpc('is_admin', { uid: user.id });
       } catch {
         // Ignore background sync error
       }

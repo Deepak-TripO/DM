@@ -71,10 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (verifiedUser.email?.trim().toLowerCase() === 'admin@dm.com') {
         setIsPendingApproval(false);
         try {
-          await supabase.from('admin_users').upsert(
-            { user_id: verifiedUser.id, role: 'admin' },
-            { onConflict: 'user_id' }
-          );
+          await supabase.rpc('is_admin', { uid: verifiedUser.id });
           await supabase.from('profiles').upsert(
             {
               id: verifiedUser.id,
@@ -87,11 +84,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             },
             { onConflict: 'id' }
           );
-          try {
-            await supabase.rpc('is_admin', { uid: verifiedUser.id });
-          } catch {
-            // Ignore RPC error
-          }
         } catch (err) {
           console.warn('Error syncing admin credentials on session validation:', err);
         }
@@ -269,10 +261,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Ensure admin role entry and approved profile exist if logged in as admin@dm.com
     if (!error && data?.user && email.trim().toLowerCase() === 'admin@dm.com') {
       try {
-        await supabase.from('admin_users').upsert(
-          { user_id: data.user.id, role: 'admin' },
-          { onConflict: 'user_id' }
-        );
+        await supabase.rpc('is_admin', { uid: data.user.id });
         await supabase.from('profiles').upsert(
           {
             id: data.user.id,
@@ -285,11 +274,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           },
           { onConflict: 'id' }
         );
-        try {
-          await supabase.rpc('is_admin', { uid: data.user.id });
-        } catch {
-          // Ignore RPC error
-        }
       } catch (err) {
         console.warn('Error syncing admin record on sign in:', err);
       }
