@@ -26,7 +26,7 @@ export function TripoLeadUpdateModal({
   useEffect(() => {
     setErrorMsg(null);
     if (entry) {
-      setStatus(entry.status || 'Pending');
+      setStatus(entry.status || 'No Status');
       setApproachDate(entry.approach_date || new Date().toISOString().split('T')[0]);
       setShortNotes(entry.short_notes || '');
       setMobileNumber(entry.mobile_number || '');
@@ -110,9 +110,12 @@ export function TripoLeadUpdateModal({
                     ? 'text-emerald-500 focus:ring-emerald-500/40'
                     : status === 'Follow up'
                     ? 'text-pink-500 focus:ring-pink-500/40'
-                    : 'text-[var(--color-text-primary)]'
+                    : 'text-[var(--color-text-tertiary)] focus:ring-gray-500/40'
                 }`}
               >
+                <option value="No Status" className="text-gray-400 bg-[var(--neu-bg)] font-bold">
+                  No Status — Gray
+                </option>
                 <option value="No Response" className="text-amber-500 bg-[var(--neu-bg)] font-bold">
                   No Response — Yellow
                 </option>
@@ -155,7 +158,7 @@ export function TripoLeadUpdateModal({
                       : 'bg-gray-400'
                   }`}
                 />
-                {status}
+                {status || 'No Status'}
               </span>
             </div>
           </div>

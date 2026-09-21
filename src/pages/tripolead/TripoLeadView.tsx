@@ -166,7 +166,7 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
       // 3. Status Filter
       if (selectedStatus !== 'All') {
         if (selectedStatus === 'No Status') {
-          if (entry.status && entry.status.trim() !== '') return false;
+          if (entry.status && entry.status.trim() !== '' && entry.status !== 'No Status') return false;
         } else if (entry.status !== selectedStatus) {
           return false;
         }
@@ -180,6 +180,18 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
       return true;
     });
   }, [entries, searchQuery, selectedProfession, selectedStatus, selectedDistrict]);
+
+  // Dynamic entry count label based on active filters and search
+  const filterCountLabel = useMemo(() => {
+    const parts: string[] = [];
+    if (selectedStatus !== 'All') parts.push(selectedStatus);
+    if (selectedProfession !== 'All') parts.push(selectedProfession);
+    if (selectedDistrict !== 'All') parts.push(selectedDistrict);
+    if (searchQuery.trim()) parts.push(`"${searchQuery.trim()}"`);
+
+    const prefix = parts.length > 0 ? parts.join(' • ') : 'All Leads';
+    return `${prefix} — ${filteredEntries.length}`;
+  }, [selectedStatus, selectedProfession, selectedDistrict, searchQuery, filteredEntries.length]);
 
   // Mutations for TripO Lead entries
   const toggleStarMutation = useMutation({
@@ -562,6 +574,13 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
                         </button>
                       )}
                     </div>
+                  </div>
+
+                  {/* Dynamic Entry Count Header */}
+                  <div className="flex items-center justify-between px-1 py-1">
+                    <span className="text-xs md:text-sm font-black text-[var(--color-text-primary)]">
+                      {filterCountLabel}
+                    </span>
                   </div>
 
                   {/* TripO Lead Entries List */}

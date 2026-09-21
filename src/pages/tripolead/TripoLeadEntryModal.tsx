@@ -119,7 +119,7 @@ export function TripoLeadEntryModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-xs" onClick={onClose} />
-      <div className="relative w-full max-w-lg rounded-3xl neu-modal p-6 md:p-8 shadow-2xl space-y-6">
+      <div className="relative w-full max-w-lg md:max-w-xl rounded-3xl neu-modal p-6 md:p-8 shadow-2xl space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[var(--color-border-light)]/40 pb-4">
           <div>
@@ -154,7 +154,7 @@ export function TripoLeadEntryModal({
                     key={opt}
                     type="button"
                     onClick={() => setProfessional(isSelected ? '' : opt)}
-                    className={`px-3 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer text-center truncate border ${
+                    className={`px-2.5 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer text-center whitespace-nowrap overflow-hidden text-ellipsis border ${
                       isSelected
                         ? 'neu-pressed bg-indigo-500/10 text-indigo-600 border-indigo-500/40 shadow-xs'
                         : 'neu-btn text-[var(--color-text-secondary)] border-[var(--color-border-light)]/40 hover:text-[var(--color-text-primary)]'
