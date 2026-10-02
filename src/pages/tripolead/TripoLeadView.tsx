@@ -68,6 +68,11 @@ import {
 import { useAuth } from '@/features/auth/AuthProvider';
 import { toast } from 'sonner';
 
+function formatTelUri(phone: string): string {
+  const cleaned = phone.trim().replace(/(?!^\+)[^\d]/g, '');
+  return `tel:${cleaned}`;
+}
+
 interface TripoLeadViewProps {
   task: TaskItem;
 }
@@ -84,6 +89,7 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
   const [selectedStatus, setSelectedStatus] = useState<string>('All');
   const [selectedDistrict, setSelectedDistrict] = useState<string>('All');
   const [starredProfession, setStarredProfession] = useState<string>('All');
+  const [starredStatus, setStarredStatus] = useState<string>('All');
 
   // Modals
   const [addEntryModalOpen, setAddEntryModalOpen] = useState(false);
@@ -448,6 +454,7 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
                         >
                           <option value="All">Status: All</option>
                           <option value="No Status">Status: No Status</option>
+                          <option value="Interested">Status: Interested</option>
                           <option value="Follow up">Status: Follow up</option>
                           <option value="No Response">Status: No Response</option>
                           <option value="Pending">Status: Pending</option>
@@ -553,6 +560,7 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
                       >
                         <option value="All">Status: All</option>
                         <option value="No Status">Status: No Status</option>
+                        <option value="Interested">Status: Interested</option>
                         <option value="Follow up">Status: Follow up</option>
                         <option value="No Response">Status: No Response</option>
                         <option value="Pending">Status: Pending</option>
@@ -630,8 +638,10 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
                                       ? 'bg-red-500/10 text-red-500 border-red-500/30'
                                       : entry.status === 'Complete'
                                       ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
-                                      : entry.status === 'Follow up'
+                                      : entry.status === 'Follow up' || entry.status === 'Follow Up'
                                       ? 'bg-pink-500/10 text-pink-500 border-pink-500/30'
+                                      : entry.status === 'Interested'
+                                      ? 'bg-sky-500/10 text-sky-500 border-sky-500/30'
                                       : 'bg-gray-500/10 text-[var(--color-text-tertiary)] border-gray-500/20'
                                   }`}
                                 >
@@ -643,8 +653,10 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
                                         ? 'bg-red-500'
                                         : entry.status === 'Complete'
                                         ? 'bg-emerald-500'
-                                        : entry.status === 'Follow up'
+                                        : entry.status === 'Follow up' || entry.status === 'Follow Up'
                                         ? 'bg-pink-500'
+                                        : entry.status === 'Interested'
+                                        ? 'bg-sky-500'
                                         : 'bg-gray-400'
                                     }`}
                                   />
@@ -680,10 +692,19 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
                                 {entry.mobile_number && (
                                   <>
                                     <span>•</span>
-                                    <span className="flex items-center gap-1 text-[var(--color-text-primary)] font-bold">
+                                    <a
+                                      href={formatTelUri(entry.mobile_number)}
+                                      onClick={(e) => {
+                                        if (typeof window !== 'undefined' && window.innerWidth >= 768) {
+                                          e.preventDefault();
+                                        }
+                                      }}
+                                      className="flex items-center gap-1 text-[var(--color-text-primary)] font-bold cursor-pointer hover:underline md:hover:no-underline md:cursor-default md:pointer-events-none active:opacity-75 transition-opacity"
+                                      title={"Call " + entry.mobile_number}
+                                    >
                                       <Phone className="h-3.5 w-3.5 text-teal-500 shrink-0" />
-                                      {entry.mobile_number}
-                                    </span>
+                                      <span>{entry.mobile_number}</span>
+                                    </a>
                                   </>
                                 )}
                                 {entry.approach_date && (
@@ -1018,7 +1039,23 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
                   </p>
                 </div>
 
-                <div className="flex items-center gap-3 flex-1 max-w-lg">
+                <div className="flex items-center gap-3 flex-1 max-w-xl">
+                  {/* Status Filter in Starred */}
+                  <select
+                    value={starredStatus}
+                    onChange={(e) => setStarredStatus(e.target.value)}
+                    className="rounded-xl neu-pressed px-3.5 py-2.5 text-xs font-bold text-[var(--color-text-primary)] focus:outline-none bg-[var(--neu-bg)] cursor-pointer shrink-0"
+                    aria-label="Filter Starred by Status"
+                  >
+                    <option value="All">Status: All</option>
+                    <option value="No Status">Status: No Status</option>
+                    <option value="Interested">Status: Interested</option>
+                    <option value="Follow up">Status: Follow up</option>
+                    <option value="No Response">Status: No Response</option>
+                    <option value="Pending">Status: Pending</option>
+                    <option value="Complete">Status: Complete</option>
+                  </select>
+
                   {/* Professional Filter in Starred */}
                   <select
                     value={starredProfession}
@@ -1067,6 +1104,15 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
               ) : (() => {
                 const starredEntries = entries.filter((entry) => {
                   if (!entry.is_starred || entry.deleted_at) return false;
+                  if (starredStatus !== 'All') {
+                    if (starredStatus === 'No Status') {
+                      if (entry.status && entry.status.trim() !== '' && entry.status !== 'No Status') return false;
+                    } else if (starredStatus === 'Follow up' || starredStatus === 'Follow Up') {
+                      if (entry.status !== 'Follow up' && entry.status !== 'Follow Up') return false;
+                    } else if (entry.status !== starredStatus) {
+                      return false;
+                    }
+                  }
                   if (starredProfession !== 'All') {
                     if (!entry.professional || entry.professional !== starredProfession) return false;
                   }
@@ -1126,8 +1172,10 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
                                     ? 'bg-red-500/10 text-red-500 border-red-500/30'
                                     : entry.status === 'Complete'
                                     ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
-                                    : entry.status === 'Follow up'
+                                    : entry.status === 'Follow up' || entry.status === 'Follow Up'
                                     ? 'bg-pink-500/10 text-pink-500 border-pink-500/30'
+                                    : entry.status === 'Interested'
+                                    ? 'bg-sky-500/10 text-sky-500 border-sky-500/30'
                                     : 'bg-gray-500/10 text-[var(--color-text-tertiary)] border-gray-500/20'
                                 }`}
                               >
@@ -1139,8 +1187,10 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
                                       ? 'bg-red-500'
                                       : entry.status === 'Complete'
                                       ? 'bg-emerald-500'
-                                      : entry.status === 'Follow up'
+                                      : entry.status === 'Follow up' || entry.status === 'Follow Up'
                                       ? 'bg-pink-500'
+                                      : entry.status === 'Interested'
+                                      ? 'bg-sky-500'
                                       : 'bg-gray-400'
                                   }`}
                                 />
@@ -1176,10 +1226,19 @@ export function TripoLeadView({ task }: TripoLeadViewProps) {
                               {entry.mobile_number && (
                                 <>
                                   <span>•</span>
-                                  <span className="flex items-center gap-1 text-[var(--color-text-primary)] font-bold">
+                                  <a
+                                    href={formatTelUri(entry.mobile_number)}
+                                    onClick={(e) => {
+                                      if (typeof window !== 'undefined' && window.innerWidth >= 768) {
+                                        e.preventDefault();
+                                      }
+                                    }}
+                                    className="flex items-center gap-1 text-[var(--color-text-primary)] font-bold cursor-pointer hover:underline md:hover:no-underline md:cursor-default md:pointer-events-none active:opacity-75 transition-opacity"
+                                    title={"Call " + entry.mobile_number}
+                                  >
                                     <Phone className="h-3.5 w-3.5 text-teal-500 shrink-0" />
-                                    {entry.mobile_number}
-                                  </span>
+                                    <span>{entry.mobile_number}</span>
+                                  </a>
                                 </>
                               )}
                               {entry.approach_date && (

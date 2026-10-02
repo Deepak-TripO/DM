@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase/client';
 import { getLocalUserTripoLeadAccessMap } from '@/services/adminService';
 
-export type TripoLeadStatus = 'Pending' | 'No Response' | 'Complete' | 'Follow up' | 'No Status';
+export type TripoLeadStatus = 'Pending' | 'No Response' | 'Complete' | 'Follow up' | 'Interested' | 'No Status';
 
 export const TRIPO_LEAD_PROFESSIONAL_OPTIONS = [
   'Stay Provider',
@@ -1497,4 +1497,119 @@ export async function toggleStarTripoLeadEntry(
     }
   }
 }
+
+export async function getTripoLeadStarredEntries(
+  taskId: string,
+  options?: {
+    status?: string;
+    professional?: string;
+    search?: string;
+  }
+): Promise<TripoLeadEntry[]> {
+  try {
+    let query = supabase
+      .from('tripolead_entries')
+      .select('*')
+      .eq('task_id', taskId)
+      .eq('is_starred', true)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false });
+
+    if (options?.status && options.status !== 'All') {
+      if (options.status === 'No Status') {
+        query = query.or('status.is.null,status.eq.,status.eq.No Status');
+      } else if (options.status === 'Follow Up' || options.status === 'Follow up') {
+        query = query.or('status.eq.Follow up,status.eq.Follow Up');
+      } else {
+        query = query.eq('status', options.status);
+      }
+    }
+
+    if (options?.professional && options.professional !== 'All') {
+      query = query.eq('professional', options.professional);
+    }
+
+    if (options?.search && options.search.trim()) {
+      const s = `%${options.search.trim()}%`;
+      query = query.or(
+        `hotel_name.ilike.${s},district.ilike.${s},area.ilike.${s},professional.ilike.${s},mobile_number.ilike.${s},status.ilike.${s},short_notes.ilike.${s}`
+      );
+    }
+
+    const { data, error } = await query;
+    if (!error && data) {
+      const localEntriesMap = new Map(
+        getLocalEntries(taskId)
+          .filter((e) => e.is_starred && !e.deleted_at)
+          .map((e) => [e.id, e])
+      );
+
+      const merged = (data as TripoLeadEntry[]).map((dbEntry) => {
+        const local = localEntriesMap.get(dbEntry.id);
+        if (local && local.updated_at > dbEntry.updated_at) {
+          return local;
+        }
+        return dbEntry;
+      });
+
+      const dbIds = new Set(data.map((d: any) => d.id));
+      getLocalEntries(taskId).forEach((loc) => {
+        if (!dbIds.has(loc.id) && loc.is_starred && !loc.deleted_at) {
+          merged.unshift(loc);
+        }
+      });
+
+      return merged.filter((entry) => {
+        if (!entry.is_starred || entry.deleted_at) return false;
+
+        if (options?.status && options.status !== 'All') {
+          if (options.status === 'No Status') {
+            if (entry.status && entry.status.trim() !== '' && entry.status !== 'No Status') return false;
+          } else if (options.status === 'Follow Up' || options.status === 'Follow up') {
+            if (entry.status !== 'Follow up' && entry.status !== 'Follow Up') return false;
+          } else if (entry.status !== options.status) {
+            return false;
+          }
+        }
+
+        if (options?.professional && options.professional !== 'All') {
+          if (entry.professional !== options.professional) return false;
+        }
+
+        return true;
+      });
+    }
+  } catch {}
+
+  const local = getLocalEntries(taskId).filter((e) => e.is_starred && !e.deleted_at);
+  return local.filter((entry) => {
+    if (options?.status && options.status !== 'All') {
+      if (options.status === 'No Status') {
+        if (entry.status && entry.status.trim() !== '' && entry.status !== 'No Status') return false;
+      } else if (options.status === 'Follow Up' || options.status === 'Follow up') {
+        if (entry.status !== 'Follow up' && entry.status !== 'Follow Up') return false;
+      } else if (entry.status !== options.status) {
+        return false;
+      }
+    }
+    if (options?.professional && options.professional !== 'All') {
+      if (entry.professional !== options.professional) return false;
+    }
+    if (options?.search && options.search.trim()) {
+      const q = options.search.trim().toLowerCase();
+      return (
+        entry.hotel_name.toLowerCase().includes(q) ||
+        entry.district.toLowerCase().includes(q) ||
+        entry.area.toLowerCase().includes(q) ||
+        (entry.location_link && entry.location_link.toLowerCase().includes(q)) ||
+        (entry.professional && entry.professional.toLowerCase().includes(q)) ||
+        (entry.mobile_number && entry.mobile_number.toLowerCase().includes(q)) ||
+        (entry.status && entry.status.toLowerCase().includes(q)) ||
+        (entry.short_notes && entry.short_notes.toLowerCase().includes(q))
+      );
+    }
+    return true;
+  });
+}
+
 

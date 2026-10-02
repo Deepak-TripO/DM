@@ -108,13 +108,21 @@ export function TripoLeadUpdateModal({
                     ? 'text-red-500 focus:ring-red-500/40'
                     : status === 'Complete'
                     ? 'text-emerald-500 focus:ring-emerald-500/40'
-                    : status === 'Follow up'
+                    : status === 'Follow up' || status === 'Follow Up'
                     ? 'text-pink-500 focus:ring-pink-500/40'
+                    : status === 'Interested'
+                    ? 'text-sky-500 focus:ring-sky-500/40'
                     : 'text-[var(--color-text-tertiary)] focus:ring-gray-500/40'
                 }`}
               >
                 <option value="No Status" className="text-gray-400 bg-[var(--neu-bg)] font-bold">
                   No Status — Gray
+                </option>
+                <option value="Interested" className="text-sky-500 bg-[var(--neu-bg)] font-bold">
+                  Interested — Sky Blue
+                </option>
+                <option value="Follow up" className="text-pink-500 bg-[var(--neu-bg)] font-bold">
+                  Follow up — Pink
                 </option>
                 <option value="No Response" className="text-amber-500 bg-[var(--neu-bg)] font-bold">
                   No Response — Yellow
@@ -124,9 +132,6 @@ export function TripoLeadUpdateModal({
                 </option>
                 <option value="Complete" className="text-emerald-500 bg-[var(--neu-bg)] font-bold">
                   Complete — Green
-                </option>
-                <option value="Follow up" className="text-pink-500 bg-[var(--neu-bg)] font-bold">
-                  Follow up — Pink
                 </option>
               </select>
             </div>
@@ -140,8 +145,10 @@ export function TripoLeadUpdateModal({
                     ? 'bg-red-500/10 text-red-500 border-red-500/30'
                     : status === 'Complete'
                     ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
-                    : status === 'Follow up'
+                    : status === 'Follow up' || status === 'Follow Up'
                     ? 'bg-pink-500/10 text-pink-500 border-pink-500/30'
+                    : status === 'Interested'
+                    ? 'bg-sky-500/10 text-sky-500 border-sky-500/30'
                     : 'bg-gray-500/10 text-[var(--color-text-tertiary)] border-gray-500/20'
                 }`}
               >
@@ -153,8 +160,10 @@ export function TripoLeadUpdateModal({
                       ? 'bg-red-500'
                       : status === 'Complete'
                       ? 'bg-emerald-500'
-                      : status === 'Follow up'
+                      : status === 'Follow up' || status === 'Follow Up'
                       ? 'bg-pink-500'
+                      : status === 'Interested'
+                      ? 'bg-sky-500'
                       : 'bg-gray-400'
                   }`}
                 />
