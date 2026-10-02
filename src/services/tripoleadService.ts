@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase/client';
 import { getLocalUserTripoLeadAccessMap } from '@/services/adminService';
 
-export type TripoLeadStatus = 'Pending' | 'No Response' | 'Complete' | 'Follow up' | 'Interested' | 'No Status';
+export type TripoLeadStatus = 'Pending' | 'No Response' | 'Complete' | 'Follow up' | 'Follow Up' | 'Interested' | 'No Status';
 
 export const TRIPO_LEAD_PROFESSIONAL_OPTIONS = [
   'Stay Provider',
