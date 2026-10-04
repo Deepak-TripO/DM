@@ -1,7 +1,18 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { registerSW } from 'virtual:pwa-register';
 import App from './App';
 import './index.css';
+
+// Register Service Worker for PWA auto-update
+if ('serviceWorker' in navigator) {
+  registerSW({
+    immediate: true,
+    onOfflineReady() {
+      console.log('DM PWA is ready for offline usage.');
+    },
+  });
+}
 
 // Automatic recovery when Vercel deploys a new build while an active browser tab is open
 window.addEventListener('vite:preloadError', () => {

@@ -6,6 +6,7 @@ import { AuthProvider } from '@/features/auth/AuthProvider';
 import { ThemeProvider } from '@/hooks/useTheme';
 import { ProtectedRoute } from '@/features/auth/ProtectedRoute';
 import { AppLayout } from '@/layouts/AppLayout';
+import { OfflineBanner } from '@/components/OfflineBanner';
 import { Loader2 } from 'lucide-react';
 
 // Helper to automatically recover from stale chunk 404 errors after new Vercel deployments
@@ -79,6 +80,7 @@ export default function App() {
       <ThemeProvider>
         <AuthProvider>
           <BrowserRouter>
+            <OfflineBanner />
             <Suspense fallback={<Loading />}>
               <Routes>
                 <Route path="/login" element={<LoginPage />} />
