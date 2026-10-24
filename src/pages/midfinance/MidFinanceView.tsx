@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getMidFinanceEntries,
@@ -24,7 +24,22 @@ import {
 import { MidFinanceSidebar, type MidFinanceSection } from './MidFinanceSidebar';
 import { MidFinanceProjectsView } from './MidFinanceProjectsView';
 import { MidFinanceProjectDetailView } from './MidFinanceProjectDetailView';
+import { MidFinanceMobileBottomNav } from './MidFinanceMobileBottomNav';
 import type { MidFinanceProject } from '@/services/midFinanceProjectService';
+import {
+  getTaskFiles,
+  getTaskRecentFiles,
+  getTaskTrashFiles,
+  softDeleteFile,
+  restoreFile,
+  toggleStarFile,
+} from '@/services/fileService';
+import type { FileItem } from '@/types';
+import { EmptyState } from '@/components/EmptyState';
+import { FileIcon } from '@/components/FileIcon';
+import { FilePreviewModal } from '@/features/files/preview/FilePreviewModal';
+import { UploadDialog } from '@/features/files/UploadDialog';
+import { formatBytes, formatDate } from '@/utils';
 import {
   Plus,
   Lock,
@@ -41,6 +56,11 @@ import {
   MoreVertical,
   Eye,
   X,
+  FolderOpen,
+  Clock,
+  Star,
+  Grid3X3,
+  List,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -55,7 +75,27 @@ export function MidFinanceView({ task }: MidFinanceViewProps) {
   const location = useLocation();
   const queryClient = useQueryClient();
 
-  const [activeSection, setActiveSection] = useState<MidFinanceSection>('finance');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const sectionParam = searchParams.get('section');
+  const validSections: MidFinanceSection[] = ['finance', 'project', 'files', 'recent', 'trash'];
+  const activeSection: MidFinanceSection = validSections.includes(sectionParam as MidFinanceSection)
+    ? (sectionParam as MidFinanceSection)
+    : 'finance';
+
+  const handleSectionChange = (section: MidFinanceSection) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (section === 'finance') {
+        next.delete('section');
+      } else {
+        next.set('section', section);
+      }
+      return next;
+    });
+    setOpenedProject(null);
+  };
+  const taskId = task?.id || 'mid-finance';
+
   const [openedProject, setOpenedProject] = useState<MidFinanceProject | null>(null);
   const [localSidebarOpen, setLocalSidebarOpen] = useState(true);
   const toggleLocalSidebar = () => setLocalSidebarOpen((prev) => !prev);
@@ -66,6 +106,60 @@ export function MidFinanceView({ task }: MidFinanceViewProps) {
   const [viewingEntry, setViewingEntry] = useState<MidFinanceEntry | null>(null);
   const [deletingEntry, setDeletingEntry] = useState<MidFinanceEntry | null>(null);
   const [financeMoreOpen, setFinanceMoreOpen] = useState(false);
+
+  // Files, Recent & Trash states
+  const [filesViewMode, setFilesViewMode] = useState<'grid' | 'list'>('grid');
+  const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
+  const [uploadOpen, setUploadOpen] = useState(false);
+
+  // Queries for MID Finance files, recent files, and trash files
+  const { data: files = [], isLoading: loadingFiles } = useQuery({
+    queryKey: ['midFinanceFiles', taskId, searchQuery],
+    queryFn: () => getTaskFiles(taskId, { search: searchQuery }),
+  });
+
+  const { data: recentFiles = [], isLoading: loadingRecentFiles } = useQuery({
+    queryKey: ['midFinanceRecentFiles', taskId],
+    queryFn: () => getTaskRecentFiles(taskId),
+  });
+
+  const { data: trashFiles = [], isLoading: loadingTrashFiles } = useQuery({
+    queryKey: ['midFinanceTrashFiles', taskId],
+    queryFn: () => getTaskTrashFiles(taskId),
+  });
+
+  const toggleStarFileMutation = useMutation({
+    mutationFn: ({ fileId, starred }: { fileId: string; starred: boolean }) =>
+      toggleStarFile(fileId, starred),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['midFinanceFiles', taskId] });
+      queryClient.invalidateQueries({ queryKey: ['midFinanceRecentFiles', taskId] });
+      toast.success('Starred status updated');
+    },
+    onError: () => toast.error('Failed to update starred status'),
+  });
+
+  const softDeleteFileMutation = useMutation({
+    mutationFn: (fileId: string) => softDeleteFile(fileId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['midFinanceFiles', taskId] });
+      queryClient.invalidateQueries({ queryKey: ['midFinanceRecentFiles', taskId] });
+      queryClient.invalidateQueries({ queryKey: ['midFinanceTrashFiles', taskId] });
+      toast.success('File moved to trash');
+    },
+    onError: () => toast.error('Failed to move file to trash'),
+  });
+
+  const restoreFileMutation = useMutation({
+    mutationFn: (fileId: string) => restoreFile(fileId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['midFinanceFiles', taskId] });
+      queryClient.invalidateQueries({ queryKey: ['midFinanceRecentFiles', taskId] });
+      queryClient.invalidateQueries({ queryKey: ['midFinanceTrashFiles', taskId] });
+      toast.success('File restored');
+    },
+    onError: () => toast.error('Failed to restore file'),
+  });
 
   // Form State
   const [formData, setFormData] = useState({
@@ -84,8 +178,6 @@ export function MidFinanceView({ task }: MidFinanceViewProps) {
     });
     return () => unsubscribe();
   }, [queryClient]);
-
-  const taskId = task?.id || 'mid-finance';
 
   // Query MID Finance entries from Supabase / Memory
   const { data: entries = [], isLoading, refetch } = useQuery({
@@ -445,10 +537,7 @@ export function MidFinanceView({ task }: MidFinanceViewProps) {
         isOpen={localSidebarOpen}
         onClose={toggleLocalSidebar}
         activeSection={activeSection}
-        onSectionChange={(section) => {
-          setActiveSection(section);
-          setOpenedProject(null);
-        }}
+        onSectionChange={handleSectionChange}
       />
 
       {/* Main Container */}
@@ -472,6 +561,290 @@ export function MidFinanceView({ task }: MidFinanceViewProps) {
                 onOpenProject={(p) => setOpenedProject(p)}
               />
             )
+          ) : activeSection === 'files' ? (
+            <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-150">
+              {/* Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <h1 className="text-xl sm:text-2xl font-black text-[var(--color-text-primary)] tracking-tight">
+                    MID Finance Files
+                  </h1>
+                  <p className="text-xs font-semibold text-[var(--color-text-secondary)] mt-0.5 sm:mt-1">
+                    Manage and upload documents and attachments for MID Finance
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 self-end sm:self-auto">
+                  <div className="flex items-center rounded-xl neu-pressed p-1">
+                    <button
+                      type="button"
+                      onClick={() => setFilesViewMode('grid')}
+                      className={cn(
+                        'rounded-lg p-1.5 transition-all cursor-pointer',
+                        filesViewMode === 'grid'
+                          ? 'neu-active text-[var(--color-primary)] font-bold'
+                          : 'text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]'
+                      )}
+                      title="Grid View"
+                    >
+                      <Grid3X3 className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFilesViewMode('list')}
+                      className={cn(
+                        'rounded-lg p-1.5 transition-all cursor-pointer',
+                        filesViewMode === 'list'
+                          ? 'neu-active text-[var(--color-primary)] font-bold'
+                          : 'text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]'
+                      )}
+                      title="List View"
+                    >
+                      <List className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setUploadOpen(true)}
+                    className="neu-btn-primary px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-xs font-extrabold text-white flex items-center gap-1.5 sm:gap-2 cursor-pointer shadow-md shrink-0"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Upload File</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Search bar on files page */}
+              <div className="relative max-w-md">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--color-text-tertiary)]" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search files..."
+                  className="w-full rounded-xl neu-input py-2 pl-8 pr-3 text-xs font-medium text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)] focus:outline-none"
+                />
+              </div>
+
+              {loadingFiles ? (
+                <div className="flex items-center justify-center py-16">
+                  <Loader2 className="h-8 w-8 animate-spin text-[var(--color-primary)]" />
+                </div>
+              ) : files.length === 0 ? (
+                <EmptyState
+                  icon={FolderOpen}
+                  title="No files in MID Finance"
+                  description="Upload receipts, documents, or attachments to get started."
+                  action={
+                    <button
+                      type="button"
+                      onClick={() => setUploadOpen(true)}
+                      className="neu-btn-primary px-4 py-2 rounded-xl text-xs font-bold text-white cursor-pointer shadow-md flex items-center gap-2"
+                    >
+                      <Plus className="h-4 w-4" />
+                      <span>Upload First File</span>
+                    </button>
+                  }
+                />
+              ) : filesViewMode === 'grid' ? (
+                <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5">
+                  {files.map((file) => (
+                    <div
+                      key={file.id}
+                      className="rounded-2xl neu-card p-3 sm:p-4 relative group hover:border-[var(--color-primary)]/40 transition-all border border-[var(--color-border-light)]/40"
+                    >
+                      <div className="absolute top-2.5 right-2.5 z-10 flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => toggleStarFileMutation.mutate({ fileId: file.id, starred: !file.is_starred })}
+                          className={cn(
+                            'p-1 rounded-lg transition-colors cursor-pointer',
+                            file.is_starred ? 'text-amber-500' : 'text-[var(--color-text-tertiary)] hover:text-amber-500'
+                          )}
+                          title={file.is_starred ? 'Unstar File' : 'Star File'}
+                        >
+                          <Star className={cn('h-3.5 w-3.5', file.is_starred && 'fill-amber-500 text-amber-500')} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => softDeleteFileMutation.mutate(file.id)}
+                          className="p-1 rounded-lg text-[var(--color-text-tertiary)] hover:text-red-500 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity cursor-pointer"
+                          title="Delete File"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+
+                      <div onClick={() => setPreviewFile(file)} className="cursor-pointer space-y-2.5">
+                        <div className="h-24 w-full neu-pressed rounded-xl flex items-center justify-center overflow-hidden">
+                          <FileIcon extension={file.extension} />
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-bold text-[var(--color-text-primary)] truncate" title={file.name}>
+                            {file.name}
+                          </h4>
+                          <p className="text-[10px] font-semibold text-[var(--color-text-tertiary)] mt-0.5">
+                            {formatBytes(file.size_bytes)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="neu-card rounded-2xl overflow-hidden border border-[var(--color-border-light)]/40">
+                  <div className="divide-y divide-[var(--color-border-light)]/40">
+                    {files.map((file) => (
+                      <div
+                        key={file.id}
+                        className="p-3 sm:p-4 flex items-center justify-between gap-3 hover:bg-[var(--color-primary)]/5 transition-colors"
+                      >
+                        <div onClick={() => setPreviewFile(file)} className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer">
+                          <div className="h-9 w-9 sm:h-10 sm:w-10 neu-circle flex items-center justify-center shrink-0">
+                            <FileIcon extension={file.extension} />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <h4 className="text-xs sm:text-sm font-bold text-[var(--color-text-primary)] truncate">{file.name}</h4>
+                            <div className="flex items-center gap-3 text-[10px] font-semibold text-[var(--color-text-tertiary)] mt-0.5">
+                              <span>{formatBytes(file.size_bytes)}</span>
+                              <span>•</span>
+                              <span>{formatDate(file.created_at)}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 sm:gap-2">
+                          <button
+                            type="button"
+                            onClick={() => toggleStarFileMutation.mutate({ fileId: file.id, starred: !file.is_starred })}
+                            className={cn(
+                              'p-1.5 rounded-lg transition-colors cursor-pointer',
+                              file.is_starred ? 'text-amber-500' : 'text-[var(--color-text-tertiary)] hover:text-amber-500'
+                            )}
+                          >
+                            <Star className={cn('h-4 w-4', file.is_starred && 'fill-amber-500 text-amber-500')} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => softDeleteFileMutation.mutate(file.id)}
+                            className="p-1.5 rounded-lg text-[var(--color-text-tertiary)] hover:text-red-500 transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : activeSection === 'recent' ? (
+            <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-150">
+              <div>
+                <h1 className="text-xl sm:text-2xl font-black text-[var(--color-text-primary)] tracking-tight">
+                  Recent Activity
+                </h1>
+                <p className="text-xs font-semibold text-[var(--color-text-secondary)] mt-0.5 sm:mt-1">
+                  Recently accessed and updated files in MID Finance
+                </p>
+              </div>
+
+              {loadingRecentFiles ? (
+                <div className="flex items-center justify-center py-16">
+                  <Loader2 className="h-8 w-8 animate-spin text-[var(--color-primary)]" />
+                </div>
+              ) : recentFiles.length === 0 ? (
+                <EmptyState
+                  icon={Clock}
+                  title="No recent files"
+                  description="Files uploaded or modified in MID Finance will appear here."
+                />
+              ) : (
+                <div className="neu-card rounded-2xl overflow-hidden border border-[var(--color-border-light)]/40">
+                  <div className="divide-y divide-[var(--color-border-light)]/40">
+                    {recentFiles.map((file) => (
+                      <div
+                        key={file.id}
+                        onClick={() => setPreviewFile(file)}
+                        className="p-3 sm:p-4 flex items-center justify-between gap-3 hover:bg-[var(--color-primary)]/5 transition-colors cursor-pointer"
+                      >
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div className="h-9 w-9 sm:h-10 sm:w-10 neu-circle flex items-center justify-center shrink-0">
+                            <FileIcon extension={file.extension} />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <h4 className="text-xs sm:text-sm font-bold text-[var(--color-text-primary)] truncate">{file.name}</h4>
+                            <div className="flex items-center gap-3 text-[10px] font-semibold text-[var(--color-text-tertiary)] mt-0.5">
+                              <span>{formatBytes(file.size_bytes)}</span>
+                              <span>•</span>
+                              <span>Updated {formatDate(file.updated_at || file.created_at)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : activeSection === 'trash' ? (
+            <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-150">
+              <div>
+                <h1 className="text-xl sm:text-2xl font-black text-[var(--color-text-primary)] tracking-tight">
+                  Trash
+                </h1>
+                <p className="text-xs font-semibold text-[var(--color-text-secondary)] mt-0.5 sm:mt-1">
+                  Deleted files in MID Finance
+                </p>
+              </div>
+
+              {loadingTrashFiles ? (
+                <div className="flex items-center justify-center py-16">
+                  <Loader2 className="h-8 w-8 animate-spin text-[var(--color-primary)]" />
+                </div>
+              ) : trashFiles.length === 0 ? (
+                <EmptyState
+                  icon={Trash2}
+                  title="Trash is empty"
+                  description="Items deleted in MID Finance will appear here."
+                />
+              ) : (
+                <div className="neu-card rounded-2xl overflow-hidden border border-[var(--color-border-light)]/40">
+                  <div className="p-3 bg-[var(--neu-bg)] border-b border-[var(--color-border-light)]/40 font-bold text-xs text-[var(--color-text-secondary)]">
+                    Deleted Files ({trashFiles.length})
+                  </div>
+                  <div className="divide-y divide-[var(--color-border-light)]/40">
+                    {trashFiles.map((file) => (
+                      <div key={file.id} className="p-3 sm:p-4 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div className="h-9 w-9 sm:h-10 sm:w-10 neu-circle flex items-center justify-center text-red-500 shrink-0">
+                            <FileText className="h-4.5 w-4.5 text-red-400" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <span className="text-xs sm:text-sm font-bold text-[var(--color-text-primary)] truncate block">
+                              {file.name}
+                            </span>
+                            <span className="text-[10px] font-semibold text-[var(--color-text-tertiary)]">
+                              {formatBytes(file.size_bytes)}
+                            </span>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => restoreFileMutation.mutate(file.id)}
+                          disabled={restoreFileMutation.isPending}
+                          className="neu-btn px-3 py-1.5 rounded-xl text-xs font-extrabold text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10 transition-colors cursor-pointer shrink-0"
+                        >
+                          Restore
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           ) : (
             <>
               {/* Mobile-Only Header & Controls (< md) */}
@@ -1315,6 +1688,31 @@ export function MidFinanceView({ task }: MidFinanceViewProps) {
             </div>
           </div>
         )}
+
+      {/* Mobile Bottom Navigation for MID Finance */}
+      <MidFinanceMobileBottomNav
+        activeSection={activeSection}
+        onSectionChange={handleSectionChange}
+      />
+
+      {/* File Upload Modal */}
+      <UploadDialog
+        open={uploadOpen}
+        onClose={() => {
+          setUploadOpen(false);
+          queryClient.invalidateQueries({ queryKey: ['midFinanceFiles', taskId] });
+          queryClient.invalidateQueries({ queryKey: ['midFinanceRecentFiles', taskId] });
+        }}
+        folderId={taskId}
+      />
+
+      {/* File Preview Modal */}
+      {previewFile && (
+        <FilePreviewModal
+          file={previewFile}
+          onClose={() => setPreviewFile(null)}
+        />
+      )}
     </div>
   );
 }

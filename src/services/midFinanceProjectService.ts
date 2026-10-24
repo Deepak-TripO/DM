@@ -19,6 +19,8 @@ export interface MidFinancePaymentSchedule {
   date: string;
   amount: number;
   status: 'Pending' | 'Paid' | 'Overdue';
+  payment_method?: string;
+  payment_method_custom?: string;
   notes?: string;
   created_at: string;
   updated_at: string;
@@ -51,7 +53,7 @@ export interface MidFinanceProjectExpense {
   id: string;
   project_id: string;
   title: string;
-  category: string;
+  category?: string;
   description?: string;
   date: string;
   amount: number;
@@ -293,6 +295,9 @@ export async function deleteMidFinanceProject(projectId: string): Promise<void> 
 export async function getMidFinancePaymentSchedules(
   projectId: string
 ): Promise<MidFinancePaymentSchedule[]> {
+  const localList = getLocal<MidFinancePaymentSchedule>(STORAGE_KEY_PAYMENTS);
+  const localMap = new Map(localList.map((l) => [l.id, l]));
+
   try {
     const { data, error } = await supabase
       .from('mid_finance_payment_schedules')
@@ -301,14 +306,22 @@ export async function getMidFinancePaymentSchedules(
       .order('date', { ascending: true });
 
     if (!error && data) {
-      return (data || []).map((row: any) => ({
-        ...row,
-        amount: Number(row.amount || 0),
-      })) as MidFinancePaymentSchedule[];
+      const remoteList = (data || []).map((row: any) => {
+        const local = localMap.get(row.id);
+        return {
+          ...row,
+          amount: Number(row.amount || 0),
+          payment_method: row.payment_method || local?.payment_method || undefined,
+          payment_method_custom: row.payment_method_custom || local?.payment_method_custom || undefined,
+        };
+      }) as MidFinancePaymentSchedule[];
+
+      const remoteIds = new Set(remoteList.map((r) => r.id));
+      const extraLocal = localList.filter((p) => p.project_id === projectId && !remoteIds.has(p.id));
+      return [...remoteList, ...extraLocal];
     }
   } catch {}
 
-  const localList = getLocal<MidFinancePaymentSchedule>(STORAGE_KEY_PAYMENTS);
   return localList.filter((p) => p.project_id === projectId);
 }
 
@@ -322,12 +335,14 @@ export async function createMidFinancePaymentSchedule(
     ...data,
     id: newId,
     amount: Number(data.amount || 0),
+    payment_method: data.payment_method || undefined,
+    payment_method_custom: data.payment_method_custom || undefined,
     created_at: now,
     updated_at: now,
   };
 
   try {
-    const { data: res, error } = await supabase
+    let { data: res, error } = await supabase
       .from('mid_finance_payment_schedules')
       .insert({
         id: newId,
@@ -336,13 +351,38 @@ export async function createMidFinancePaymentSchedule(
         date: data.date,
         amount: newSchedule.amount,
         status: data.status,
+        payment_method: data.payment_method || null,
+        payment_method_custom: data.payment_method_custom || null,
         notes: data.notes?.trim() || null,
       })
       .select('*')
       .single();
 
+    if (error && (error.code === '42703' || error.message?.includes('column'))) {
+      const fallback = await supabase
+        .from('mid_finance_payment_schedules')
+        .insert({
+          id: newId,
+          project_id: data.project_id,
+          title: data.title.trim(),
+          date: data.date,
+          amount: newSchedule.amount,
+          status: data.status,
+          notes: data.notes?.trim() || null,
+        })
+        .select('*')
+        .single();
+      res = fallback.data;
+      error = fallback.error;
+    }
+
     if (!error && res) {
-      const saved = { ...res, amount: Number(res.amount || 0) };
+      const saved = {
+        ...res,
+        amount: Number(res.amount || 0),
+        payment_method: res.payment_method || newSchedule.payment_method,
+        payment_method_custom: res.payment_method_custom || newSchedule.payment_method_custom,
+      };
       saveLocalPayment(saved);
       return saved;
     }
@@ -367,13 +407,26 @@ export async function updateMidFinancePaymentSchedule(
 ): Promise<void> {
   const now = new Date().toISOString();
   try {
-    await supabase
+    let { error } = await supabase
       .from('mid_finance_payment_schedules')
       .update({
         ...updates,
         updated_at: now,
       })
       .eq('id', id);
+
+    if (error && (error.code === '42703' || error.message?.includes('column'))) {
+      const safeUpdates = { ...updates };
+      delete (safeUpdates as any).payment_method;
+      delete (safeUpdates as any).payment_method_custom;
+      await supabase
+        .from('mid_finance_payment_schedules')
+        .update({
+          ...safeUpdates,
+          updated_at: now,
+        })
+        .eq('id', id);
+    }
   } catch {}
 
   const current = getLocal<MidFinancePaymentSchedule>(STORAGE_KEY_PAYMENTS);
@@ -528,7 +581,7 @@ export async function uploadMidFinanceInvoice(
     id: newId,
     project_id: projectId,
     name: file.name,
-    invoice_number: meta?.invoice_number?.trim() || `INV-${newId.slice(0, 6).toUpperCase()}`,
+    invoice_number: meta?.invoice_number?.trim() || undefined,
     invoice_date: meta?.invoice_date || now.split('T')[0],
     amount: Number(meta?.amount || 0),
     file_type: file.type || file.name.split('.').pop() || 'pdf',
@@ -544,7 +597,7 @@ export async function uploadMidFinanceInvoice(
         id: newId,
         project_id: projectId,
         name: newInvoice.name,
-        invoice_number: newInvoice.invoice_number,
+        invoice_number: newInvoice.invoice_number || null,
         invoice_date: newInvoice.invoice_date,
         amount: newInvoice.amount,
         file_type: newInvoice.file_type,
@@ -646,7 +699,7 @@ export async function createMidFinanceProjectExpense(
         id: newId,
         project_id: data.project_id,
         title: data.title.trim(),
-        category: data.category.trim(),
+        category: (data.category || 'General').trim(),
         description: data.description?.trim() || null,
         date: data.date,
         amount: newExpense.amount,

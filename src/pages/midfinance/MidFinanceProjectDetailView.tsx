@@ -50,6 +50,16 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+const MID_PAYMENT_METHODS = [
+  'Cash',
+  'UPI',
+  'Bank Transfer',
+  'Card',
+  'Cheque',
+  'Net Banking',
+  'Other',
+] as const;
+
 interface MidFinanceProjectDetailViewProps {
   project: MidFinanceProject;
   onBack: () => void;
@@ -154,18 +164,39 @@ export function MidFinanceProjectDetailView({
     date: new Date().toISOString().split('T')[0],
     amount: '',
     status: 'Pending' as 'Pending' | 'Paid' | 'Overdue',
+    payment_method: '',
+    payment_method_custom: '',
     notes: '',
   });
 
   const paymentMutation = useMutation({
     mutationFn: async () => {
       const amt = parseFloat(paymentForm.amount);
+      if (isNaN(amt) || amt < 0) {
+        throw new Error('Please enter a valid amount.');
+      }
+      if (paymentForm.status === 'Paid') {
+        if (!paymentForm.payment_method) {
+          throw new Error('Please select a payment method.');
+        }
+        if (paymentForm.payment_method === 'Other' && !paymentForm.payment_method_custom.trim()) {
+          throw new Error('Please specify the payment method.');
+        }
+      }
+
+      const methodVal = paymentForm.status === 'Paid' ? paymentForm.payment_method : undefined;
+      const customVal = (paymentForm.status === 'Paid' && paymentForm.payment_method === 'Other')
+        ? paymentForm.payment_method_custom.trim()
+        : undefined;
+
       if (editingPayment) {
         await updateMidFinancePaymentSchedule(editingPayment.id, {
           title: paymentForm.title.trim(),
           date: paymentForm.date,
           amount: amt,
           status: paymentForm.status,
+          payment_method: methodVal,
+          payment_method_custom: customVal,
           notes: paymentForm.notes.trim() || undefined,
         });
       } else {
@@ -175,6 +206,8 @@ export function MidFinanceProjectDetailView({
           date: paymentForm.date,
           amount: amt,
           status: paymentForm.status,
+          payment_method: methodVal,
+          payment_method_custom: customVal,
           notes: paymentForm.notes.trim() || undefined,
         });
       }
@@ -185,7 +218,7 @@ export function MidFinanceProjectDetailView({
       setEditingPayment(null);
       toast.success(editingPayment ? 'Payment schedule updated' : 'Payment schedule added');
     },
-    onError: () => toast.error('Failed to save payment schedule'),
+    onError: (err: any) => toast.error(err?.message || 'Failed to save payment schedule'),
   });
 
   const deletePaymentMutation = useMutation({
@@ -239,7 +272,6 @@ export function MidFinanceProjectDetailView({
   const [deletingInvoice, setDeletingInvoice] = useState<MidFinanceInvoice | null>(null);
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
   const [invoiceForm, setInvoiceForm] = useState({
-    invoice_number: '',
     invoice_date: new Date().toISOString().split('T')[0],
     amount: '',
   });
@@ -248,7 +280,6 @@ export function MidFinanceProjectDetailView({
     mutationFn: async () => {
       if (!invoiceFile) throw new Error('Please select an invoice file');
       return uploadMidFinanceInvoice(project.id, invoiceFile, {
-        invoice_number: invoiceForm.invoice_number.trim(),
         invoice_date: invoiceForm.invoice_date,
         amount: parseFloat(invoiceForm.amount) || 0,
       });
@@ -258,7 +289,6 @@ export function MidFinanceProjectDetailView({
       setInvoiceModalOpen(false);
       setInvoiceFile(null);
       setInvoiceForm({
-        invoice_number: '',
         invoice_date: new Date().toISOString().split('T')[0],
         amount: '',
       });
@@ -284,7 +314,6 @@ export function MidFinanceProjectDetailView({
   const [expenseReceiptFile, setExpenseReceiptFile] = useState<File | null>(null);
   const [expenseForm, setExpenseForm] = useState({
     title: '',
-    category: 'General',
     description: '',
     date: new Date().toISOString().split('T')[0],
     amount: '',
@@ -293,12 +322,15 @@ export function MidFinanceProjectDetailView({
   const expenseMutation = useMutation({
     mutationFn: async () => {
       const amt = parseFloat(expenseForm.amount);
+      if (isNaN(amt) || amt < 0) {
+        throw new Error('Please enter a valid amount.');
+      }
       if (editingExpense) {
         await updateMidFinanceProjectExpense(
           editingExpense.id,
           {
             title: expenseForm.title.trim(),
-            category: expenseForm.category.trim(),
+            category: editingExpense.category || 'General',
             description: expenseForm.description.trim() || undefined,
             date: expenseForm.date,
             amount: amt,
@@ -310,7 +342,7 @@ export function MidFinanceProjectDetailView({
           {
             project_id: project.id,
             title: expenseForm.title.trim(),
-            category: expenseForm.category.trim(),
+            category: 'General',
             description: expenseForm.description.trim() || undefined,
             date: expenseForm.date,
             amount: amt,
@@ -356,10 +388,40 @@ export function MidFinanceProjectDetailView({
     }).format(val);
   };
 
+  const [mobileActionMenuOpen, setMobileActionMenuOpen] = useState(false);
+
+  const handleOpenAddSchedule = () => {
+    setMobileActionMenuOpen(false);
+    setEditingPayment(null);
+    setPaymentForm({
+      title: '',
+      date: new Date().toISOString().split('T')[0],
+      amount: '',
+      status: 'Pending',
+      payment_method: '',
+      payment_method_custom: '',
+      notes: '',
+    });
+    setPaymentModalOpen(true);
+  };
+
+  const handleOpenAddExpense = () => {
+    setMobileActionMenuOpen(false);
+    setEditingExpense(null);
+    setExpenseReceiptFile(null);
+    setExpenseForm({
+      title: '',
+      description: '',
+      date: new Date().toISOString().split('T')[0],
+      amount: '',
+    });
+    setExpenseModalOpen(true);
+  };
+
   return (
     <div className="space-y-6">
       {/* Top Breadcrumb & Project Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-[var(--color-border-light)]/40">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[var(--color-border-light)]/40">
         <div className="flex items-center gap-3">
           <button
             onClick={onBack}
@@ -374,23 +436,23 @@ export function MidFinanceProjectDetailView({
               <img
                 src={project.company_logo}
                 alt={project.company_name}
-                className="h-11 w-11 rounded-2xl object-cover neu-flat bg-white p-1 border border-[var(--color-border-light)]/40"
+                className="h-10 w-10 sm:h-11 sm:w-11 rounded-2xl object-cover neu-flat bg-white p-1 border border-[var(--color-border-light)]/40"
               />
             ) : (
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl neu-circle bg-[#F3E8FF] text-[#8B5CF6] font-black text-sm">
+              <div className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-2xl neu-circle bg-[#F3E8FF] text-[#8B5CF6] font-black text-sm">
                 {project.company_name.slice(0, 2).toUpperCase()}
               </div>
             )}
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-[11px] font-bold text-[#8B5CF6] uppercase tracking-wider">
+                <span className="text-[10px] sm:text-[11px] font-bold text-[#8B5CF6] uppercase tracking-wider">
                   {project.company_name}
                 </span>
-                <span className="text-[10px] font-semibold text-[var(--color-text-tertiary)]">
+                <span className="text-[9px] sm:text-[10px] font-semibold text-[var(--color-text-tertiary)]">
                   &middot; Created {formatDate(project.created_at)}
                 </span>
               </div>
-              <h1 className="text-xl font-black text-[var(--color-text-primary)] tracking-tight">
+              <h1 className="text-lg sm:text-xl font-black text-[var(--color-text-primary)] tracking-tight">
                 {project.project_name}
               </h1>
             </div>
@@ -398,68 +460,68 @@ export function MidFinanceProjectDetailView({
         </div>
 
         {/* Quick Entry Indicator */}
-        <div className="flex items-center gap-2 self-start md:self-auto">
-          <div className="flex items-center gap-2 rounded-xl neu-card px-3.5 py-1.5 text-xs font-bold border border-[#8B5CF6]/30 bg-[#F3E8FF]/20 text-[#8B5CF6]">
+        <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
+          <div className="flex items-center gap-2 rounded-xl neu-card px-3 py-1.5 text-xs font-bold border border-[#8B5CF6]/30 bg-[#F3E8FF]/20 text-[#8B5CF6]">
             <Sparkles className="h-3.5 w-3.5 text-[#8B5CF6]" />
-            <span>Project Entry Active</span>
+            <span className="text-[11px]">Project Entry Active</span>
           </div>
         </div>
       </div>
 
-      {/* Financial Summary Dashboard (5 KPI Cards) */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3.5">
+      {/* Financial Summary Dashboard (5 KPI Cards) - Compact on Mobile, Full on Desktop */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3.5">
         {/* 1. Total Project Amount */}
-        <div className="rounded-2xl neu-card p-4 space-y-1 border border-[#8B5CF6]/20">
-          <div className="flex items-center justify-between text-[11px] font-extrabold text-[var(--color-text-secondary)] uppercase tracking-wider">
-            <span>Project Total</span>
+        <div className="rounded-xl sm:rounded-2xl neu-card p-2.5 sm:p-4 space-y-0.5 sm:space-y-1 border border-[#8B5CF6]/20">
+          <div className="flex items-center justify-between text-[10px] sm:text-[11px] font-extrabold text-[var(--color-text-secondary)] uppercase tracking-tight sm:tracking-wider">
+            <span className="truncate">Project Total</span>
             <button
               onClick={() => setIsEditingTotal(true)}
-              className="text-[#8B5CF6] hover:underline text-[10px] font-bold cursor-pointer"
+              className="text-[#8B5CF6] hover:underline text-[9px] sm:text-[10px] font-bold cursor-pointer shrink-0 ml-1"
             >
               Edit
             </button>
           </div>
-          <p className="text-base sm:text-lg font-black text-[#8B5CF6]">
+          <p className="text-xs sm:text-base lg:text-lg font-black text-[#8B5CF6] truncate" title={formatCurrency(parseFloat(projectTotalAmount) || project.total_amount)}>
             {formatCurrency(parseFloat(projectTotalAmount) || project.total_amount)}
           </p>
         </div>
 
         {/* 2. Total Scheduled Payments */}
-        <div className="rounded-2xl neu-card p-4 space-y-1">
-          <p className="text-[11px] font-extrabold text-[var(--color-text-secondary)] uppercase tracking-wider">
+        <div className="rounded-xl sm:rounded-2xl neu-card p-2.5 sm:p-4 space-y-0.5 sm:space-y-1">
+          <p className="text-[10px] sm:text-[11px] font-extrabold text-[var(--color-text-secondary)] uppercase tracking-tight sm:tracking-wider truncate">
             Total Scheduled
           </p>
-          <p className="text-base sm:text-lg font-black text-[var(--color-text-primary)]">
+          <p className="text-xs sm:text-base lg:text-lg font-black text-[var(--color-text-primary)] truncate" title={formatCurrency(totalScheduledAmount)}>
             {formatCurrency(totalScheduledAmount)}
           </p>
         </div>
 
         {/* 3. Total Paid Amount */}
-        <div className="rounded-2xl neu-card p-4 space-y-1 border border-emerald-500/20">
-          <p className="text-[11px] font-extrabold text-emerald-600 uppercase tracking-wider">
+        <div className="rounded-xl sm:rounded-2xl neu-card p-2.5 sm:p-4 space-y-0.5 sm:space-y-1 border border-emerald-500/20">
+          <p className="text-[10px] sm:text-[11px] font-extrabold text-emerald-600 uppercase tracking-tight sm:tracking-wider truncate">
             Total Paid
           </p>
-          <p className="text-base sm:text-lg font-black text-emerald-600">
+          <p className="text-xs sm:text-base lg:text-lg font-black text-emerald-600 truncate" title={formatCurrency(totalPaidAmount)}>
             {formatCurrency(totalPaidAmount)}
           </p>
         </div>
 
         {/* 4. Remaining Balance */}
-        <div className="rounded-2xl neu-card p-4 space-y-1 border border-amber-500/20">
-          <p className="text-[11px] font-extrabold text-amber-600 uppercase tracking-wider">
+        <div className="rounded-xl sm:rounded-2xl neu-card p-2.5 sm:p-4 space-y-0.5 sm:space-y-1 border border-amber-500/20">
+          <p className="text-[10px] sm:text-[11px] font-extrabold text-amber-600 uppercase tracking-tight sm:tracking-wider truncate">
             Remaining
           </p>
-          <p className="text-base sm:text-lg font-black text-amber-600">
+          <p className="text-xs sm:text-base lg:text-lg font-black text-amber-600 truncate" title={formatCurrency(remainingScheduledAmount)}>
             {formatCurrency(remainingScheduledAmount)}
           </p>
         </div>
 
         {/* 5. Total Expenses */}
-        <div className="rounded-2xl neu-card p-4 space-y-1 border border-red-500/20 col-span-2 lg:col-span-1">
-          <p className="text-[11px] font-extrabold text-red-500 uppercase tracking-wider">
+        <div className="rounded-xl sm:rounded-2xl neu-card p-2.5 sm:p-4 space-y-0.5 sm:space-y-1 border border-red-500/20 col-span-2 lg:col-span-1">
+          <p className="text-[10px] sm:text-[11px] font-extrabold text-red-500 uppercase tracking-tight sm:tracking-wider truncate">
             Total Expenses
           </p>
-          <p className="text-base sm:text-lg font-black text-red-500">
+          <p className="text-xs sm:text-base lg:text-lg font-black text-red-500 truncate" title={formatCurrency(totalExpensesAmount)}>
             {formatCurrency(totalExpensesAmount)}
           </p>
         </div>
@@ -589,25 +651,16 @@ export function MidFinanceProjectDetailView({
                 <h3 className="text-sm font-extrabold text-[var(--color-text-primary)]">
                   Payment Schedule
                 </h3>
-                <p className="text-[11px] font-semibold text-[var(--color-text-secondary)]">
+                <p className="hidden sm:block text-[11px] font-semibold text-[var(--color-text-secondary)]">
                   Scheduled milestones, due dates & collection statuses
                 </p>
               </div>
             </div>
 
+            {/* Desktop-Only Full Size Add Schedule Button */}
             <button
-              onClick={() => {
-                setEditingPayment(null);
-                setPaymentForm({
-                  title: '',
-                  date: new Date().toISOString().split('T')[0],
-                  amount: '',
-                  status: 'Pending',
-                  notes: '',
-                });
-                setPaymentModalOpen(true);
-              }}
-              className="flex items-center gap-1.5 rounded-xl neu-btn-primary px-3 py-1.5 text-xs font-bold text-white shadow-md hover:scale-[1.02] cursor-pointer"
+              onClick={handleOpenAddSchedule}
+              className="hidden sm:flex items-center gap-1.5 rounded-xl neu-btn-primary px-3 py-1.5 text-xs font-bold text-white shadow-md hover:scale-[1.02] cursor-pointer"
             >
               <Plus className="h-3.5 w-3.5" />
               <span>Add Schedule</span>
@@ -630,6 +683,7 @@ export function MidFinanceProjectDetailView({
                     <th className="py-3 px-4">Title / Milestone</th>
                     <th className="py-3 px-4">Scheduled Date</th>
                     <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4">Payment Method</th>
                     <th className="py-3 px-4">Notes</th>
                     <th className="py-3 px-4 text-right">Amount</th>
                     <th className="py-3 px-4 text-center w-20">Actions</th>
@@ -661,6 +715,17 @@ export function MidFinanceProjectDetailView({
                           <span>{p.status}</span>
                         </span>
                       </td>
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        {p.status === 'Paid' && (p.payment_method || p.payment_method_custom) ? (
+                          <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider bg-[#8B5CF6]/10 text-[#8B5CF6]">
+                            {p.payment_method === 'Other' && p.payment_method_custom
+                              ? p.payment_method_custom
+                              : (p.payment_method || 'Paid')}
+                          </span>
+                        ) : (
+                          <span className="text-[var(--color-text-tertiary)] font-bold">—</span>
+                        )}
+                      </td>
                       <td className="py-3 px-4 text-[var(--color-text-secondary)] max-w-xs truncate">
                         {p.notes || '—'}
                       </td>
@@ -677,6 +742,8 @@ export function MidFinanceProjectDetailView({
                                 date: p.date,
                                 amount: String(p.amount),
                                 status: p.status,
+                                payment_method: p.payment_method || '',
+                                payment_method_custom: p.payment_method_custom || '',
                                 notes: p.notes || '',
                               });
                               setPaymentModalOpen(true);
@@ -718,7 +785,7 @@ export function MidFinanceProjectDetailView({
                   <h3 className="text-sm font-extrabold text-[var(--color-text-primary)]">
                     Project Documents
                   </h3>
-                  <p className="text-[11px] font-semibold text-[var(--color-text-secondary)]">
+                  <p className="hidden sm:block text-[11px] font-semibold text-[var(--color-text-secondary)]">
                     Agreements, project briefs & files
                   </p>
                 </div>
@@ -804,7 +871,7 @@ export function MidFinanceProjectDetailView({
                   <h3 className="text-sm font-extrabold text-[var(--color-text-primary)]">
                     Invoices
                   </h3>
-                  <p className="text-[11px] font-semibold text-[var(--color-text-secondary)]">
+                  <p className="hidden sm:block text-[11px] font-semibold text-[var(--color-text-secondary)]">
                     Client billing invoices & tax documents
                   </p>
                 </div>
@@ -891,26 +958,16 @@ export function MidFinanceProjectDetailView({
                 <h3 className="text-sm font-extrabold text-[var(--color-text-primary)]">
                   Expense Breakdown
                 </h3>
-                <p className="text-[11px] font-semibold text-[var(--color-text-secondary)]">
+                <p className="hidden sm:block text-[11px] font-semibold text-[var(--color-text-secondary)]">
                   Direct project expenses, licenses, travel & subcontractor costs
                 </p>
               </div>
             </div>
 
+            {/* Desktop-Only Full Size Add Expense Button */}
             <button
-              onClick={() => {
-                setEditingExpense(null);
-                setExpenseReceiptFile(null);
-                setExpenseForm({
-                  title: '',
-                  category: 'General',
-                  description: '',
-                  date: new Date().toISOString().split('T')[0],
-                  amount: '',
-                });
-                setExpenseModalOpen(true);
-              }}
-              className="flex items-center gap-1.5 rounded-xl neu-btn-primary px-3 py-1.5 text-xs font-bold text-white shadow-md hover:scale-[1.02] cursor-pointer"
+              onClick={handleOpenAddExpense}
+              className="hidden sm:flex items-center gap-1.5 rounded-xl neu-btn-primary px-3 py-1.5 text-xs font-bold text-white shadow-md hover:scale-[1.02] cursor-pointer"
             >
               <Plus className="h-3.5 w-3.5" />
               <span>Add Expense</span>
@@ -931,7 +988,6 @@ export function MidFinanceProjectDetailView({
                 <thead>
                   <tr className="bg-[var(--color-surface-secondary)]/50 text-[var(--color-text-tertiary)] uppercase tracking-wider font-extrabold text-[11px] border-b border-[var(--color-border-light)]/60">
                     <th className="py-3 px-4">Title / Item</th>
-                    <th className="py-3 px-4">Category</th>
                     <th className="py-3 px-4">Date</th>
                     <th className="py-3 px-4">Notes</th>
                     <th className="py-3 px-4">Receipt</th>
@@ -944,11 +1000,6 @@ export function MidFinanceProjectDetailView({
                     <tr key={e.id} className="transition-colors hover:bg-red-500/5">
                       <td className="py-3 px-4 font-bold text-sm text-[var(--color-text-primary)]">
                         {e.title}
-                      </td>
-                      <td className="py-3 px-4 whitespace-nowrap">
-                        <span className="inline-block rounded-lg neu-pressed px-2.5 py-0.5 text-[10px] font-black text-red-500">
-                          {e.category}
-                        </span>
                       </td>
                       <td className="py-3 px-4 whitespace-nowrap text-[var(--color-text-secondary)] font-semibold">
                         {formatDate(e.date)}
@@ -980,7 +1031,6 @@ export function MidFinanceProjectDetailView({
                               setExpenseReceiptFile(null);
                               setExpenseForm({
                                 title: e.title,
-                                category: e.category,
                                 description: e.description || '',
                                 date: e.date,
                                 amount: String(e.amount),
@@ -1088,12 +1138,15 @@ export function MidFinanceProjectDetailView({
                 </label>
                 <select
                   value={paymentForm.status}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const newStatus = e.target.value as 'Pending' | 'Paid' | 'Overdue';
                     setPaymentForm({
                       ...paymentForm,
-                      status: e.target.value as 'Pending' | 'Paid' | 'Overdue',
-                    })
-                  }
+                      status: newStatus,
+                      payment_method: newStatus === 'Paid' ? paymentForm.payment_method : '',
+                      payment_method_custom: newStatus === 'Paid' ? paymentForm.payment_method_custom : '',
+                    });
+                  }}
                   className="w-full rounded-xl neu-input px-3 py-2.5 text-sm text-[var(--color-text-primary)] font-bold"
                 >
                   <option value="Pending">Pending</option>
@@ -1101,6 +1154,55 @@ export function MidFinanceProjectDetailView({
                   <option value="Overdue">Overdue</option>
                 </select>
               </div>
+
+              {/* Dynamic Payment Method when status is Paid */}
+              {paymentForm.status === 'Paid' && (
+                <div className="space-y-3 p-3.5 rounded-2xl bg-emerald-500/5 border border-emerald-500/20 animate-in fade-in duration-150">
+                  <div>
+                    <label className="mb-1 block text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+                      Payment Method *
+                    </label>
+                    <select
+                      value={paymentForm.payment_method}
+                      onChange={(e) => {
+                        const newMethod = e.target.value;
+                        setPaymentForm({
+                          ...paymentForm,
+                          payment_method: newMethod,
+                          payment_method_custom: newMethod === 'Other' ? paymentForm.payment_method_custom : '',
+                        });
+                      }}
+                      required
+                      className="w-full rounded-xl neu-input px-3 py-2.5 text-sm text-[var(--color-text-primary)] font-bold"
+                    >
+                      <option value="">Select Payment Method...</option>
+                      {MID_PAYMENT_METHODS.map((method) => (
+                        <option key={method} value={method}>
+                          {method}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {paymentForm.payment_method === 'Other' && (
+                    <div className="animate-in fade-in duration-150">
+                      <label className="mb-1 block text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+                        Specify Payment Method *
+                      </label>
+                      <input
+                        type="text"
+                        value={paymentForm.payment_method_custom}
+                        onChange={(e) =>
+                          setPaymentForm({ ...paymentForm, payment_method_custom: e.target.value })
+                        }
+                        placeholder="e.g. Demand Draft, Crypto, Wire"
+                        required
+                        className="w-full rounded-xl neu-input px-3.5 py-2.5 text-sm text-[var(--color-text-primary)]"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div>
                 <label className="mb-1 block text-[var(--color-text-secondary)] uppercase tracking-wider">
@@ -1163,19 +1265,6 @@ export function MidFinanceProjectDetailView({
               }}
               className="space-y-3.5 text-xs font-bold"
             >
-              <div>
-                <label className="mb-1 block text-[var(--color-text-secondary)] uppercase tracking-wider">
-                  Invoice Number / Code
-                </label>
-                <input
-                  type="text"
-                  value={invoiceForm.invoice_number}
-                  onChange={(e) => setInvoiceForm({ ...invoiceForm, invoice_number: e.target.value })}
-                  placeholder="e.g. INV-2026-001"
-                  autoFocus
-                  className="w-full rounded-xl neu-input px-3.5 py-2.5 text-sm text-[var(--color-text-primary)]"
-                />
-              </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -1283,13 +1372,12 @@ export function MidFinanceProjectDetailView({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="mb-1 block text-[var(--color-text-secondary)] uppercase tracking-wider">
-                    Category *
+                    Expense Date *
                   </label>
                   <input
-                    type="text"
-                    value={expenseForm.category}
-                    onChange={(e) => setExpenseForm({ ...expenseForm, category: e.target.value })}
-                    placeholder="e.g. Hosting, Travel"
+                    type="date"
+                    value={expenseForm.date}
+                    onChange={(e) => setExpenseForm({ ...expenseForm, date: e.target.value })}
                     required
                     className="w-full rounded-xl neu-input px-3.5 py-2.5 text-sm text-[var(--color-text-primary)]"
                   />
@@ -1309,19 +1397,6 @@ export function MidFinanceProjectDetailView({
                     className="w-full rounded-xl neu-input px-3.5 py-2.5 text-sm font-black text-[var(--color-text-primary)]"
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="mb-1 block text-[var(--color-text-secondary)] uppercase tracking-wider">
-                  Expense Date *
-                </label>
-                <input
-                  type="date"
-                  value={expenseForm.date}
-                  onChange={(e) => setExpenseForm({ ...expenseForm, date: e.target.value })}
-                  required
-                  className="w-full rounded-xl neu-input px-3.5 py-2.5 text-sm text-[var(--color-text-primary)]"
-                />
               </div>
 
               <div>
@@ -1413,6 +1488,49 @@ export function MidFinanceProjectDetailView({
         confirmLabel="Delete"
         loading={deleteExpenseMutation.isPending}
       />
+
+      {/* Mobile Floating Action Button (FAB) for Quick Project Actions */}
+      <div className="sm:hidden fixed bottom-20 right-4 z-40">
+        <div className="relative">
+          {mobileActionMenuOpen && (
+            <>
+              <div
+                className="fixed inset-0 z-40 bg-black/20 backdrop-blur-2xs"
+                onClick={() => setMobileActionMenuOpen(false)}
+              />
+              <div className="absolute bottom-full right-0 mb-3 w-48 z-50 rounded-2xl neu-flat bg-[var(--neu-bg)] border border-[var(--color-border-light)]/60 p-1.5 shadow-2xl animate-in slide-in-from-bottom-2 fade-in duration-150">
+                <button
+                  type="button"
+                  onClick={handleOpenAddSchedule}
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-bold text-[var(--color-text-primary)] hover:bg-[#8B5CF6]/10 hover:text-[#8B5CF6] transition-colors cursor-pointer"
+                >
+                  <CreditCard className="h-4 w-4 text-[#8B5CF6]" />
+                  <span>Add Schedule</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleOpenAddExpense}
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-bold text-[var(--color-text-primary)] hover:bg-red-500/10 hover:text-red-500 transition-colors cursor-pointer"
+                >
+                  <Receipt className="h-4 w-4 text-red-500" />
+                  <span>Add Expense</span>
+                </button>
+              </div>
+            </>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setMobileActionMenuOpen((prev) => !prev)}
+            className="flex h-12 w-12 items-center justify-center rounded-2xl neu-btn-primary text-white shadow-2xl hover:scale-105 active:scale-95 transition-all cursor-pointer"
+            aria-label="Add Schedule or Expense"
+            title="Add Schedule or Expense"
+          >
+            <Plus className={cn('h-6 w-6 transition-transform duration-200', mobileActionMenuOpen && 'rotate-45')} />
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

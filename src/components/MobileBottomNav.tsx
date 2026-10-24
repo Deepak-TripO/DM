@@ -76,7 +76,13 @@ export function MobileBottomNav() {
     currentTask.name.trim().toLowerCase().includes('freelance')
   );
 
-  if (isSelectTaskPage || isTripoLeadTask || isFreelanceLeadTask) return null;
+  const isMidFinanceTask = taskId === 'mid-finance' || (!!currentTask && (
+    currentTask.name.trim().toLowerCase().replace(/\s+/g, '') === 'midfinance' ||
+    currentTask.name.trim().toLowerCase() === 'mid finance' ||
+    currentTask.name.trim().toLowerCase() === 'mid'
+  ));
+
+  if (isSelectTaskPage || isTripoLeadTask || isFreelanceLeadTask || isMidFinanceTask) return null;
 
   const isPathActive = (path: string) => {
     const p = location.pathname;

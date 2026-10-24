@@ -1,15 +1,13 @@
-import { NavLink } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import {
   Clock,
-  Share2,
   Trash2,
   FolderOpen,
   Receipt,
   FolderKanban,
 } from 'lucide-react';
 
-export type MidFinanceSection = 'finance' | 'project';
+export type MidFinanceSection = 'finance' | 'project' | 'files' | 'recent' | 'trash';
 
 interface MidFinanceSidebarProps {
   isOpen: boolean;
@@ -18,11 +16,18 @@ interface MidFinanceSidebarProps {
   onSectionChange: (section: MidFinanceSection) => void;
 }
 
-const standardNavItems = [
-  { to: '/recent', icon: Clock, label: 'Recent', color: '#E59A32', bg: '#FFF4E5' },
-  { to: '/shared', icon: Share2, label: 'Shared', color: '#159A8A', bg: '#E8F8F5' },
-  { to: '/trash', icon: Trash2, label: 'Trash', color: '#D95C68', bg: '#FDECEE' },
-  { to: '/files', icon: FolderOpen, label: 'My Files', color: '#18AFAF', bg: '#E8FAFA' },
+const navItems: {
+  id: MidFinanceSection;
+  label: string;
+  icon: any;
+  color: string;
+  bg: string;
+}[] = [
+  { id: 'finance', label: 'Finance', icon: Receipt, color: '#4D94E8', bg: '#EAF4FF' },
+  { id: 'project', label: 'Project', icon: FolderKanban, color: '#8B5CF6', bg: '#F3E8FF' },
+  { id: 'files', label: 'My Files', icon: FolderOpen, color: '#18AFAF', bg: '#E8FAFA' },
+  { id: 'recent', label: 'Recent', icon: Clock, color: '#E59A32', bg: '#FFF4E5' },
+  { id: 'trash', label: 'Trash', icon: Trash2, color: '#D95C68', bg: '#FDECEE' },
 ];
 
 export function MidFinanceSidebar({
@@ -37,6 +42,32 @@ export function MidFinanceSidebar({
     onSectionChange(section);
     onClose();
   };
+
+  const renderNavItems = (isMobile: boolean) => (
+    <nav className="flex-1 space-y-2.5 overflow-y-auto pr-1">
+      {navItems.map((item) => {
+        const isActive = activeSection === item.id;
+        const Icon = item.icon;
+        return (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => (isMobile ? handleSelectSection(item.id) : onSectionChange(item.id))}
+            style={isActive ? { backgroundColor: item.bg, color: item.color } : undefined}
+            className={cn(
+              'w-full flex items-center gap-3.5 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-150 text-left cursor-pointer',
+              isActive
+                ? 'neu-pressed font-extrabold shadow-sm'
+                : 'neu-btn text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
+            )}
+          >
+            <Icon className="h-5 w-5 shrink-0" style={{ color: item.color }} />
+            <span>{item.label}</span>
+          </button>
+        );
+      })}
+    </nav>
+  );
 
   return (
     <>
@@ -59,79 +90,7 @@ export function MidFinanceSidebar({
             </button>
           </div>
 
-          <nav className="flex-1 space-y-2.5 overflow-y-auto pr-1">
-            {/* 1. MID Finance Entries */}
-            <button
-              onClick={() => handleSelectSection('finance')}
-              style={
-                activeSection === 'finance'
-                  ? { backgroundColor: '#EAF4FF', color: '#4D94E8' }
-                  : undefined
-              }
-              className={cn(
-                'w-full flex items-center gap-3.5 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-150 text-left cursor-pointer',
-                activeSection === 'finance'
-                  ? 'neu-pressed font-extrabold shadow-sm'
-                  : 'neu-btn text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
-              )}
-            >
-              <Receipt className="h-5 w-5 shrink-0" style={{ color: '#4D94E8' }} />
-              <span>Finance</span>
-            </button>
-
-            {/* 2. Project Section */}
-            <button
-              onClick={() => handleSelectSection('project')}
-              style={
-                activeSection === 'project'
-                  ? { backgroundColor: '#F3E8FF', color: '#8B5CF6' }
-                  : undefined
-              }
-              className={cn(
-                'w-full flex items-center gap-3.5 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-150 text-left cursor-pointer',
-                activeSection === 'project'
-                  ? 'neu-pressed font-extrabold shadow-sm'
-                  : 'neu-btn text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
-              )}
-            >
-              <FolderKanban className="h-5 w-5 shrink-0" style={{ color: '#8B5CF6' }} />
-              <span>Project</span>
-            </button>
-
-            <div className="my-2 h-px bg-[var(--color-border-light)]/40" />
-
-            {/* Standard Navigation Items */}
-            {standardNavItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                onClick={onClose}
-                style={({ isActive }) =>
-                  isActive
-                    ? { backgroundColor: item.bg, color: item.color }
-                    : undefined
-                }
-                className={({ isActive }) =>
-                  cn(
-                    'flex items-center gap-3.5 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-150',
-                    isActive
-                      ? 'neu-pressed font-extrabold shadow-sm'
-                      : 'neu-btn text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
-                  )
-                }
-              >
-                {({ isActive }) => (
-                  <>
-                    <item.icon
-                      className="h-5 w-5 shrink-0"
-                      style={{ color: item.color }}
-                    />
-                    <span>{item.label}</span>
-                  </>
-                )}
-              </NavLink>
-            ))}
-          </nav>
+          {renderNavItems(true)}
         </aside>
       </div>
 
@@ -149,79 +108,7 @@ export function MidFinanceSidebar({
           </button>
         </div>
 
-        {/* Full-Height Navigation Items */}
-        <nav className="flex-1 space-y-2.5 overflow-y-auto pr-1">
-          {/* 1. MID Finance Entries */}
-          <button
-            onClick={() => onSectionChange('finance')}
-            style={
-              activeSection === 'finance'
-                ? { backgroundColor: '#EAF4FF', color: '#4D94E8' }
-                : undefined
-            }
-            className={cn(
-              'w-full flex items-center gap-3.5 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-150 text-left cursor-pointer',
-              activeSection === 'finance'
-                ? 'neu-pressed font-extrabold shadow-sm'
-                : 'neu-btn text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
-            )}
-          >
-            <Receipt className="h-5 w-5 shrink-0" style={{ color: '#4D94E8' }} />
-            <span>Finance</span>
-          </button>
-
-          {/* 2. Project Section */}
-          <button
-            onClick={() => onSectionChange('project')}
-            style={
-              activeSection === 'project'
-                ? { backgroundColor: '#F3E8FF', color: '#8B5CF6' }
-                : undefined
-            }
-            className={cn(
-              'w-full flex items-center gap-3.5 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-150 text-left cursor-pointer',
-              activeSection === 'project'
-                ? 'neu-pressed font-extrabold shadow-sm'
-                : 'neu-btn text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
-            )}
-          >
-            <FolderKanban className="h-5 w-5 shrink-0" style={{ color: '#8B5CF6' }} />
-            <span>Project</span>
-          </button>
-
-          <div className="my-2 h-px bg-[var(--color-border-light)]/40" />
-
-          {/* Standard Navigation Items */}
-          {standardNavItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              style={({ isActive }) =>
-                isActive
-                  ? { backgroundColor: item.bg, color: item.color }
-                  : undefined
-              }
-              className={({ isActive }) =>
-                cn(
-                  'flex items-center gap-3.5 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-150',
-                  isActive
-                    ? 'neu-pressed font-extrabold shadow-sm'
-                    : 'neu-btn text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
-                )
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  <item.icon
-                    className="h-5 w-5 shrink-0"
-                    style={{ color: item.color }}
-                  />
-                  <span>{item.label}</span>
-                </>
-              )}
-            </NavLink>
-          ))}
-        </nav>
+        {renderNavItems(false)}
       </aside>
     </>
   );
