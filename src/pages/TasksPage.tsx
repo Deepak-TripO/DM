@@ -10,6 +10,7 @@ import { FileCardSkeleton } from '@/components/LoadingSkeleton';
 import { FileIcon } from '@/components/FileIcon';
 import { FilePreviewModal } from '@/features/files/preview/FilePreviewModal';
 import { FinanceView } from '@/pages/finance/FinanceView';
+import { MidFinanceView } from '@/pages/midfinance/MidFinanceView';
 import { TripoLeadView } from '@/pages/tripolead/TripoLeadView';
 import { FreelanceLeadView } from '@/pages/freelancelead/FreelanceLeadView';
 import { ProofView } from '@/pages/proof/ProofView';
@@ -41,6 +42,11 @@ export default function TasksPage() {
   });
 
   const isFinanceTask = !!selectedTask && selectedTask.name.trim().toLowerCase() === 'finance';
+  const isMidFinanceTask = !!selectedTask && (
+    selectedTask.name.trim().toLowerCase().replace(/\s+/g, '') === 'midfinance' ||
+    selectedTask.name.trim().toLowerCase() === 'mid finance' ||
+    selectedTask.name.trim().toLowerCase() === 'mid'
+  );
   const isTripoLeadTask = !!selectedTask && (
     selectedTask.name.trim().toLowerCase().replace(/\s+/g, '').includes('tripolead') ||
     selectedTask.name.trim().toLowerCase().includes('tripo')
@@ -55,7 +61,7 @@ export default function TasksPage() {
   );
 
   useEffect(() => {
-    if (isTripoLeadTask || isFreelanceLeadTask || isProofTask) {
+    if (isTripoLeadTask || isFreelanceLeadTask || isProofTask || isMidFinanceTask) {
       setHideSidebarOverride?.(true);
     } else {
       setHideSidebarOverride?.(false);
@@ -63,12 +69,12 @@ export default function TasksPage() {
     return () => {
       setHideSidebarOverride?.(false);
     };
-  }, [isTripoLeadTask, isFreelanceLeadTask, isProofTask, setHideSidebarOverride]);
+  }, [isTripoLeadTask, isFreelanceLeadTask, isProofTask, isMidFinanceTask, setHideSidebarOverride]);
 
   const { data: taskFiles = [], isLoading: loadingFiles } = useQuery({
     queryKey: ['taskFiles', taskId],
     queryFn: () => getTaskFiles(taskId!),
-    enabled: !!taskId && !!selectedTask && !isFinanceTask && !isTripoLeadTask && !isFreelanceLeadTask && !isProofTask,
+    enabled: !!taskId && !!selectedTask && !isFinanceTask && !isMidFinanceTask && !isTripoLeadTask && !isFreelanceLeadTask && !isProofTask,
   });
 
   const handleDownload = async (file: FileItem) => {
@@ -87,6 +93,10 @@ export default function TasksPage() {
 
   if (selectedTask && isFinanceTask) {
     return <FinanceView task={selectedTask} />;
+  }
+
+  if (selectedTask && isMidFinanceTask) {
+    return <MidFinanceView task={selectedTask} />;
   }
 
   if (selectedTask && isTripoLeadTask) {
@@ -125,6 +135,8 @@ export default function TasksPage() {
             </div>
           ) : isFinanceTask ? (
             <FinanceView task={selectedTask} />
+          ) : isMidFinanceTask ? (
+            <MidFinanceView task={selectedTask} />
           ) : (
             <div className="space-y-6">
               {/* Toolbar */}

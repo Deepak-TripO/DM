@@ -114,6 +114,22 @@ export async function getActiveTasks(): Promise<TaskItem[]> {
     (item: any) => item.name.trim().toLowerCase() !== 'photos'
   );
 
+  const hasMidFinance = rawTasks.some(
+    (t: any) =>
+      t.name.trim().toLowerCase().replace(/\s+/g, '') === 'midfinance' ||
+      t.name.trim().toLowerCase() === 'mid finance'
+  );
+
+  if (!hasMidFinance) {
+    rawTasks.push({
+      id: 'mid-finance',
+      name: 'MID Finance',
+      owner_id: user.id,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+  }
+
   if (isAdmin) {
     return rawTasks as TaskItem[];
   }
@@ -143,6 +159,32 @@ export async function getTaskById(taskId: string): Promise<TaskItem | null> {
   if (!user) return null;
 
   const isAdmin = await checkIsAdminUser(user.id, user.email);
+
+  if (taskId === 'mid-finance' || taskId === 'midfinance') {
+    try {
+      const { data: existingMid } = await supabase
+        .from('folders')
+        .select('id, name, owner_id, created_at, updated_at')
+        .ilike('name', '%mid%finance%')
+        .is('parent_id', null)
+        .is('deleted_at', null)
+        .maybeSingle();
+
+      if (existingMid) {
+        return existingMid as TaskItem;
+      }
+    } catch {
+      // ignore
+    }
+
+    return {
+      id: 'mid-finance',
+      name: 'MID Finance',
+      owner_id: user.id,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+  }
 
   const { data, error } = await supabase
     .from('folders')
