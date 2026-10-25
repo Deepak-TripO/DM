@@ -395,7 +395,7 @@ export function MidFinanceView({ task }: MidFinanceViewProps) {
 
   const handleOpenEdit = (entry: MidFinanceEntry) => {
     setEditingEntry(entry);
-    const mappedPerson = entry.person === 'Deepak' ? 'Incoming' : entry.person === 'Elumugam' ? 'Outgoing' : (entry.person || 'Incoming');
+    const mappedPerson = (entry.person === 'Outgoing' || entry.person === 'Elumugam') ? 'Outgoing' : 'Incoming';
     const incVal = entry.incoming_amount ?? entry.deepak_amount ?? null;
     const outVal = entry.outgoing_amount ?? entry.elumugam_amount ?? null;
 
@@ -405,12 +405,10 @@ export function MidFinanceView({ task }: MidFinanceViewProps) {
       description: entry.description || '',
       person: mappedPerson,
       amount: String(entry.amount || ''),
-      incomingAmount: incVal != null ? String(incVal) : '',
-      outgoingAmount: outVal != null ? String(outVal) : '',
+      incomingAmount: incVal != null ? String(incVal) : (mappedPerson === 'Incoming' ? String(entry.amount || '') : ''),
+      outgoingAmount: outVal != null ? String(outVal) : (mappedPerson === 'Outgoing' ? String(entry.amount || '') : ''),
     });
   };
-
-  const isBothPersons = formData.person === 'Incoming + Outgoing' || formData.person === 'Incoming+Outgoing';
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -418,7 +416,8 @@ export function MidFinanceView({ task }: MidFinanceViewProps) {
       toast.error('MID Finance entry access is locked by administrator.');
       return;
     }
-    if (!formData.company_name.trim()) {
+    const isIncoming = formData.person === 'Incoming';
+    if (isIncoming && !formData.company_name.trim()) {
       toast.error('Please enter company name');
       return;
     }
@@ -431,21 +430,7 @@ export function MidFinanceView({ task }: MidFinanceViewProps) {
     let finalIncomingAmt: number | null = null;
     let finalOutgoingAmt: number | null = null;
 
-    if (isBothPersons) {
-      if (!formData.incomingAmount || !formData.outgoingAmount) {
-        toast.error('Please enter both Incoming and Outgoing amounts.');
-        return;
-      }
-      const inc = parseFloat(formData.incomingAmount);
-      const out = parseFloat(formData.outgoingAmount);
-      if (isNaN(inc) || inc < 0 || isNaN(out) || out < 0) {
-        toast.error('Please enter valid non-negative amounts.');
-        return;
-      }
-      finalIncomingAmt = inc;
-      finalOutgoingAmt = out;
-      finalTotal = inc + out;
-    } else if (formData.person === 'Outgoing') {
+    if (formData.person === 'Outgoing') {
       const val = parseFloat(formData.outgoingAmount || formData.amount);
       if (isNaN(val) || val < 0) {
         toast.error('Please enter a valid amount.');
@@ -463,12 +448,17 @@ export function MidFinanceView({ task }: MidFinanceViewProps) {
       finalTotal = val;
     }
 
+    // Preserve company_name for historical records if switching to Outgoing, or use entered name for Incoming
+    const finalCompanyName = isIncoming
+      ? formData.company_name.trim()
+      : (editingEntry?.company_name || formData.company_name.trim() || '');
+
     if (editingEntry) {
       updateMutation.mutate({
         id: editingEntry.id,
         updates: {
           date: formData.date,
-          company_name: formData.company_name.trim(),
+          company_name: finalCompanyName,
           description: formData.description.trim(),
           person: formData.person.trim(),
           amount: finalTotal,
@@ -482,7 +472,7 @@ export function MidFinanceView({ task }: MidFinanceViewProps) {
       createMutation.mutate({
         task_id: taskId,
         date: formData.date,
-        company_name: formData.company_name.trim(),
+        company_name: finalCompanyName,
         description: formData.description.trim(),
         person: formData.person.trim(),
         amount: finalTotal,
@@ -1100,7 +1090,7 @@ export function MidFinanceView({ task }: MidFinanceViewProps) {
                             {formatDateString(entry.date)}
                           </td>
                           <td className="py-3.5 px-4 font-extrabold text-sm text-[var(--color-text-primary)]">
-                            {entry.company_name || entry.item || '—'}
+                            {displayPerson === 'Outgoing' ? '—' : (entry.company_name || entry.item || '—')}
                           </td>
                           <td className="py-3.5 px-4 max-w-xs truncate text-[var(--color-text-secondary)] font-medium">
                             {entry.description || '--'}
@@ -1202,9 +1192,11 @@ export function MidFinanceView({ task }: MidFinanceViewProps) {
                       </div>
 
                       {/* 2. Company Name */}
-                      <div className="font-black text-sm text-[var(--color-text-primary)] tracking-tight">
-                        {entry.company_name || entry.item || '—'}
-                      </div>
+                      {displayPerson !== 'Outgoing' && (
+                        <div className="font-black text-sm text-[var(--color-text-primary)] tracking-tight">
+                          {entry.company_name || entry.item || '—'}
+                        </div>
+                      )}
 
                       {/* 3. Amount */}
                       <div className="text-sm font-black text-[var(--color-primary)]">
@@ -1270,10 +1262,12 @@ export function MidFinanceView({ task }: MidFinanceViewProps) {
                   <span className="text-xs font-bold text-[var(--color-text-primary)]">{formatDateString(viewingEntry.date)}</span>
                 </div>
 
-                <div className="p-3 rounded-2xl neu-pressed flex items-center justify-between">
-                  <span className="text-[var(--color-text-secondary)] uppercase tracking-wider text-[10px] font-extrabold">Company Name</span>
-                  <span className="text-xs font-black text-[var(--color-primary)] truncate max-w-[200px]">{viewingEntry.company_name || viewingEntry.item || '—'}</span>
-                </div>
+                {viewingEntry.person !== 'Outgoing' && viewingEntry.person !== 'Elumugam' && (
+                  <div className="p-3 rounded-2xl neu-pressed flex items-center justify-between">
+                    <span className="text-[var(--color-text-secondary)] uppercase tracking-wider text-[10px] font-extrabold">Company Name</span>
+                    <span className="text-xs font-black text-[var(--color-primary)] truncate max-w-[200px]">{viewingEntry.company_name || viewingEntry.item || '—'}</span>
+                  </div>
+                )}
 
                 <div className="p-3 rounded-2xl neu-pressed flex items-center justify-between">
                   <span className="text-[var(--color-text-secondary)] uppercase tracking-wider text-[10px] font-extrabold">Type</span>
@@ -1323,13 +1317,83 @@ export function MidFinanceView({ task }: MidFinanceViewProps) {
               </h3>
 
               <form onSubmit={handleFormSubmit} className="space-y-4 text-xs font-bold">
-                {/* Date */}
+                {/* 1. Type (Toggle Button) */}
+                <div>
+                  <label className="mb-1.5 block text-[var(--color-text-secondary)] uppercase tracking-wider text-[11px] font-extrabold">
+                    Type *
+                  </label>
+                  <div className="grid grid-cols-2 gap-2 rounded-2xl neu-pressed p-1.5">
+                    <button
+                      type="button"
+                      id="mid-finance-type-incoming"
+                      onClick={() => setFormData({ ...formData, person: 'Incoming' })}
+                      className={cn(
+                        'w-full py-2.5 px-3 rounded-xl text-xs font-extrabold transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer',
+                        formData.person === 'Incoming'
+                          ? 'neu-btn text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 shadow-sm'
+                          : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          'h-2.5 w-2.5 rounded-full transition-all',
+                          formData.person === 'Incoming'
+                            ? 'bg-emerald-500 shadow-xs'
+                            : 'bg-[var(--color-text-tertiary)]/40'
+                        )}
+                      />
+                      <span>Incoming</span>
+                    </button>
+                    <button
+                      type="button"
+                      id="mid-finance-type-outgoing"
+                      onClick={() => setFormData({ ...formData, person: 'Outgoing' })}
+                      className={cn(
+                        'w-full py-2.5 px-3 rounded-xl text-xs font-extrabold transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer',
+                        formData.person === 'Outgoing'
+                          ? 'neu-btn text-rose-600 dark:text-rose-400 border border-rose-500/40 shadow-sm'
+                          : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          'h-2.5 w-2.5 rounded-full transition-all',
+                          formData.person === 'Outgoing'
+                            ? 'bg-rose-500 shadow-xs'
+                            : 'bg-[var(--color-text-tertiary)]/40'
+                        )}
+                      />
+                      <span>Outgoing</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 2. Company Name (Conditional: Incoming only) */}
+                {formData.person === 'Incoming' && (
+                  <div>
+                    <label className="mb-1 block text-[var(--color-text-secondary)] uppercase tracking-wider">
+                      Company Name *
+                    </label>
+                    <input
+                      type="text"
+                      id="mid-finance-company-name"
+                      value={formData.company_name}
+                      onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
+                      placeholder="Enter company name"
+                      required={formData.person === 'Incoming'}
+                      className="w-full rounded-xl neu-input px-3.5 py-2.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)] font-semibold"
+                    />
+                  </div>
+                )}
+
+                {/* 3. Date */}
                 <div>
                   <label className="mb-1 block text-[var(--color-text-secondary)] uppercase tracking-wider">
                     Date *
                   </label>
                   <input
                     type="date"
+                    id="mid-finance-date"
                     value={formData.date}
                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                     required
@@ -1337,28 +1401,14 @@ export function MidFinanceView({ task }: MidFinanceViewProps) {
                   />
                 </div>
 
-                {/* Company Name */}
-                <div>
-                  <label className="mb-1 block text-[var(--color-text-secondary)] uppercase tracking-wider">
-                    Company Name *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.company_name}
-                    onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
-                    placeholder="Enter company name"
-                    required
-                    className="w-full rounded-xl neu-input px-3.5 py-2.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)] font-semibold"
-                  />
-                </div>
-
-                {/* Description */}
+                {/* 4. Description */}
                 <div>
                   <label className="mb-1 block text-[var(--color-text-secondary)] uppercase tracking-wider">
                     Description
                   </label>
                   <input
                     type="text"
+                    id="mid-finance-description"
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     placeholder="Short explanation of entry (optional)"
@@ -1366,64 +1416,8 @@ export function MidFinanceView({ task }: MidFinanceViewProps) {
                   />
                 </div>
 
-                {/* Person / Entry Type Dropdown */}
-                <div>
-                  <label className="mb-1 block text-[var(--color-text-secondary)] uppercase tracking-wider">
-                    Type *
-                  </label>
-                  <select
-                    value={formData.person}
-                    onChange={(e) => setFormData({ ...formData, person: e.target.value })}
-                    required
-                    className="w-full rounded-xl neu-input px-3 py-2.5 text-sm text-[var(--color-text-primary)] font-semibold cursor-pointer"
-                  >
-                    <option value="Incoming">Incoming</option>
-                    <option value="Outgoing">Outgoing</option>
-                    <option value="Incoming + Outgoing">Incoming + Outgoing</option>
-                  </select>
-                </div>
-
-                {/* Amount Inputs — Dynamic per Type */}
-                {isBothPersons ? (
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="mb-1 block text-[var(--color-text-secondary)] uppercase tracking-wider">
-                          Incoming Amount (₹) *
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={formData.incomingAmount}
-                          onChange={(e) => setFormData({ ...formData, incomingAmount: e.target.value })}
-                          placeholder="0.00"
-                          required
-                          className="w-full rounded-xl neu-input px-3.5 py-2.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)] font-bold"
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-[var(--color-text-secondary)] uppercase tracking-wider">
-                          Outgoing Amount (₹) *
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={formData.outgoingAmount}
-                          onChange={(e) => setFormData({ ...formData, outgoingAmount: e.target.value })}
-                          placeholder="0.00"
-                          required
-                          className="w-full rounded-xl neu-input px-3.5 py-2.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)] font-bold"
-                        />
-                      </div>
-                    </div>
-                    <div className="rounded-xl neu-pressed p-3 flex items-center justify-between text-xs font-black text-[var(--color-primary)] border border-[var(--color-primary)]/20">
-                      <span className="uppercase tracking-wider">Total</span>
-                      <span className="text-base">{formatCurrency((parseFloat(formData.incomingAmount) || 0) + (parseFloat(formData.outgoingAmount) || 0))}</span>
-                    </div>
-                  </div>
-                ) : formData.person === 'Outgoing' ? (
+                {/* 5. Amount Inputs */}
+                {formData.person === 'Outgoing' ? (
                   <div className="space-y-3">
                     <div>
                       <label className="mb-1 block text-[var(--color-text-secondary)] uppercase tracking-wider">
@@ -1431,6 +1425,7 @@ export function MidFinanceView({ task }: MidFinanceViewProps) {
                       </label>
                       <input
                         type="number"
+                        id="mid-finance-outgoing-amount"
                         step="0.01"
                         min="0"
                         value={formData.outgoingAmount || formData.amount}
@@ -1453,6 +1448,7 @@ export function MidFinanceView({ task }: MidFinanceViewProps) {
                       </label>
                       <input
                         type="number"
+                        id="mid-finance-incoming-amount"
                         step="0.01"
                         min="0"
                         value={formData.incomingAmount || formData.amount}

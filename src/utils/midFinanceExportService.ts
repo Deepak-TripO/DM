@@ -14,7 +14,7 @@ import {
   BorderStyle,
 } from 'docx';
 import type { MidFinanceEntry } from '../services/midFinanceService';
-import { TRIPO_LOGO_BASE64 } from '../assets/tripoLogoBase64';
+import { MID_LOGO_BASE64 } from '../assets/midLogoBase64';
 import { saveExportedFileToShared } from '../services/fileService';
 
 export interface SummaryData {
@@ -82,11 +82,7 @@ const getTodayFormatted = () => {
 };
 
 export const getPdfFooterText = (): string => {
-  try {
-    const saved = localStorage.getItem('dm_pdf_footer_text');
-    if (saved && saved.trim()) return saved.trim();
-  } catch {}
-  return 'TripO Offical';
+  return '';
 };
 
 /**
@@ -108,9 +104,9 @@ export const exportToPdf = async (entries: MidFinanceEntry[], summary: SummaryDa
   doc.roundedRect(10, 10, 277, 190, 6, 6, 'FD');
 
   // --- HEADER SECTION ---
-  // Top Left: TripO Logo Image
+  // Top Left: MID Logo Image
   try {
-    doc.addImage(TRIPO_LOGO_BASE64, 'JPEG', 18, 16, 36, 14);
+    doc.addImage(MID_LOGO_BASE64, 'PNG', 18, 15, 31.6, 14);
   } catch {
     // Fallback if image fails to decode
   }
@@ -119,12 +115,12 @@ export const exportToPdf = async (entries: MidFinanceEntry[], summary: SummaryDa
   doc.setFontSize(15);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(15, 23, 42); // slate-900
-  doc.text('— MID Finance Report', 58, 25);
+  doc.text('MID Finance Report', 55, 25);
 
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(100, 116, 139); // slate-500
-  doc.text(`Export Date: ${todayStr}`, 58, 30);
+  doc.text(`Export Date: ${todayStr}`, 55, 30);
 
   // Top Right: OVERALL TOTAL Card (Badge)
   doc.setFillColor(239, 246, 255); // blue-50
@@ -263,23 +259,7 @@ export const exportToPdf = async (entries: MidFinanceEntry[], summary: SummaryDa
     pageBreak: 'auto',
   });
 
-  // Render watermark/footer text
-  const totalPages = (doc as any).getNumberOfPages();
-  doc.setPage(totalPages);
-  const pdfFooterText = getPdfFooterText();
-  const lastY = (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY : 140;
-  
-  let sealY = lastY + 22;
-  if (sealY > 182) {
-    doc.addPage();
-    doc.setPage((doc as any).getNumberOfPages());
-    sealY = 35;
-  }
 
-  doc.setFontSize(9.5);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(51, 65, 85);
-  doc.text(pdfFooterText, 277, sealY, { align: 'right' });
 
   const filename = `DM_MID_Finance_${todayStr}.pdf`;
   doc.save(filename);
@@ -348,9 +328,9 @@ export const exportToJpg = async (entries: MidFinanceEntry[], summary: SummaryDa
       <!-- Header -->
       <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 24px; margin-bottom: 24px;">
         <div style="display: flex; align-items: center; gap: 16px;">
-          <img src="${TRIPO_LOGO_BASE64}" alt="TripO Logo" style="height: 50px; width: auto; object-fit: contain;" />
+          <img src="${MID_LOGO_BASE64}" alt="MID Logo" style="height: 48px; width: auto; object-fit: contain;" />
           <div>
-            <h1 style="font-size: 22px; font-weight: 900; color: #0f172a; margin: 0; letter-spacing: -0.02em;">— MID Finance Report</h1>
+            <h1 style="font-size: 22px; font-weight: 900; color: #0f172a; margin: 0; letter-spacing: -0.02em;">MID Finance Report</h1>
             <p style="font-size: 12px; color: #64748b; margin: 4px 0 0 0; font-weight: 600;">Export Date: ${todayStr}</p>
           </div>
         </div>
@@ -396,7 +376,6 @@ export const exportToJpg = async (entries: MidFinanceEntry[], summary: SummaryDa
       <!-- Footer -->
       <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f1f5f9; padding-top: 16px;">
         <span style="font-size: 11px; color: #94a3b8; font-weight: 600;">Generated from DM MID Finance</span>
-        <span style="font-size: 12px; color: #334155; font-weight: 800;">${getPdfFooterText()}</span>
       </div>
     </div>
   `;
@@ -572,7 +551,7 @@ export const exportToDocx = async (entries: MidFinanceEntry[], summary: SummaryD
         children: [
           new Paragraph({
             children: [
-              new TextRun({ text: 'TripO — MID Finance Report', bold: true, size: 32, color: '0F172A' }),
+              new TextRun({ text: 'MID Finance Report', bold: true, size: 32, color: '0F172A' }),
             ],
           }),
           new Paragraph({
@@ -594,13 +573,7 @@ export const exportToDocx = async (entries: MidFinanceEntry[], summary: SummaryD
             ],
           }),
           entriesTable,
-          new Paragraph({ text: '' }),
-          new Paragraph({
-            alignment: AlignmentType.RIGHT,
-            children: [
-              new TextRun({ text: getPdfFooterText(), bold: true, size: 20, color: '334155' }),
-            ],
-          }),
+
         ],
       },
     ],
